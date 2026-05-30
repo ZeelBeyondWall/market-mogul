@@ -521,7 +521,7 @@
           </div>
           <div class="trade-row">
             <label>Qty</label>
-            <input type="number" class="qty" id="qty" value="1" min="1" step="1">
+            <input type="number" class="qty" id="qty" value="1" min="0" step="any">
           </div>
           <div class="dbl-btn buy">
             <button class="a" id="btnBuy"><span>BUY $0</span><small>0 sh</small></button>
@@ -881,6 +881,19 @@ function fmtNum(n){
   return Math.floor(n).toString();
 }
 function fmtPct(n){return (n>=0?'+':'')+n.toFixed(2)+'%';}
+function fmtShares(n){
+  if(!isFinite(n)) return '∞';
+  const a = Math.abs(n);
+  if(a===0) return '0';
+  if(a>=1e12) return (n/1e12).toFixed(2)+'T';
+  if(a>=1e9) return (n/1e9).toFixed(2)+'B';
+  if(a>=1e6) return (n/1e6).toFixed(2)+'M';
+  if(a>=1e3) return (n/1e3).toFixed(2)+'K';
+  if(a>=1) return n.toFixed(2).replace(/\.?0+$/,'');
+  if(a>=0.01) return n.toFixed(4).replace(/\.?0+$/,'');
+  return n.toFixed(6).replace(/\.?0+$/,'');
+}
+function roundShares(n){return Math.round(n*1e6)/1e6;} // 6 decimal precision
 function rand(min,max){return min+Math.random()*(max-min);}
 function gauss(){let u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
 
@@ -963,12 +976,12 @@ function toggleMute(){
 function sellableQty(t, assetId, qty, px){
   const sh = t.holdings[assetId]?.shares || 0;
   const longPart = Math.max(0, sh);
-  if(t.isPlayer) return qty; // player gated upstream by modeMaxQty
+  if(t.isPlayer) return qty;
   const uncovered = Math.max(0, qty - longPart);
   if(uncovered === 0) return qty;
   const needed = uncovered * px * 0.5;
   if(t.cash >= needed) return qty;
-  const allowedShort = Math.floor(t.cash * 2 / Math.max(0.01, px));
+  const allowedShort = roundShares(t.cash * 2 / Math.max(0.01, px));
   return longPart + Math.max(0, allowedShort);
 }
 
@@ -977,7 +990,7 @@ function placeOrder(traderId, assetId, side, qty, limitPx, type='limit'){
   const a = ASSETS.find(x=>x.id===assetId);
   const ast = S.assets[assetId];
   const book = ast.book;
-  qty = Math.floor(qty);
+  qty = roundShares(qty);
   if(qty<=0) return {filled:0,cost:0};
 
   if(type==='market'){
@@ -994,8 +1007,8 @@ function placeOrder(traderId, assetId, side, qty, limitPx, type='limit'){
       if(side==='buy'){
         const cost = fillPx*fillQty;
         if(t.cash < cost){
-          // partial: buy what we can afford
-          const affordQty = Math.floor(t.cash / fillPx);
+          // partial: buy what we can afford (fractional)
+          const affordQty = roundShares(t.cash / fillPx);
           if(affordQty<=0) break;
           executeTrade(traderId, top.ownerId, assetId, affordQty, fillPx, 'buy');
           top.qty -= affordQty;
@@ -1036,7 +1049,7 @@ function placeOrder(traderId, assetId, side, qty, limitPx, type='limit'){
       const fillPx = top.px;
       if(side==='buy'){
         if(t.cash < fillPx*fillQty){
-          const aff = Math.floor(t.cash / fillPx);
+          const aff = roundShares(t.cash / fillPx);
           if(aff<=0) break;
           executeTrade(traderId, top.ownerId, assetId, aff, fillPx, 'buy');
           top.qty -= aff; totalCost += fillPx*aff; totalQty += aff;
@@ -1078,7 +1091,7 @@ function executeTrade(buyerId, sellerId, assetId, qty, px, initiator){
     if(uncovered > 0){
       const needed = uncovered * px * 0.5; // 50% margin
       if(seller.cash < needed){
-        const maxUncovered = Math.floor(seller.cash * 2 / px);
+        const maxUncovered = roundShares(seller.cash * 2 / px);
         const allowed = Math.max(0, sh0.shares) + maxUncovered;
         qty = Math.min(qty, allowed);
       }
@@ -1086,7 +1099,7 @@ function executeTrade(buyerId, sellerId, assetId, qty, px, initiator){
   }
   if(qty<=0) return;
   if(!buyer.isPlayer){
-    const aff = Math.floor(buyer.cash / px);
+    const aff = roundShares(buyer.cash / px);
     if(aff < qty) qty = aff;
   }
   if(qty<=0) return;
@@ -1175,10 +1188,14 @@ function botDecide(t){
   const variance = hist.reduce((s,x)=>s+(x-mean)*(x-mean),0)/hist.length;
   const sigma = Math.sqrt(variance);
 
-  // shared helpers
+  // shared helpers (fractional shares supported)
   const positionSize = (frac)=>{
     const budget = t.cash * frac;
-    return Math.max(1, Math.floor(budget / Math.max(0.01, last)));
+    const px = Math.max(0.01, last);
+    const raw = budget / px;
+    // min lot = $0.50 worth so trades aren't dust
+    const minQty = Math.min(1, 0.5 / px);
+    return roundShares(Math.max(minQty, raw));
   };
   const sellQty = (qty, pxMult=0.998)=>{
     qty = Math.min(qty, hold.shares);
@@ -1187,15 +1204,14 @@ function botDecide(t){
   };
   const buyQty = (qty, pxMult=1.002)=>{
     if(qty<=0) return;
-    if(t.cash < last*qty) qty = Math.floor(t.cash/last);
+    if(t.cash < last*qty) qty = roundShares(t.cash/last);
     if(qty<=0) return;
     placeOrder(t.id, aid, 'buy', qty, +(last*pxMult).toFixed(4), 'limit');
   };
   const openShort = (qty, pxMult=0.998)=>{
     if(qty<=0) return;
-    if(hold.shares > 0) return; // bot already long; skip shorting on top
-    // collateral check: requires cash >= qty*px*0.5
-    if(t.cash < last*qty*0.5) qty = Math.floor(t.cash*2/last);
+    if(hold.shares > 0) return;
+    if(t.cash < last*qty*0.5) qty = roundShares(t.cash*2/last);
     if(qty<=0) return;
     placeOrder(t.id, aid, 'sell', qty, +(last*pxMult).toFixed(4), 'limit');
   };
@@ -1207,7 +1223,7 @@ function botDecide(t){
       sellQty(hold.shares, 0.992); return;
     }
     if(t.takeProfit > 0 && pnl > t.takeProfit){
-      sellQty(Math.ceil(hold.shares * (t.strat==='paper'?1:0.5)), 1.002); return;
+      sellQty((hold.shares * (t.strat==='paper'?1:0.5)), 1.002); return;
     }
   }
   // stop-loss on shorts (cover when down)
@@ -1227,7 +1243,7 @@ function botDecide(t){
       if(Math.random() < 0.7 && t.cash > last){
         buyQty(positionSize(rand(0.3, 0.7)), 1.008);
       } else if(hold.shares > 0){
-        sellQty(Math.ceil(hold.shares * rand(0.7, 1)), 0.992);
+        sellQty((hold.shares * rand(0.7, 1)), 0.992);
       } else {
         openShort(positionSize(rand(0.1, 0.4)), 0.992);
       }
@@ -1305,7 +1321,7 @@ function botDecide(t){
         buyQty(positionSize(rand(0.03, 0.07)));
       } else if(hold.shares > 0 && hold.avgCost > 0){
         const pnl = (last - hold.avgCost) / hold.avgCost;
-        if(pnl > 0.15) sellQty(Math.ceil(hold.shares*0.5), 1.002);
+        if(pnl > 0.15) sellQty((hold.shares*0.5), 1.002);
       }
       break;
     }
@@ -1325,7 +1341,7 @@ function botDecide(t){
       if(gap < -0.10 && t.cash > last){
         buyQty(positionSize(rand(0.1, 0.2)));
       } else if(gap > 0.12 && hold.shares > 0){
-        sellQty(Math.ceil(hold.shares * 0.7), 1.002);
+        sellQty((hold.shares * 0.7), 1.002);
       }
       break;
     }
@@ -1337,7 +1353,7 @@ function botDecide(t){
       if(xover > last*0.005 && t.cash > last){
         buyQty(positionSize(rand(0.1, 0.2)), 1.003);
       } else if(xover < -last*0.005 && hold.shares > 0){
-        sellQty(Math.ceil(hold.shares*0.8), 0.997);
+        sellQty((hold.shares*0.8), 0.997);
       }
       break;
     }
@@ -1364,7 +1380,7 @@ function botDecide(t){
       if(ret > 0.01 && t.cash > last){
         buyQty(positionSize(rand(0.08, 0.18)), 1.005);
       } else if(ret < -0.01 && hold.shares > 0){
-        sellQty(Math.ceil(hold.shares*0.6), 0.995);
+        sellQty((hold.shares*0.6), 0.995);
       }
       break;
     }
@@ -1623,20 +1639,20 @@ function modeMaxQty(aid, mode){
   const hold = player().holdings[aid];
   const ast = S.assets[aid];
   if(mode==='buy'){
-    if(hold.shares < 0) return 0; // blocked — cover short via Positions CUT
+    if(hold.shares < 0) return 0;
     let cash = player().cash, qty=0;
     for(const o of book.asks){
-      const aff = Math.floor(cash / o.px);
+      const aff = cash / o.px;
       const fq = Math.min(o.qty, aff);
       if(fq<=0) break;
       qty += fq; cash -= fq*o.px;
     }
-    return qty;
+    return roundShares(qty);
   }
   if(mode==='short'){
-    if(hold.shares > 0) return 0; // blocked — sell long via Positions CUT
+    if(hold.shares > 0) return 0;
     const px = ast.lastPrice || 0.01;
-    const limit = Math.floor(player().cash / px);
+    const limit = player().cash / px;
     let qty=0;
     for(const o of book.bids){
       const fq = Math.min(o.qty, limit - qty);
@@ -1644,7 +1660,7 @@ function modeMaxQty(aid, mode){
       qty += fq;
       if(qty>=limit) break;
     }
-    return qty;
+    return roundShares(qty);
   }
   return 0;
 }
@@ -1684,12 +1700,12 @@ function placePlayerOrder(side, qty){
 }
 function playerBuy(useMax){
   const aid = S.active;
-  const qty = useMax ? modeMaxQty(aid,'buy') : Math.floor(+$('qty').value || 0);
+  const qty = useMax ? modeMaxQty(aid,'buy') : roundShares(+$('qty').value || 0);
   placePlayerOrder('buy', qty);
 }
 function playerSell(useMax){
   const aid = S.active;
-  const qty = useMax ? modeMaxQty(aid,'short') : Math.floor(+$('qty').value || 0);
+  const qty = useMax ? modeMaxQty(aid,'short') : roundShares(+$('qty').value || 0);
   placePlayerOrder('sell', qty);
 }
 function closePosition(aid){
@@ -1978,7 +1994,7 @@ function renderTradeLive(){
   const aid = S.active;
   const ast = S.assets[aid];
   const hold = player().holdings[aid];
-  const inputQty = Math.floor(+$('qty').value || 0);
+  const inputQty = roundShares(+$('qty').value || 0);
   const buyMax = modeMaxQty(aid,'buy');
   const shortMax = modeMaxQty(aid,'short');
   const buyAllowed = hold.shares >= 0;
@@ -1990,27 +2006,27 @@ function renderTradeLive(){
   // BUY (input qty)
   const bq = Math.max(0, Math.min(inputQty, buyMax));
   const bCost = isLimit ? limitPx*bq : modeCost(aid,'buy',bq);
-  $('btnBuy').innerHTML = `<span>BUY ${fmt(bCost<0?0:bCost)}</span><small>${fmtNum(bq)} sh</small>`;
+  $('btnBuy').innerHTML = `<span>BUY ${fmt(bCost<0?0:bCost)}</span><small>${fmtShares(bq)} sh</small>`;
   $('btnBuy').disabled = !buyAllowed || bq<=0 || bCost<0;
 
   // MAX BUY
   const bMaxCost = isLimit ? limitPx*buyMax : modeCost(aid,'buy',buyMax);
-  $('btnBuyMax').innerHTML = `<span>MAX ${fmt(bMaxCost<0?0:bMaxCost)}</span><small>${fmtNum(buyMax)} sh</small>`;
+  $('btnBuyMax').innerHTML = `<span>MAX ${fmt(bMaxCost<0?0:bMaxCost)}</span><small>${fmtShares(buyMax)} sh</small>`;
   $('btnBuyMax').disabled = !buyAllowed || buyMax<=0;
 
   // SELL (open short, input qty)
   const sq = Math.max(0, Math.min(inputQty, shortMax));
   const sRev = isLimit ? limitPx*sq : modeCost(aid,'short',sq);
-  $('btnSell').innerHTML = `<span>SELL ${fmt(sRev<0?0:sRev)}</span><small>${fmtNum(sq)} sh</small>`;
+  $('btnSell').innerHTML = `<span>SELL ${fmt(sRev<0?0:sRev)}</span><small>${fmtShares(sq)} sh</small>`;
   $('btnSell').disabled = !sellAllowed || sq<=0 || sRev<0;
 
   // MAX SELL
   const sMaxRev = isLimit ? limitPx*shortMax : modeCost(aid,'short',shortMax);
-  $('btnSellMax').innerHTML = `<span>MAX ${fmt(sMaxRev<0?0:sMaxRev)}</span><small>${fmtNum(shortMax)} sh</small>`;
+  $('btnSellMax').innerHTML = `<span>MAX ${fmt(sMaxRev<0?0:sMaxRev)}</span><small>${fmtShares(shortMax)} sh</small>`;
   $('btnSellMax').disabled = !sellAllowed || shortMax<=0;
 
   // Position info live
-  $('posShares').textContent = (hold?.shares>0?'+':'')+fmtNum(hold?.shares||0);
+  $('posShares').textContent = (hold?.shares>0?'+':'')+fmtShares(hold?.shares||0);
   $('posShares').className = 'v ' + ((hold?.shares||0)>0?'up':(hold?.shares||0)<0?'dn':'flat');
   $('posAvg').textContent = hold?.avgCost>0 ? fmt(hold.avgCost, hold.avgCost<10?3:2) : '—';
   let pl;
@@ -2044,7 +2060,7 @@ function renderPositions(){
       <div class="info">
         <div class="sym">${r.a.id} <span class="tag ${r.isLong?'long':'short'}">${r.isLong?'LONG':'SHORT'}</span></div>
         <div class="stats">
-          <span>Qty <b>${fmtNum(r.qty)}</b></span>
+          <span>Qty <b>${fmtShares(r.qty)}</b></span>
           <span>Avg <b>${fmt(r.h.avgCost, r.h.avgCost<10?3:2)}</b></span>
           <span>Now <b>${fmt(r.ast.lastPrice, r.ast.lastPrice<10?3:2)}</b></span>
           <span>Val <b>${fmt(r.val)}</b></span>
@@ -2291,27 +2307,30 @@ function seedBooks(){
     picks.forEach(aid=>{
       const a = ASSETS.find(x=>x.id===aid);
       const ast = S.assets[aid];
-      // give shares worth ~30% of cash
+      // give fractional shares worth ~5-25% of cash (works for any price level)
       const allocCash = t.cash * rand(0.05, 0.25);
-      const shares = Math.floor(allocCash / a.fairValue);
+      const shares = roundShares(allocCash / a.fairValue);
       if(shares>0){
         t.holdings[aid] = {shares, avgCost: a.fairValue};
         t.cash -= shares * a.fairValue;
       }
-      // place a couple resting orders
+      // place a couple resting orders (fractional sizes)
       const mid = a.fairValue;
       const sp = mid * rand(0.005, 0.02);
-      const sz = Math.max(1, Math.floor(rand(1, allocCash*0.5/mid)));
-      if(t.cash > (mid-sp)*sz){
+      const bidCash = t.cash * rand(0.05, 0.3);
+      const sz = roundShares(bidCash / mid);
+      if(sz>0 && t.cash > (mid-sp)*sz){
         const bid = {id:S.orderId++, ownerId:t.id, px:+(mid-sp).toFixed(4), qty:sz, ts:Date.now()};
         insertOrder(ast.book,'bids',bid);
         t.openOrders.push({assetId:aid, side:'bids', id:bid.id});
       }
-      if(shares>1){
-        const askSz = Math.max(1, Math.floor(shares*rand(0.1,0.3)));
-        const ask = {id:S.orderId++, ownerId:t.id, px:+(mid+sp).toFixed(4), qty:askSz, ts:Date.now()};
-        insertOrder(ast.book,'asks',ask);
-        t.openOrders.push({assetId:aid, side:'asks', id:ask.id});
+      if(shares>0){
+        const askSz = roundShares(shares * rand(0.1, 0.4));
+        if(askSz>0){
+          const ask = {id:S.orderId++, ownerId:t.id, px:+(mid+sp).toFixed(4), qty:askSz, ts:Date.now()};
+          insertOrder(ast.book,'asks',ask);
+          t.openOrders.push({assetId:aid, side:'asks', id:ask.id});
+        }
       }
     });
   }
@@ -2391,7 +2410,7 @@ function init(){
     resizeChart();
     if(!loaded){
       setTimeout(()=>showModal('💼 Welcome to Market Mogul',
-        'You start with <b>$100</b> alongside <b>500 AI traders</b> — most are flawed humans (YOLO, FOMO, paper hands, perma-bulls/bears, gamblers, revenge averagers). A few are smart (value, trend, MM).<br><br>• <b style="color:var(--green)">BUY</b> opens/extends long · <b style="color:var(--red)">SELL</b> opens/extends short · MAX half on each<br>• <b>Positions</b> tab → CUT to close any position<br>• Bots <b>evolve personalities</b> over time — wins make them bolder, losses make them paper-handed/vengeful<br>• Real order book — every price is a real trade<br><br>You start at <b style="color:var(--accent)">#501</b>. Climb.',false), 600);
+        'You start with <b>$100</b> alongside <b>500 AI traders</b> — most are flawed humans (YOLO, FOMO, paper hands, perma-bulls/bears, gamblers, revenge averagers). A few are smart (value, trend, MM).<br><br>• <b style="color:var(--green)">BUY</b> opens/extends long · <b style="color:var(--red)">SELL</b> opens/extends short · MAX half on each<br>• <b>Fractional shares</b> — buy 0.0001 of any asset. Even $100 fits expensive stocks.<br>• <b>Positions</b> tab → CUT to close any position<br>• Bots <b>evolve personalities</b> — wins make bolder, losses make paper-handed/vengeful<br>• Real order book — every price is a real trade<br><br>You start at <b style="color:var(--accent)">#501</b>. Climb.',false), 600);
     }
   };
 
