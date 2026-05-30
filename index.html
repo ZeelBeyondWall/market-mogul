@@ -290,6 +290,8 @@
     grid-template-columns:24px 1fr auto;gap:8px;align-items:center;
   }
   .bot.me{border-color:var(--accent);background:linear-gradient(90deg,rgba(245,185,66,.1),var(--panel))}
+  .bot.rekt{opacity:.45;border-color:#3a1a1a}
+  .bot.rekt .bot-name,.bot.rekt .bot-net{text-decoration:line-through}
   .bot-rank{color:var(--dim);font-weight:700;font-size:10px;text-align:right}
   .bot-info{min-width:0}
   .bot-name{color:#fff;font-weight:600;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1153,18 +1155,33 @@ function executeTrade(buyerId, sellerId, assetId, qty, px, initiator){
     spawnPopup('+'+fmt(px*qty), 'var(--green)');
     flashAsset(assetId,'g');
   }
-  // Evolve personalities (bots only)
-  if(!buyer.isPlayer) maybeMutate(buyer);
-  if(!seller.isPlayer) maybeMutate(seller);
+  // Evolve personalities + check for blow-ups (bots only)
+  if(!buyer.isPlayer){ maybeMutate(buyer); checkRekt(buyer); }
+  if(!seller.isPlayer){ maybeMutate(seller); checkRekt(seller); }
 }
 
 // ================= BOTS =================
+function checkRekt(t){
+  if(t.isPlayer || t.rekt) return;
+  const nw = traderNet(t);
+  if(nw < 1){
+    t.rekt = true;
+    t.activity = 0;
+    // cancel all resting orders so they vacate the book
+    ASSETS.forEach(a=>{
+      const book = S.assets[a.id].book;
+      book.bids = book.bids.filter(o => o.ownerId !== t.id);
+      book.asks = book.asks.filter(o => o.ownerId !== t.id);
+    });
+    t.openOrders = [];
+  }
+}
 function tickBots(dt){
   for(let i=1;i<S.traders.length;i++){
     const t = S.traders[i];
+    if(t.rekt) continue;
     t.cooldown -= dt;
     if(t.cooldown>0) continue;
-    // schedule next action based on activity rate (actions/sec)
     t.cooldown = rand(0.5, 2) / Math.max(0.05,t.activity);
     botDecide(t);
   }
@@ -2151,11 +2168,13 @@ function renderBots(){
     if(x.sep) return `<div style="text-align:center;color:var(--dim);font-size:10px;padding:6px;letter-spacing:1px">… ${x.around-59} more …</div>`;
     const rank = sorted.indexOf(x)+1;
     const me = x.t.isPlayer?' me':'';
+    const rekt = x.t.rekt?' rekt':'';
     const strat = x.t.isPlayer?'YOU':(STRATEGY_LABELS[x.t.strat]||x.t.strat).toUpperCase();
-    return `<div class="bot${me}">
+    const tag = x.t.rekt?' <span style="color:var(--red);font-size:9px;font-weight:700">REKT</span>':'';
+    return `<div class="bot${me}${rekt}">
       <div class="bot-rank">#${rank}</div>
       <div class="bot-info">
-        <div class="bot-name">${x.t.name}</div>
+        <div class="bot-name">${x.t.name}${tag}</div>
         <div class="bot-meta">${strat}</div>
       </div>
       <div class="bot-net">${fmt(x.net)}</div>
@@ -2442,7 +2461,11 @@ function init(){
     divAcc += dt;
     if(divAcc>=0.5){payDividends(divAcc); divAcc=0;}
     cleanAcc += dt;
-    if(cleanAcc>=2){cleanupBooks(); cleanAcc=0;}
+    if(cleanAcc>=2){
+      cleanupBooks();
+      for(let i=1;i<S.traders.length;i++) checkRekt(S.traders[i]);
+      cleanAcc=0;
+    }
     maybeFireEvent(dt);
 
     // RENDER EVERY FRAME (header, chart, trade panel, asset list)
