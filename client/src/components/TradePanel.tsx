@@ -30,10 +30,12 @@ function modeMaxQty(eng: any, aid: string, mode: Mode): number {
     }
     return roundShares(qty);
   }
-  // mode === 'short'
+  // mode === 'short' — closing long OR opening new short
   if (hold.shares > 0) return hold.shares; // closing long — max = position size
+  // FIX v7.4: SHORT requires 50% margin not 100% — same as server's sellableQty.
+  // Previously this was floor(cash/px) which showed 0 for ANY cash < full price.
   const px = ast.lastPrice || 0.01;
-  const limit = Math.floor(eng.player().cash / px);
+  const limit = Math.floor((eng.player().cash * 2) / px);
   let qty = 0;
   for (const o of book.bids) {
     const fq = Math.min(o.qty, limit - qty);
@@ -137,18 +139,17 @@ export function TradePanel() {
     : isShort ? (-hold.shares) * (hold.avgCost - ast.lastPrice) : 0;
   const posClass = isLong ? 'up' : isShort ? 'dn' : 'flat';
 
-  // --- Button label rules ---
-  // BUY button:
-  //   FLAT  → "BUY"             (open long)
-  //   LONG  → "BUY MORE"        (add to long)
-  //   SHORT → "CLOSE SHORT"     (cover — pay cash, receive shares to flatten)
-  // SHORT button:
-  //   FLAT  → "OPEN SHORT" (red warn)
-  //   LONG  → "CLOSE LONG"      (sell — flatten)
-  //   SHORT → "ADD TO SHORT" (red warn)
   const buyLabel    = isShort ? 'CLOSE SHORT' : isLong ? 'BUY MORE' : 'BUY';
   const sellLabel   = isLong ? 'CLOSE LONG' : isShort ? 'ADD TO SHORT' : 'OPEN SHORT';
   const sellIsRisky = isFlat || isShort;
+
+  // v7.4: helpful reason text when button is disabled.
+  const buyReason = buyMax === 0
+    ? (isShort ? 'Already flat' : `Need $${(ast.lastPrice - eng.player().cash).toFixed(0)} more cash`)
+    : null;
+  const sellReason = shortMax === 0
+    ? (isLong ? 'No long to close' : `Need $${(ast.lastPrice * 0.5 - eng.player().cash).toFixed(0)} more cash for margin`)
+    : null;
 
   return (
     <div className="trade">
@@ -193,10 +194,10 @@ export function TradePanel() {
           className="a"
           disabled={bq <= 0 || bCost < 0}
           onClick={() => submit('buy', false)}
-          title={isShort ? 'Buy back shares to flatten short' : isLong ? 'Add to long position' : 'Open long — profit if price rises'}
+          title={buyReason || (isShort ? 'Buy back shares to flatten short' : isLong ? 'Add to long position' : 'Open long — profit if price rises')}
         >
           <span>{buyLabel} {fmt(bCost < 0 ? 0 : bCost)}</span>
-          <small>{fmtNum(bq)} sh</small>
+          <small>{buyReason || `${fmtNum(bq)} sh`}</small>
         </button>
         <button className="b" disabled={buyMax <= 0} onClick={() => submit('buy', true)}>
           <span>MAX {fmt(bMaxCost < 0 ? 0 : bMaxCost)}</span>
@@ -210,10 +211,10 @@ export function TradePanel() {
           className="a"
           disabled={sq <= 0 || sRev < 0}
           onClick={() => submit('short', false)}
-          title={isLong ? 'Sell shares to close your long' : isFlat ? '⚠ Opens a SHORT — you receive cash but owe shares back' : 'Add to short (risky)'}
+          title={sellReason || (isLong ? 'Sell shares to close your long' : isFlat ? '⚠ Opens a SHORT — you receive cash but owe shares back' : 'Add to short (risky)')}
         >
           <span>{sellLabel} {fmt(sRev < 0 ? 0 : sRev)}</span>
-          <small>{fmtNum(sq)} sh{sellIsRisky ? ' ⚠' : ''}</small>
+          <small>{sellReason || (fmtNum(sq) + ' sh' + (sellIsRisky ? ' ⚠' : ''))}</small>
         </button>
         <button className="b" disabled={shortMax <= 0} onClick={() => submit('short', true)}>
           <span>MAX {fmt(sMaxRev < 0 ? 0 : sMaxRev)}</span>

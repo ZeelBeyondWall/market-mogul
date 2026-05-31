@@ -1,12 +1,11 @@
 import { useGame } from '../store/gameStore';
 import { fmt } from '../../../shared/engine/helpers';
-import { Audio } from '../audio/audio';
 import { AnimatedNumber } from './AnimatedNumber';
 
+// v8: cleaner header — single row, big level pill, stats as cards.
 export function Header() {
   const eng = useGame(s => s.engine);
   useGame(s => s.tick);
-  const setSettingsOpen = useGame(s => s.setSettingsOpen);
   const rank = useGame(s => s.playerRank);
   const total = useGame(s => s.totalTraders);
   const lvl = useGame(s => s.playerLevel);
@@ -18,49 +17,56 @@ export function Header() {
   const cash = p.cash;
   const port = eng.portfolioValue();
   const net = eng.netWorth();
+  const bonus = p.bonus || 0;
   const xpProgress = Math.max(0, Math.min(100, ((xp - xpAt) / Math.max(1, xpTo - xpAt)) * 100));
 
   return (
-    <header>
-      <div className="logo-mini">
-        <svg><use href="#logoMini"/></svg>
+    <header className="hdr-v8">
+      <div className="hdr-brand">
+        <svg className="hdr-logo"><use href="#logoMini"/></svg>
         <div>
-          <div className="t1">MARKET MOGUL</div>
-          <div className="t2">TERMINAL v2.1</div>
+          <div className="hdr-name">MARKET MOGUL</div>
+          <div className="hdr-sub">{p.name || 'Zeel'}</div>
         </div>
       </div>
-      <div className="lvl-badge" title={`XP ${xp} / ${xpTo}`}>
-        <div className="lvl-num">L{lvl}</div>
-        <div className="lvl-bar"><div className="lvl-bar-fill" style={{ width: xpProgress + '%' }} /></div>
+
+      <div className="hdr-lvl">
+        <div className="hdr-lvl-num">LVL {lvl}</div>
+        <div className="hdr-lvl-bar">
+          <div className="hdr-lvl-fill" style={{ width: xpProgress + '%' }} />
+        </div>
+        <div className="hdr-lvl-xp">{xp - xpAt} / {xpTo - xpAt} XP</div>
       </div>
-      <div className="stats">
-        <Stat label="💰 Cash">
-          <AnimatedNumber value={cash} format={n => fmt(n)} className="val cash" />
-        </Stat>
-        <Stat label="📊 Portfolio">
-          <AnimatedNumber value={port} format={n => fmt(n)} className="val" />
-        </Stat>
-        <Stat label="🏆 Net Worth">
-          <AnimatedNumber value={net} format={n => fmt(n)} className="val net" />
-        </Stat>
-        <Stat label="🥇 Rank">
-          <span className="val rank">{`#${rank}/${total || '—'}`}</span>
-        </Stat>
-      </div>
-      <div className="header-controls">
-        <button className="icon-btn" onClick={() => { setSettingsOpen(true); Audio.click(); }} title="Settings">
-          <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm-2 4a2 2 0 114 0 2 2 0 01-4 0zm10.4-1.2l-1.7-.3-.3-.7.9-1.4-1.4-1.4-1.4.9-.7-.3-.3-1.7h-2l-.3 1.7-.7.3-1.4-.9-1.4 1.4.9 1.4-.3.7-1.7.3v2l1.7.3.3.7-.9 1.4 1.4 1.4 1.4-.9.7.3.3 1.7h2l.3-1.7.7-.3 1.4.9 1.4-1.4-.9-1.4.3-.7 1.7-.3z" fill="currentColor"/></svg>
-        </button>
+
+      <div className="hdr-stats">
+        <HStat label="💰 CASH" tone="cash">
+          <AnimatedNumber value={cash} format={n => fmt(n)} className="hs-v" />
+        </HStat>
+        <HStat label="📦 HOLDINGS" tone="port">
+          <AnimatedNumber value={port} format={n => fmt(n)} className="hs-v" />
+        </HStat>
+        <HStat label="🏆 NET" tone="net">
+          <AnimatedNumber value={net} format={n => fmt(n)} className="hs-v" />
+        </HStat>
+        {bonus > 0 && (
+          <HStat label="🎁 BONUS" tone="bonus">
+            <AnimatedNumber value={bonus} format={n => fmt(n)} className="hs-v" />
+          </HStat>
+        )}
+        <HStat label="🥇 RANK" tone="rank">
+          <span className="hs-v">{`#${rank}`}</span>
+          <span className="hs-sub">/ {total || '—'}</span>
+        </HStat>
       </div>
     </header>
   );
 }
 
-function Stat({ label, children }: { label: string; children: React.ReactNode }) {
+function HStat({ label, tone, children }: { label: string; tone: string; children: React.ReactNode }) {
   return (
-    <div className="stat">
-      <span className="lbl">{label}</span>
-      {children}
+    <div className={'hs hs-' + tone}>
+      <div className="hs-l">{label}</div>
+      <div className="hs-row">{children}</div>
     </div>
   );
 }

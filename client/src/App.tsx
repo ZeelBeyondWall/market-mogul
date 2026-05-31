@@ -16,6 +16,7 @@ import { Settings } from './components/Settings';
 import { ParticleSpawner } from './components/Particles';
 import { Mascot } from './components/Mascot';
 import { AdminBanner } from './components/AdminBanner';
+import { MarketBar } from './components/MarketBar';
 
 export function App() {
   useGameLoop();
@@ -36,6 +37,7 @@ export function App() {
         <div id="app">
           <AdminBanner />
           <Header />
+          <MarketBar />
           <main>
             <div className="col"><AssetList /></div>
             <div className="col">
