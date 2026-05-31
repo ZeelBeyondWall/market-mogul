@@ -5,7 +5,14 @@ import { cancelTraderOrders, cleanupBooks, placeOrder } from './matching';
 import { insertOrder, makeBook } from './orderbook';
 import { checkRekt, maybeMutate, tickBots, traderNet } from './strategies';
 import { makeTrader, resetStratPool } from './traders';
-import type { AssetState, GameState, NewsEventDef, Trader } from './types';
+import type { AssetState, CandleSeries, GameState, NewsEventDef, TFKey, Trader } from './types';
+import { TF_LIST } from './types';
+
+function emptySeries(): Record<TFKey, CandleSeries> {
+  const out = {} as Record<TFKey, CandleSeries>;
+  TF_LIST.forEach(tf => { out[tf] = { candles: [], curCandle: null, candleStartT: 0 }; });
+  return out;
+}
 
 export interface EngineHooks {
   onPlayerBuy?: (assetId: string, qty: number) => void;
@@ -47,9 +54,7 @@ export class Engine {
         volume: 0,
         volumeHist: Array(120).fill(0),
         history: Array(120).fill(a.fairValue),
-        candles: [],
-        curCandle: null,
-        candleStartT: 0,
+        series: emptySeries(),
         fv: a.fairValue,
         fvDelta: 0,
         fvEventTicks: 0,
@@ -107,24 +112,32 @@ export class Engine {
     const p = this.player();
     ASSETS.forEach(a => {
       const h = p.holdings[a.id];
-      if (!h || h.shares === 0) return;
+      if (!h || h.shares === 0 || h.avgCost <= 0) return;
       const px = this.state.assets[a.id].lastPrice;
+      // Convert % to absolute trigger price; fall back to legacy abs fields.
+      const slAbs = h.slPct && h.slPct > 0
+        ? (h.shares > 0 ? h.avgCost * (1 - h.slPct / 100) : h.avgCost * (1 + h.slPct / 100))
+        : (h.sl && h.sl > 0 ? h.sl : 0);
+      const tpAbs = h.tpPct && h.tpPct > 0
+        ? (h.shares > 0 ? h.avgCost * (1 + h.tpPct / 100) : h.avgCost * (1 - h.tpPct / 100))
+        : (h.tp && h.tp > 0 ? h.tp : 0);
+      let hit: { kind: 'SL' | 'TP'; ref: number } | null = null;
       if (h.shares > 0) {
-        if (h.sl && h.sl > 0 && px <= h.sl) {
-          const sl = h.sl; this.closePosition(a.id);
-          this.hooks.onSLTPHit?.(a.id, 'SL', sl, px);
-        } else if (h.tp && h.tp > 0 && px >= h.tp) {
-          const tp = h.tp; this.closePosition(a.id);
-          this.hooks.onSLTPHit?.(a.id, 'TP', tp, px);
-        }
+        if (slAbs > 0 && px <= slAbs) hit = { kind: 'SL', ref: slAbs };
+        else if (tpAbs > 0 && px >= tpAbs) hit = { kind: 'TP', ref: tpAbs };
       } else {
-        if (h.sl && h.sl > 0 && px >= h.sl) {
-          const sl = h.sl; this.closePosition(a.id);
-          this.hooks.onSLTPHit?.(a.id, 'SL', sl, px);
-        } else if (h.tp && h.tp > 0 && px <= h.tp) {
-          const tp = h.tp; this.closePosition(a.id);
-          this.hooks.onSLTPHit?.(a.id, 'TP', tp, px);
+        if (slAbs > 0 && px >= slAbs) hit = { kind: 'SL', ref: slAbs };
+        else if (tpAbs > 0 && px <= tpAbs) hit = { kind: 'TP', ref: tpAbs };
+      }
+      if (hit) {
+        // Mark as pending close so the server's drainCloses retries every tick
+        // until thin book is consumed. Also fire one immediate attempt.
+        if (!p.closing) p.closing = {};
+        if (!p.closing[a.id]) {
+          p.closing[a.id] = true;
+          this.hooks.onSLTPHit?.(a.id, hit.kind, hit.ref, px);
         }
+        this.closePosition(a.id);
       }
     });
   }
@@ -135,7 +148,7 @@ export class Engine {
     if (hold.shares > 0) placeOrder(this.state, 0, aid, 'sell', hold.shares, 0, 'market', this.callbacks());
     else placeOrder(this.state, 0, aid, 'buy', -hold.shares, 0, 'market', this.callbacks());
     const h = this.player().holdings[aid];
-    if (h.shares === 0) { h.sl = 0; h.tp = 0; }
+    if (h.shares === 0) { h.sl = 0; h.tp = 0; h.slPct = 0; h.tpPct = 0; }
   }
 
   callbacks() {

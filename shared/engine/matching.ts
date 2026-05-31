@@ -88,11 +88,14 @@ export function executeTrade(
   ast.hi = Math.max(ast.hi, px);
   ast.lo = Math.min(ast.lo, px);
   ast.volume += qty;
-  // Capture every trade print into the current candle so wicks form between samples
-  if (ast.curCandle) {
-    ast.curCandle.h = Math.max(ast.curCandle.h, px);
-    ast.curCandle.l = Math.min(ast.curCandle.l, px);
-    ast.curCandle.c = px;
+  // Capture every trade print into ALL TF current candles so wicks form between samples
+  for (const tf in ast.series) {
+    const s = ast.series[tf as keyof typeof ast.series];
+    if (s.curCandle) {
+      s.curCandle.h = Math.max(s.curCandle.h, px);
+      s.curCandle.l = Math.min(s.curCandle.l, px);
+      s.curCandle.c = px;
+    }
   }
 
   if (buyer.isPlayer && onPlayerBuy) onPlayerBuy(qty);

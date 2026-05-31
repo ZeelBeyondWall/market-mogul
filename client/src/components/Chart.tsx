@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { ASSETS, CANDLE_MS } from '../../../shared/engine/constants';
+import { ASSETS } from '../../../shared/engine/constants';
+import { TF_LIST, TF_MS, type TFKey } from '../../../shared/engine/types';
 import { fmt, fmtNum, fmtPct } from '../../../shared/engine/helpers';
 import { bestAsk, bestBid } from '../../../shared/engine/orderbook';
 import { useGame } from '../store/gameStore';
@@ -13,9 +14,13 @@ export function Chart() {
   const chartCandles = useGame(s => s.chartCandles);
   const chartVol = useGame(s => s.chartVol);
   const toggleChartLayer = useGame(s => s.toggleChartLayer);
+  const activeTF = useGame(s => s.activeTF);
+  const setActiveTF = useGame(s => s.setActiveTF);
 
   const a = ASSETS.find(x => x.id === eng.state.active)!;
   const ast = eng.state.assets[a.id];
+  const series = ast.series?.[activeTF] || { candles: [], curCandle: null, candleStartT: 0 };
+  const tfMs = TF_MS[activeTF];
 
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return;
@@ -55,10 +60,10 @@ export function Chart() {
 
     const VISIBLE = 30;
     const candleW = cw / VISIBLE;
-    const now = performance.now();
-    const candleProgress = ast.curCandle && ast.candleStartT
-      ? Math.min(1, (now - ast.candleStartT) / CANDLE_MS) : 0;
-    const allCandles = ast.candles.concat(ast.curCandle ? [ast.curCandle] : []);
+    const now = Date.now();
+    const candleProgress = series.curCandle && series.candleStartT
+      ? Math.min(1, (now - series.candleStartT) / tfMs) : 0;
+    const allCandles = series.candles.concat(series.curCandle ? [series.curCandle] : []);
     const visStart = Math.max(0, allCandles.length - VISIBLE - 1);
     const visible = allCandles.slice(visStart);
 
@@ -69,11 +74,11 @@ export function Chart() {
     const tickFrac = eng.tickFrac;
 
     let pMin = Infinity, pMax = -Infinity;
-    // Prefer candle range when candles are shown (gives visible wicks).
-    // Line only widens range if candles are off.
     if (chartCandles && visible.length) {
       visible.forEach(c => { pMin = Math.min(pMin, c.l); pMax = Math.max(pMax, c.h); });
-    } else if (chartLine) {
+    }
+    // Always include line history when available — keeps axis stable if candle array is briefly empty.
+    if (chartLine || !visible.length) {
       lineHist.forEach(p => { pMin = Math.min(pMin, p); pMax = Math.max(pMax, p); });
     }
     pMin = Math.min(pMin, ast.lastPrice);
@@ -173,8 +178,16 @@ export function Chart() {
         cctx.fillText(label, padL + lw / 2, y + 3); cctx.textAlign = 'left';
       };
       draw(playerHold.avgCost, '#fbbf24', playerHold.shares > 0 ? 'LONG' : 'SHORT');
-      draw(playerHold.sl || 0, '#ef4444', 'SL');
-      draw(playerHold.tp || 0, '#22c55e', 'TP');
+      // Convert % triggers to absolute prices for line drawing
+      const isLong = playerHold.shares > 0;
+      const slAbs = playerHold.slPct && playerHold.slPct > 0
+        ? (isLong ? playerHold.avgCost * (1 - playerHold.slPct / 100) : playerHold.avgCost * (1 + playerHold.slPct / 100))
+        : (playerHold.sl || 0);
+      const tpAbs = playerHold.tpPct && playerHold.tpPct > 0
+        ? (isLong ? playerHold.avgCost * (1 + playerHold.tpPct / 100) : playerHold.avgCost * (1 - playerHold.tpPct / 100))
+        : (playerHold.tp || 0);
+      draw(slAbs, '#ef4444', 'SL');
+      draw(tpAbs, '#22c55e', 'TP');
     }
 
     const bb = bestBid(ast.book), ba = bestAsk(ast.book);
@@ -226,6 +239,11 @@ export function Chart() {
           <span>Vol <b>{fmtNum(ast.volume)}</b></span>
           <span>Hi <b>{fmt(ast.hi, ast.hi < 10 ? 3 : 2)}</b></span>
           <span>Lo <b>{fmt(ast.lo, ast.lo < 10 ? 3 : 2)}</b></span>
+          <span className="chart-toggles tf-toggles">
+            {TF_LIST.map(tf => (
+              <button key={tf} className={activeTF === tf ? 'on' : ''} onClick={() => { setActiveTF(tf as TFKey); Audio.click(); }}>{tf}</button>
+            ))}
+          </span>
           <span className="chart-toggles">
             <button className={chartLine ? 'on' : ''} onClick={() => { toggleChartLayer('chartLine'); Audio.click(); }}>LINE</button>
             <button className={chartCandles ? 'on' : ''} onClick={() => { toggleChartLayer('chartCandles'); Audio.click(); }}>CANDLES</button>

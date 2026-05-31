@@ -73,8 +73,8 @@ export function TradePanel() {
     const q = useMax ? modeMaxQty(eng, aid, mode) : qty;
     if (q <= 0) return;
     const lpx = +limitPx || ast.lastPrice;
-    const sl = +(slRef.current?.value || 0) || undefined;
-    const tp = +(tpRef.current?.value || 0) || undefined;
+    const slPct = +(slRef.current?.value || 0) || undefined;
+    const tpPct = +(tpRef.current?.value || 0) || undefined;
     send({
       type: 'order',
       payload: {
@@ -83,7 +83,7 @@ export function TradePanel() {
         qty: q,
         orderType,
         limitPx: lpx,
-        sl, tp,
+        slPct, tpPct,
       },
     });
   };
@@ -124,10 +124,10 @@ export function TradePanel() {
         <input type="number" className="qty" value={qty} min={1} step={1} onChange={e => setQty(+e.target.value || 0)} />
       </div>
       <div className="trade-row sltp-row">
-        <label>SL $</label>
-        <input type="number" className="limit-price" ref={slRef} step="0.01" placeholder="optional" />
-        <label>TP $</label>
-        <input type="number" className="limit-price" ref={tpRef} step="0.01" placeholder="optional" />
+        <label>SL %</label>
+        <input type="number" className="limit-price" ref={slRef} step="0.01" min="0" placeholder="e.g. 2" />
+        <label>TP %</label>
+        <input type="number" className="limit-price" ref={tpRef} step="0.01" min="0" placeholder="e.g. 5" />
       </div>
 
       <div className="dbl-btn buy">

@@ -1,8 +1,9 @@
-import { ASSETS, CANDLE_MS, NEWS_EVENTS } from './constants';
+import { ASSETS, NEWS_EVENTS } from './constants';
 import { rand } from './helpers';
 import type { GameState, NewsEvent, NewsEventDef } from './types';
+import { TF_LIST, TF_MS } from './types';
 
-export function tickMarket(S: GameState, dt: number, now: number): void {
+export function tickMarket(S: GameState, _dt: number, now: number): void {
   ASSETS.forEach(a => {
     const ast = S.assets[a.id];
     ast.fv += (a.fairValue - ast.fv) * 0.0005;
@@ -16,21 +17,25 @@ export function tickMarket(S: GameState, dt: number, now: number): void {
     }
     ast.history.push(ast.lastPrice);
     if (ast.history.length > 240) ast.history.shift();
-    if (!ast.curCandle) {
-      ast.curCandle = { o: ast.lastPrice, h: ast.lastPrice, l: ast.lastPrice, c: ast.lastPrice, v: 0 };
-      ast.candleStartT = now;
-      ast._candleVolStart = ast.volume;
+
+    // Update every TF's current candle. Promote when its window elapsed.
+    for (const tf of TF_LIST) {
+      const s = ast.series[tf];
+      if (!s.curCandle) {
+        s.curCandle = { o: ast.lastPrice, h: ast.lastPrice, l: ast.lastPrice, c: ast.lastPrice, v: 0 };
+        s.candleStartT = now;
+      }
+      const c = s.curCandle;
+      c.h = Math.max(c.h, ast.lastPrice);
+      c.l = Math.min(c.l, ast.lastPrice);
+      c.c = ast.lastPrice;
+      if (now - s.candleStartT >= TF_MS[tf]) {
+        s.candles.push(c);
+        if (s.candles.length > 240) s.candles.shift();
+        s.curCandle = null;
+      }
     }
-    const c = ast.curCandle;
-    c.h = Math.max(c.h, ast.lastPrice);
-    c.l = Math.min(c.l, ast.lastPrice);
-    c.c = ast.lastPrice;
-    c.v = ast.volume - (ast._candleVolStart || 0);
-    if (now - ast.candleStartT >= CANDLE_MS) {
-      ast.candles.push(c);
-      if (ast.candles.length > 120) ast.candles.shift();
-      ast.curCandle = null;
-    }
+
     ast.volumeHist.push(ast.volume - (ast._lastVolSnap || 0));
     if (ast.volumeHist.length > 240) ast.volumeHist.shift();
     ast._lastVolSnap = ast.volume;
@@ -50,7 +55,7 @@ export function payDividends(S: GameState, dt: number): void {
   });
 }
 
-export function maybeFireEvent(S: GameState, dt: number, state: { cooldown: number }): NewsEventDef | null {
+export function maybeFireEvent(_S: GameState, dt: number, state: { cooldown: number }): NewsEventDef | null {
   state.cooldown -= dt;
   if (state.cooldown > 0) return null;
   state.cooldown = rand(20, 45);

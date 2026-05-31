@@ -1,5 +1,5 @@
 // WebSocket message types shared between client/server.
-import type { GameState, Holding, NewsEvent, Trader } from '../../shared/engine/types';
+import type { GameState, Holding, NewsEvent, Trader } from '../../../shared/engine/types';
 
 // Server → Client
 export type S2C =
@@ -11,15 +11,18 @@ export type S2C =
 
 // Client → Server
 export type C2S =
-  | { type: 'order'; payload: { aid: string; side: 'buy' | 'sell'; qty: number; orderType: 'market' | 'limit'; limitPx?: number; sl?: number; tp?: number } }
+  | { type: 'order'; payload: { aid: string; side: 'buy' | 'sell'; qty: number; orderType: 'market' | 'limit'; limitPx?: number; slPct?: number; tpPct?: number } }
   | { type: 'close'; payload: { aid: string } }
-  | { type: 'setSLTP'; payload: { aid: string; sl?: number; tp?: number } }
-  | { type: 'setActive'; payload: { aid: string } };
+  | { type: 'setSLTP'; payload: { aid: string; slPct?: number; tpPct?: number } }
+  | { type: 'setActive'; payload: { aid: string } }
+  | { type: 'setTF'; payload: { tf: string } }
+  | { type: 'cancelClose'; payload: { aid: string } };
 
 // Snapshot — sent on connect + periodically. Compact subset of GameState.
 export interface SnapshotPayload {
   serverTime: number;
   active: string;
+  tf: string; // TF that the candles in `assets[active].candles` belong to
   player: PublicTrader;
   assets: Record<string, PublicAsset>;
   events: NewsEvent[];
@@ -32,6 +35,7 @@ export interface PublicTrader {
   cash: number;
   holdings: Record<string, Holding>;
   isPlayer: true;
+  closing: Record<string, boolean>;
 }
 
 export interface PublicAsset {
@@ -40,53 +44,64 @@ export interface PublicAsset {
   hi: number;
   lo: number;
   volume: number;
-  history: number[];      // last 120 ticks
-  candles: { o: number; h: number; l: number; c: number; v: number }[]; // last 60
+  history: number[];
+  candles: { o: number; h: number; l: number; c: number; v: number }[];
   curCandle: { o: number; h: number; l: number; c: number; v: number } | null;
   candleStartT: number;
   topBids: { px: number; qty: number; ownerName: string }[];
   topAsks: { px: number; qty: number; ownerName: string }[];
-  volumeHist: number[];   // last 120
+  volumeHist: number[];
 }
 
 // Tick — high-frequency lightweight update.
 export interface TickPayload {
   serverTime: number;
-  prices: Record<string, number>; // last prices per asset
+  prices: Record<string, number>;
   cash: number;
-  // changed candles (current + closed-this-tick) for active asset only
-  activeCandle?: { o: number; h: number; l: number; c: number; v: number } | null;
-  newClosedCandle?: { o: number; h: number; l: number; c: number; v: number } | null;
+  activeId: string;
+  activeTF: string;
+  activeCandles: { o: number; h: number; l: number; c: number; v: number }[];
+  activeCurCandle: { o: number; h: number; l: number; c: number; v: number } | null;
+  activeCandleStartT: number;
+  activeTFms: number; // duration of the current TF (ms) for client-side progress
+  activeHistory: number[];
+  activeVolumeHist: number[];
   topBidsActive?: { px: number; qty: number; ownerName: string }[];
   topAsksActive?: { px: number; qty: number; ownerName: string }[];
 }
 
 export function trimTraderForPublic(t: Trader): PublicTrader {
-  return { cash: t.cash, holdings: t.holdings, isPlayer: true };
+  return { cash: t.cash, holdings: t.holdings, isPlayer: true, closing: t.closing || {} };
 }
+
+import type { TFKey } from '../../../shared/engine/types';
 
 export function buildSnapshot(
   S: GameState,
   active: string,
   playerRank: number,
+  tf: TFKey,
 ): SnapshotPayload {
   const p = S.traders[0];
   const assets: Record<string, PublicAsset> = {};
   for (const aid of Object.keys(S.assets)) {
     const a = S.assets[aid];
+    const isActive = aid === active;
+    const s = a.series[tf];
     assets[aid] = {
       lastPrice: a.lastPrice,
       open: a.open,
       hi: a.hi,
       lo: a.lo,
       volume: a.volume,
-      history: a.history.slice(-120),
-      candles: a.candles.slice(-60),
-      curCandle: a.curCandle ? { ...a.curCandle } : null,
-      candleStartT: a.candleStartT,
-      topBids: a.book.bids.slice(0, 10).map(o => ({ px: o.px, qty: o.qty, ownerName: S.traders[o.ownerId]?.name || '' })),
-      topAsks: a.book.asks.slice(0, 10).map(o => ({ px: o.px, qty: o.qty, ownerName: S.traders[o.ownerId]?.name || '' })),
-      volumeHist: a.volumeHist.slice(-120),
+      // Heavy arrays sent ONLY for active asset — trims ~95% of payload for 100+ assets.
+      history: isActive ? a.history.slice(-120) : [],
+      candles: isActive ? s.candles.slice(-60) : [],
+      curCandle: isActive && s.curCandle ? { ...s.curCandle } : null,
+      candleStartT: isActive ? s.candleStartT : 0,
+      topBids: isActive ? a.book.bids.slice(0, 10).map(o => ({ px: o.px, qty: o.qty, ownerName: S.traders[o.ownerId]?.name || '' })) : [],
+      topAsks: isActive ? a.book.asks.slice(0, 10).map(o => ({ px: o.px, qty: o.qty, ownerName: S.traders[o.ownerId]?.name || '' })) : [],
+      volumeHist: isActive ? a.volumeHist.slice(-120) : [],
     };
   }
   const sorted = S.traders.map(t => ({ id: t.id, name: t.name, net: 0, strat: t.strat as string, rekt: !!t.rekt })).slice();
@@ -94,6 +109,7 @@ export function buildSnapshot(
   return {
     serverTime: Date.now(),
     active,
+    tf,
     player: trimTraderForPublic(p),
     assets,
     events: S.events.slice(0, 15),

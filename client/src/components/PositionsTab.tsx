@@ -21,17 +21,17 @@ export function PositionsTab() {
     return [{ a, h, ast, isLong, qty, val, pl, plPct }];
   });
 
-  const updateSLTP = (aid: string, key: 'sl' | 'tp', val: string) => {
+  const updateSLTP = (aid: string, key: 'slPct' | 'tpPct', val: string) => {
     const num = +val || 0;
     const h = eng.player().holdings[aid];
     if (h) h[key] = num; // optimistic
-    send({ type: 'setSLTP', payload: { aid, [key]: num } as { aid: string; sl?: number; tp?: number } });
+    send({ type: 'setSLTP', payload: { aid, [key]: num } as { aid: string; slPct?: number; tpPct?: number } });
   };
 
   const clearSLTP = (aid: string) => {
     const h = eng.player().holdings[aid];
-    if (h) { h.sl = 0; h.tp = 0; }
-    send({ type: 'setSLTP', payload: { aid, sl: 0, tp: 0 } });
+    if (h) { h.slPct = 0; h.tpPct = 0; h.sl = 0; h.tp = 0; }
+    send({ type: 'setSLTP', payload: { aid, slPct: 0, tpPct: 0 } });
     Audio.click();
   };
 
@@ -51,7 +51,13 @@ export function PositionsTab() {
               }}>
                 <svg><use href={`#${r.a.icon}`}/></svg>
                 <div className="info">
-                  <div className="sym">{r.a.id} <span className={'tag ' + (r.isLong ? 'long' : 'short')}>{r.isLong ? 'LONG' : 'SHORT'}</span></div>
+                  <div className="sym">
+                    {r.a.id}{' '}
+                    <span className={'tag ' + (r.isLong ? 'long' : 'short')}>{r.isLong ? 'LONG' : 'SHORT'}</span>
+                    {eng.player().closing?.[r.a.id] && (
+                      <span className="tag pending" style={{ background: 'var(--accent)', color: '#000' }}>⏳ PENDING</span>
+                    )}
+                  </div>
                   <div className="stats">
                     <span>Qty <b>{fmtNum(r.qty)}</b></span>
                     <span>Avg <b>{fmt(r.h.avgCost, dec)}</b></span>
@@ -64,19 +70,28 @@ export function PositionsTab() {
                     {(r.pl >= 0 ? '+' : '') + fmt(r.pl)}<br/>
                     <small style={{ opacity: .7, fontSize: 9 }}>{fmtPct(r.plPct)}</small>
                   </div>
-                  <button onClick={() => { send({ type: 'close', payload: { aid: r.a.id } }); Audio.click(); }}>CUT</button>
+                  {eng.player().closing?.[r.a.id] ? (
+                    <button
+                      onClick={() => { send({ type: 'cancelClose', payload: { aid: r.a.id } }); Audio.click(); }}
+                      style={{ background: '#3a2a0a', color: '#fbbf24', borderColor: '#fbbf24' }}
+                    >CANCEL</button>
+                  ) : (
+                    <button onClick={() => { send({ type: 'close', payload: { aid: r.a.id } }); Audio.click(); }}>CUT</button>
+                  )}
                 </div>
                 <div className="pos-sltp">
-                  <label>SL</label>
+                  <label>SL %</label>
                   <input
-                    type="number" className="sl" step="0.01" placeholder="—" defaultValue={r.h.sl || ''}
-                    onChange={e => updateSLTP(r.a.id, 'sl', e.target.value)}
+                    type="number" className="sl" step="0.01" min="0" placeholder="e.g. 2"
+                    defaultValue={r.h.slPct || ''}
+                    onChange={e => updateSLTP(r.a.id, 'slPct', e.target.value)}
                     onClick={e => e.stopPropagation()}
                   />
-                  <label>TP</label>
+                  <label>TP %</label>
                   <input
-                    type="number" className="tp" step="0.01" placeholder="—" defaultValue={r.h.tp || ''}
-                    onChange={e => updateSLTP(r.a.id, 'tp', e.target.value)}
+                    type="number" className="tp" step="0.01" min="0" placeholder="e.g. 5"
+                    defaultValue={r.h.tpPct || ''}
+                    onChange={e => updateSLTP(r.a.id, 'tpPct', e.target.value)}
                     onClick={e => e.stopPropagation()}
                   />
                   <button onClick={() => clearSLTP(r.a.id)} style={{ padding: '3px 8px', fontSize: 9 }}>CLR</button>

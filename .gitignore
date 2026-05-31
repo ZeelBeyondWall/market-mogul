@@ -12,5 +12,8 @@ vite.config.d.ts
 vite.config.js
 server/state.json
 server/dist/
+services/engine/state.json
+services/engine/dist/
+services/gateway/dist/
 client/dist/
 

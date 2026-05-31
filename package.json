@@ -1,13 +1,15 @@
 {
   "name": "market-mogul-monorepo",
   "private": true,
-  "version": "2.1.0",
+  "version": "2.2.0",
   "scripts": {
-    "dev": "concurrently -k -n SERVER,CLIENT -c green,cyan \"npm:dev:server\" \"npm:dev:client\"",
-    "dev:server": "npm --prefix server run dev",
+    "dev": "concurrently -k -n ENGINE,GATEWAY,CLIENT -c green,magenta,cyan \"npm:dev:engine\" \"npm:dev:gateway\" \"npm:dev:client\"",
+    "dev:engine": "npm --prefix services/engine run dev",
+    "dev:gateway": "npm --prefix services/gateway run dev",
     "dev:client": "npm --prefix client run dev",
-    "build": "npm --prefix server run build && npm --prefix client run build",
-    "start:server": "npm --prefix server start"
+    "build": "npm --prefix services/engine run build && npm --prefix services/gateway run build && npm --prefix client run build",
+    "start:engine": "npm --prefix services/engine start",
+    "start:gateway": "npm --prefix services/gateway start"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

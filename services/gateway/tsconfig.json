@@ -10,9 +10,9 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "outDir": "dist",
-    "rootDir": "..",
+    "rootDir": "src",
     "noUnusedLocals": false,
     "noUnusedParameters": false
   },
-  "include": ["src", "../shared"]
+  "include": ["src"]
 }

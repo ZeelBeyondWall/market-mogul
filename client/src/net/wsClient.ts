@@ -19,7 +19,8 @@ interface PublicAsset {
 interface SnapshotPayload {
   serverTime: number;
   active: string;
-  player: { cash: number; holdings: Record<string, any>; isPlayer: true };
+  tf?: string;
+  player: { cash: number; holdings: Record<string, any>; isPlayer: true; closing?: Record<string, boolean> };
   assets: Record<string, PublicAsset>;
   events: { type: 'boom'|'crash'|'news'; title: string; desc: string; t: number }[];
   leaderboard: { id: number; name: string; net: number; strat: string; rekt: boolean }[];
@@ -31,16 +32,25 @@ interface TickPayload {
   serverTime: number;
   prices: Record<string, number>;
   cash: number;
-  activeCandle?: { o: number; h: number; l: number; c: number; v: number } | null;
+  activeId: string;
+  activeTF: string;
+  activeCandles: { o: number; h: number; l: number; c: number; v: number }[];
+  activeCurCandle: { o: number; h: number; l: number; c: number; v: number } | null;
+  activeCandleStartT: number;
+  activeTFms: number;
+  activeHistory: number[];
+  activeVolumeHist: number[];
   topBidsActive?: { px: number; qty: number; ownerName: string }[];
   topAsksActive?: { px: number; qty: number; ownerName: string }[];
 }
 
 export type C2SMsg =
-  | { type: 'order'; payload: { aid: string; side: 'buy'|'sell'; qty: number; orderType: 'market'|'limit'; limitPx?: number; sl?: number; tp?: number } }
+  | { type: 'order'; payload: { aid: string; side: 'buy'|'sell'; qty: number; orderType: 'market'|'limit'; limitPx?: number; slPct?: number; tpPct?: number } }
   | { type: 'close'; payload: { aid: string } }
-  | { type: 'setSLTP'; payload: { aid: string; sl?: number; tp?: number } }
-  | { type: 'setActive'; payload: { aid: string } };
+  | { type: 'setSLTP'; payload: { aid: string; slPct?: number; tpPct?: number } }
+  | { type: 'setActive'; payload: { aid: string } }
+  | { type: 'setTF'; payload: { tf: string } }
+  | { type: 'cancelClose'; payload: { aid: string } };
 
 let ws: WebSocket | null = null;
 let reconnectTimer: number | null = null;
@@ -63,7 +73,14 @@ export function send(msg: C2SMsg): void {
 export function connect(engine: Engine): void {
   if (ws) ws.close();
   ws = new WebSocket(WS_URL);
-  ws.onopen = () => { useGame.getState().setConnected(true); };
+  ws.onopen = () => {
+    useGame.getState().setConnected(true);
+    // Sync our persisted prefs to the (potentially restarted) server so candles
+    // and active asset match what the user expects.
+    const s = useGame.getState();
+    send({ type: 'setTF', payload: { tf: s.activeTF } });
+    if (s.engine.state.active) send({ type: 'setActive', payload: { aid: s.engine.state.active } });
+  };
   ws.onclose = () => {
     useGame.getState().setConnected(false);
     if (reconnectTimer) window.clearTimeout(reconnectTimer);
@@ -112,6 +129,10 @@ function applySnapshot(engine: Engine, snap: SnapshotPayload): void {
   for (const aid of Object.keys(snap.player.holdings)) {
     p.holdings[aid] = snap.player.holdings[aid];
   }
+  p.closing = snap.player.closing || {};
+  // Server tells us which TF the snapshot's candles are for; fall back to client store if missing.
+  const tf: import('../../../shared/engine/types').TFKey =
+    (snap.tf as any) || useGame.getState().activeTF;
   for (const aid of Object.keys(snap.assets)) {
     const sa = snap.assets[aid];
     const ast = engine.state.assets[aid];
@@ -121,14 +142,20 @@ function applySnapshot(engine: Engine, snap: SnapshotPayload): void {
     ast.hi = sa.hi;
     ast.lo = sa.lo;
     ast.volume = sa.volume;
-    ast.history = sa.history.slice();
-    ast.candles = sa.candles.slice();
-    ast.curCandle = sa.curCandle ? { ...sa.curCandle } : null;
-    ast.candleStartT = sa.candleStartT;
-    ast.volumeHist = sa.volumeHist.slice();
-    ast.book = makeBook();
-    sa.topBids.forEach((o, i) => ast.book.bids.push({ id: -1 - i, ownerId: -1, ts: 0, px: o.px, qty: o.qty, ownerName: o.ownerName } as Order & { ownerName: string }));
-    sa.topAsks.forEach((o, i) => ast.book.asks.push({ id: -1000 - i, ownerId: -1, ts: 0, px: o.px, qty: o.qty, ownerName: o.ownerName } as Order & { ownerName: string }));
+    // Server only sends heavy arrays for ACTIVE asset — skip overwrite with empty for others
+    if (sa.history.length) ast.history = sa.history.slice();
+    if (ast.series && ast.series[tf]) {
+      if (sa.candles.length) ast.series[tf].candles = sa.candles.slice();
+      if (sa.curCandle) ast.series[tf].curCandle = { ...sa.curCandle };
+      else if (aid === snap.active) ast.series[tf].curCandle = null;
+      if (sa.candleStartT) ast.series[tf].candleStartT = sa.candleStartT;
+    }
+    if (sa.volumeHist.length) ast.volumeHist = sa.volumeHist.slice();
+    if (sa.topBids.length || sa.topAsks.length || aid === snap.active) {
+      ast.book = makeBook();
+      sa.topBids.forEach((o, i) => ast.book.bids.push({ id: -1 - i, ownerId: -1, ts: 0, px: o.px, qty: o.qty, ownerName: o.ownerName } as Order & { ownerName: string }));
+      sa.topAsks.forEach((o, i) => ast.book.asks.push({ id: -1000 - i, ownerId: -1, ts: 0, px: o.px, qty: o.qty, ownerName: o.ownerName } as Order & { ownerName: string }));
+    }
   }
   useGame.getState().setLeaderboard(snap.leaderboard, snap.totalTraders, snap.playerRank);
   useGame.getState().notifyTick();
@@ -139,27 +166,27 @@ function applyTick(engine: Engine, tick: TickPayload): void {
   engine.player().cash = tick.cash;
   for (const aid of Object.keys(tick.prices)) {
     const ast = engine.state.assets[aid];
-    if (ast) {
-      ast.lastPrice = tick.prices[aid];
-      // append to history if changed (rolling window)
-      ast.history.push(tick.prices[aid]);
-      if (ast.history.length > 240) ast.history.shift();
+    if (ast) ast.lastPrice = tick.prices[aid];
+  }
+  // Server is authority on the ACTIVE asset's candle series — replace cleanly.
+  if (tick.activeId && tick.activeId === engine.state.active) {
+    const ast = engine.state.assets[tick.activeId];
+    if (ast && ast.series) {
+      const tf = (tick.activeTF || useGame.getState().activeTF) as keyof typeof ast.series;
+      if (ast.series[tf]) {
+        ast.series[tf].candles = tick.activeCandles.slice();
+        ast.series[tf].curCandle = tick.activeCurCandle ? { ...tick.activeCurCandle } : null;
+        ast.series[tf].candleStartT = tick.activeCandleStartT;
+      }
+      ast.history = tick.activeHistory.slice();
+      ast.volumeHist = tick.activeVolumeHist.slice();
+      if (tick.topBidsActive) {
+        ast.book = makeBook();
+        tick.topBidsActive.forEach((o, i) => ast.book.bids.push({ id: -1 - i, ownerId: -1, ts: 0, px: o.px, qty: o.qty, ownerName: o.ownerName } as Order & { ownerName: string }));
+        tick.topAsksActive!.forEach((o, i) => ast.book.asks.push({ id: -1000 - i, ownerId: -1, ts: 0, px: o.px, qty: o.qty, ownerName: o.ownerName } as Order & { ownerName: string }));
+      }
     }
   }
-  const ast = engine.state.assets[engine.state.active];
-  if (ast && tick.activeCandle !== undefined) {
-    if (tick.activeCandle) ast.curCandle = { ...tick.activeCandle };
-    else {
-      // server closed candle this tick — push curCandle to candles
-      if (ast.curCandle) { ast.candles.push(ast.curCandle); if (ast.candles.length > 120) ast.candles.shift(); }
-      ast.curCandle = null;
-      ast.candleStartT = tick.serverTime;
-    }
-  }
-  if (ast && tick.topBidsActive) {
-    ast.book = makeBook();
-    tick.topBidsActive.forEach((o, i) => ast.book.bids.push({ id: -1 - i, ownerId: -1, ts: 0, px: o.px, qty: o.qty, ownerName: o.ownerName } as Order & { ownerName: string }));
-    tick.topAsksActive!.forEach((o, i) => ast.book.asks.push({ id: -1000 - i, ownerId: -1, ts: 0, px: o.px, qty: o.qty, ownerName: o.ownerName } as Order & { ownerName: string }));
-  }
+  // Other assets just get lastPrice update — full history when user switches active asset.
   useGame.getState().notifyTick();
 }

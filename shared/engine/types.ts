@@ -4,6 +4,10 @@ export type StrategyId =
   | 'value' | 'trend' | 'mm' | 'copycat' | 'revenge'
   | 'player';
 
+export type AssetCategory =
+  | 'penny' | 'tech' | 'bank' | 'index' | 'crypto'
+  | 'forex' | 'commodity' | 'options' | 'hedge' | 'bond';
+
 export interface AssetDef {
   id: string;
   name: string;
@@ -13,6 +17,7 @@ export interface AssetDef {
   vol: number;
   float: number;
   desc: string;
+  cat: AssetCategory;
 }
 
 export interface Order {
@@ -37,6 +42,18 @@ export interface Candle {
   v: number;
 }
 
+export type TFKey = '1s' | '5s' | '30s' | '1m' | '5m';
+export const TF_MS: Record<TFKey, number> = {
+  '1s': 1000, '5s': 5000, '30s': 30000, '1m': 60000, '5m': 300000,
+};
+export const TF_LIST: TFKey[] = ['1s','5s','30s','1m','5m'];
+
+export interface CandleSeries {
+  candles: Candle[];
+  curCandle: Candle | null;
+  candleStartT: number;
+}
+
 export interface AssetState {
   book: Book;
   lastPrice: number;
@@ -46,21 +63,25 @@ export interface AssetState {
   volume: number;
   volumeHist: number[];
   history: number[];
-  candles: Candle[];
-  curCandle: Candle | null;
-  candleStartT: number;
+  // Multi-TF candles. Each TF maintains its own series.
+  series: Record<TFKey, CandleSeries>;
   fv: number;
   fvDelta: number;
   fvEventTicks: number;
   volMult: number;
   volEventTicks: number;
-  _candleVolStart?: number;
   _lastVolSnap?: number;
 }
 
 export interface Holding {
   shares: number;
   avgCost: number;
+  // SL/TP stored as PERCENT from avgCost (e.g. 0.5 = 0.5%, 2 = 2%).
+  // Long: SL triggers when price <= avgCost*(1 - slPct/100); TP when price >= avgCost*(1 + tpPct/100).
+  // Short: SL triggers when price >= avgCost*(1 + slPct/100); TP when price <= avgCost*(1 - tpPct/100).
+  slPct?: number;
+  tpPct?: number;
+  // Legacy absolute fields — still supported as fallback if % not set.
   sl?: number;
   tp?: number;
 }
@@ -91,6 +112,8 @@ export interface Trader {
   mutateCooldown: number;
   bornAt: number;
   rekt?: boolean;
+  // Pending close intents — assetId -> true means "drain this position to 0 over upcoming ticks"
+  closing?: Record<string, boolean>;
 }
 
 export interface NewsEventDef {

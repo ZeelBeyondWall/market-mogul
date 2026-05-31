@@ -28,26 +28,25 @@ export function genName(): string {
 }
 
 export function pickAssetsFor(strat: StrategyId): string[] {
-  const cheap = ['PUMP', 'SHIB', 'JUNK', 'CALL', 'PUTS'];
-  const mid = ['APPL', 'MSFT', 'JPMC', 'QQQ', 'HEDG'];
+  const byCats = (cats: string[]) => ASSETS.filter(a => cats.includes(a.cat)).map(a => a.id);
   let pool: string[];
   switch (strat) {
-    case 'yolo':         pool = cheap; break;
-    case 'diamond':      pool = cheap.concat(mid); break;
-    case 'paper':        pool = cheap.concat(['APPL', 'MSFT', 'JPMC']); break;
-    case 'permabull':    pool = cheap.concat(mid); break;
-    case 'permabear':    pool = cheap.concat(mid); break;
-    case 'lazy':         pool = ['APPL', 'MSFT', 'JPMC', 'SP500', 'QQQ']; break;
-    case 'newschase':    pool = cheap.concat(mid); break;
-    case 'fomo':         pool = cheap.concat(['APPL', 'MSFT', 'QQQ', 'CALL']); break;
-    case 'conservative': pool = ['APPL', 'MSFT', 'JPMC', 'HEDG']; break;
-    case 'gambler':      pool = cheap; break;
-    case 'value':        pool = ['JUNK', 'APPL', 'MSFT', 'JPMC', 'HEDG']; break;
-    case 'trend':        pool = cheap.concat(mid); break;
-    case 'mm':           pool = cheap; break;
-    case 'copycat':      pool = cheap.concat(mid); break;
-    case 'revenge':      pool = cheap; break;
-    default:             pool = cheap;
+    case 'yolo':         pool = byCats(['penny','crypto','options']); break;
+    case 'diamond':      pool = byCats(['tech','crypto','bank','commodity']); break;
+    case 'paper':        pool = byCats(['tech','penny','index','crypto']); break;
+    case 'permabull':    pool = byCats(['tech','crypto','index']); break;
+    case 'permabear':    pool = byCats(['index','bank','tech','forex']); break;
+    case 'lazy':         pool = byCats(['index','bond','bank']); break;
+    case 'newschase':    pool = byCats(['tech','crypto','forex','commodity']); break;
+    case 'fomo':         pool = byCats(['penny','crypto','tech','options']); break;
+    case 'conservative': pool = byCats(['bond','index','bank']); break;
+    case 'gambler':      pool = byCats(['penny','options','crypto']); break;
+    case 'value':        pool = byCats(['bank','tech','commodity','bond']); break;
+    case 'trend':        pool = byCats(['crypto','forex','commodity','tech']); break;
+    case 'mm':           pool = byCats(['penny','crypto','forex']); break;
+    case 'copycat':      pool = byCats(['tech','crypto','penny','index']); break;
+    case 'revenge':      pool = byCats(['penny','options','crypto']); break;
+    default:             pool = byCats(['penny']);
   }
   pool = pool.slice();
   const n = 2 + Math.floor(Math.random() * 4);
@@ -96,9 +95,9 @@ export function takeProfitFor(s: StrategyId): number {
   return rand(0.2, 0.8);
 }
 
-export function makeTrader(i: number, isPlayer: boolean): Trader {
+export function makeTrader(i: number, isPlayer: boolean, forcedStrat?: StrategyId): Trader {
   const cash = 100;
-  const strat: StrategyId = isPlayer ? 'player' : getStratForBot();
+  const strat: StrategyId = isPlayer ? 'player' : (forcedStrat || getStratForBot());
   const holdings: Record<string, Holding> = {};
   const indicators: Record<string, { emaFast: number | null; emaSlow: number | null }> = {};
   ASSETS.forEach(a => {
@@ -125,5 +124,6 @@ export function makeTrader(i: number, isPlayer: boolean): Trader {
     tradesSinceChange: 0,
     mutateCooldown: rand(10, 40),
     bornAt: 0,
+    closing: {},
   };
 }
