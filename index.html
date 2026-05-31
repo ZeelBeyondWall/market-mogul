@@ -523,7 +523,7 @@
           </div>
           <div class="trade-row">
             <label>Qty</label>
-            <input type="number" class="qty" id="qty" value="1" min="0" step="any">
+            <input type="number" class="qty" id="qty" value="1" min="1" step="1">
           </div>
           <div class="dbl-btn buy">
             <button class="a" id="btnBuy"><span>BUY $0</span><small>0 sh</small></button>
@@ -883,19 +883,8 @@ function fmtNum(n){
   return Math.floor(n).toString();
 }
 function fmtPct(n){return (n>=0?'+':'')+n.toFixed(2)+'%';}
-function fmtShares(n){
-  if(!isFinite(n)) return '∞';
-  const a = Math.abs(n);
-  if(a===0) return '0';
-  if(a>=1e12) return (n/1e12).toFixed(2)+'T';
-  if(a>=1e9) return (n/1e9).toFixed(2)+'B';
-  if(a>=1e6) return (n/1e6).toFixed(2)+'M';
-  if(a>=1e3) return (n/1e3).toFixed(2)+'K';
-  if(a>=1) return n.toFixed(2).replace(/\.?0+$/,'');
-  if(a>=0.01) return n.toFixed(4).replace(/\.?0+$/,'');
-  return n.toFixed(6).replace(/\.?0+$/,'');
-}
-function roundShares(n){return Math.round(n*1e6)/1e6;} // 6 decimal precision
+function fmtShares(n){return fmtNum(n);}
+function roundShares(n){return Math.floor(n);} // integer shares only
 function rand(min,max){return min+Math.random()*(max-min);}
 function gauss(){let u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
 
@@ -2429,7 +2418,7 @@ function init(){
     resizeChart();
     if(!loaded){
       setTimeout(()=>showModal('💼 Welcome to Market Mogul',
-        'You start with <b>$100</b> alongside <b>500 AI traders</b> — most are flawed humans (YOLO, FOMO, paper hands, perma-bulls/bears, gamblers, revenge averagers). A few are smart (value, trend, MM).<br><br>• <b style="color:var(--green)">BUY</b> opens/extends long · <b style="color:var(--red)">SELL</b> opens/extends short · MAX half on each<br>• <b>Fractional shares</b> — buy 0.0001 of any asset. Even $100 fits expensive stocks.<br>• <b>Positions</b> tab → CUT to close any position<br>• Bots <b>evolve personalities</b> — wins make bolder, losses make paper-handed/vengeful<br>• Real order book — every price is a real trade<br><br>You start at <b style="color:var(--accent)">#501</b>. Climb.',false), 600);
+        'You start with <b>$100</b> alongside <b>500 AI traders</b> — most are flawed humans (YOLO, FOMO, paper hands, perma-bulls/bears, gamblers, revenge averagers). A few are smart (value, trend, MM).<br><br>• <b style="color:var(--green)">BUY</b> opens/extends long · <b style="color:var(--red)">SELL</b> opens/extends short · MAX half on each<br>• <b>Whole shares only</b> — grow cash first to afford pricier tickers<br>• <b>Positions</b> tab → CUT to close any position<br>• Bots <b>evolve personalities</b> — wins make bolder, losses make paper-handed/vengeful<br>• Real order book — every price is a real trade<br><br>You start at <b style="color:var(--accent)">#501</b>. Climb.',false), 600);
     }
   };
 
