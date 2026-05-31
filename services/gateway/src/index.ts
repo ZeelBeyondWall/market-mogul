@@ -116,8 +116,8 @@ app.post('/shutdown', async (_, res) => {
   for (const ws of wss.clients) { try { ws.close(1001, 'shutdown'); } catch {} }
   if (process.platform === 'win32') {
     try {
-      spawn('taskkill', ['/F', '/FI', 'WINDOWTITLE eq MarketMogul-Client*'], { detached: true, stdio: 'ignore' }).unref();
-      spawn('taskkill', ['/F', '/FI', 'WINDOWTITLE eq MarketMogul-Engine*'], { detached: true, stdio: 'ignore' }).unref();
+      spawn('taskkill', ['/F', '/FI', 'WINDOWTITLE eq MarketVerseX-Client*'], { detached: true, stdio: 'ignore' }).unref();
+      spawn('taskkill', ['/F', '/FI', 'WINDOWTITLE eq MarketVerseX-Engine*'], { detached: true, stdio: 'ignore' }).unref();
     } catch {}
   }
   // Let response flush then exit (do NOT taskkill our own window — exit naturally)

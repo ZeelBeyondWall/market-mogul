@@ -10,7 +10,7 @@ interface DocSection {
 // Single source of truth — future features should append here.
 const SECTIONS: DocSection[] = [
   { id: 'start', title: 'Getting Started', icon: '🚀', body: `
-Welcome to MARKET MOGUL — a real-time multi-market trading simulator.
+Welcome to MARKETVERSEX — a real-time multi-market trading simulator.
 
 You start at Level 1 with $100 in cash and access to basic stocks.
 Click any asset in the left rail to chart it. Use the BUY / SELL panel to trade.

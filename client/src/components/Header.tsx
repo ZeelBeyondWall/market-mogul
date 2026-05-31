@@ -25,7 +25,7 @@ export function Header() {
       <div className="hdr-brand">
         <svg className="hdr-logo"><use href="#logoMini"/></svg>
         <div>
-          <div className="hdr-name">MARKET MOGUL</div>
+          <div className="hdr-name">MARKETVERSEX</div>
           <div className="hdr-sub">{p.name || 'Zeel'}</div>
         </div>
       </div>

@@ -10,7 +10,7 @@ interface DocSection {
 // Single source of truth — extend as new admin features ship.
 const SECTIONS: DocSection[] = [
   { id: 'overview', title: 'Overview', icon: '◧', body: `
-The Market Mogul Admin Center is a multi-tab control plane for the live engine.
+The MarketVerseX Admin Center is a multi-tab control plane for the live engine.
 All admin requests authenticate via the X-Admin-Token header (set in the topbar
 profile menu). Each action is recorded in the Audit Log.
 

@@ -290,8 +290,8 @@ app.post('/shutdown', (_, res) => {
   // Kill the client cmd window by its title (Windows-only, no-op elsewhere)
   if (process.platform === 'win32') {
     try {
-      spawn('taskkill', ['/F', '/FI', 'WINDOWTITLE eq MarketMogul-Client*'], { detached: true, stdio: 'ignore' }).unref();
-      spawn('taskkill', ['/F', '/FI', 'WINDOWTITLE eq MarketMogul-Server*'], { detached: true, stdio: 'ignore' }).unref();
+      spawn('taskkill', ['/F', '/FI', 'WINDOWTITLE eq MarketVerseX-Client*'], { detached: true, stdio: 'ignore' }).unref();
+      spawn('taskkill', ['/F', '/FI', 'WINDOWTITLE eq MarketVerseX-Server*'], { detached: true, stdio: 'ignore' }).unref();
     } catch { /* ignore */ }
   }
   setTimeout(() => process.exit(0), 300);

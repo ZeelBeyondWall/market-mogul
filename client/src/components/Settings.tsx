@@ -72,7 +72,7 @@ export function Settings() {
         </Section>
 
         <div className="settings-foot">
-          <div>Market Mogul v2.1</div>
+          <div>MarketVerseX v2.1</div>
           <div>Server: <ServerBadge /></div>
         </div>
       </aside>

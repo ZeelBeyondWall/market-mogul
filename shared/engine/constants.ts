@@ -2,7 +2,7 @@ import type { AssetDef, Market, NewsEventDef, StrategyId } from './types';
 
 export const BOT_COUNT = 10000;
 export const CANDLE_MS = 2000;
-export const SAVE_KEY = 'marketMogul_v5';
+export const SAVE_KEY = 'marketVerseX_v5';
 
 // v5: Level progression. XP needed to REACH level N (cumulative from level 1).
 // Formula: floor(100 * N^1.5). L1=100 (to reach L2), L5=1118, L10=3162,

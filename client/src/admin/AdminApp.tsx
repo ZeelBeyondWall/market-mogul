@@ -109,7 +109,7 @@ export function AdminApp() {
         <div className="a-sidebar-brand">
           <div className="a-brand-mark">M</div>
           <div>
-            <div className="a-brand-name">MARKET MOGUL</div>
+            <div className="a-brand-name">MARKETVERSEX</div>
             <div className="a-brand-sub">Admin Center</div>
           </div>
         </div>

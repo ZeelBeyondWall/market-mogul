@@ -1,4 +1,4 @@
-# Market Mogul
+# MarketVerseX
 
 Browser stock-trading sim. $100 vs 500 evolving AI traders + real order matching. Now with **server-authoritative engine** — bots run 24/7 even when browser tab closed.
 

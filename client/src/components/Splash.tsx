@@ -16,7 +16,7 @@ export function Splash() {
     resumeAudio();
     hide();
     if (!isReturning) {
-      setTimeout(() => showModal('💼 Welcome to Market Mogul',
+      setTimeout(() => showModal('💼 Welcome to MarketVerseX',
         'You start with <b>$100</b> alongside <b>500 AI traders</b> — most are flawed humans (YOLO, FOMO, paper hands, perma-bulls/bears, gamblers). A few are smart (value, trend, MM).<br/><br/>• <b style="color:var(--green)">BUY</b> opens/extends long · <b style="color:var(--red)">SELL</b> opens/extends short · MAX half on each<br/>• Whole shares only — grow cash first to afford pricier tickers<br/>• <b>Positions</b> tab → CUT to close any position. Set <b>SL/TP</b> per position.<br/>• Bots evolve personalities — wins make bolder, losses make paper-handed/vengeful<br/>• Real order book — every price is a real trade<br/><br/>You start at <b style="color:var(--accent)">#501</b>. Climb.',
       ), 600);
     }
@@ -27,7 +27,7 @@ export function Splash() {
       <div className="bg-grid" />
       <div className="splash-logo">
         <svg className="bigLogo"><use href="#logoFull" /></svg>
-        <h1>MARKET MOGUL</h1>
+        <h1>MARKETVERSEX</h1>
         <div className="sub">Live Order Book · 500 AI Traders · Real Bid/Ask</div>
         <div className="features">
           <span><span className="dot"/>Real Matching Engine</span>
