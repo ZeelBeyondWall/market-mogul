@@ -10,42 +10,47 @@ import { MissionsTab } from './MissionsTab';
 import { MoversTab } from './MoversTab';
 import { HelpTab } from './HelpTab';
 
-// v7.2: tabs split by complexity. Beginner mode hides Book, Movers, Stats.
-const TABS: { id: TabId; label: string; advanced?: boolean }[] = [
-  { id: 'positions', label: 'Positions' },
-  { id: 'details',   label: 'Details' },
-  { id: 'movers',    label: 'Movers', advanced: true },
-  { id: 'book',      label: 'Book',   advanced: true },
-  { id: 'stats',     label: 'Stats' },
-  { id: 'missions',  label: 'Missions' },
-  { id: 'bots',      label: 'Traders' },
-  { id: 'news',      label: 'News' },
-  { id: 'help',      label: '? Help' },
+// v8.3: icon + label tabs in a wrapping 4-col grid — all visible, no scroll.
+// Help removed here (reachable from the top MarketBar Help button).
+const TABS: { id: TabId; label: string; icon: string }[] = [
+  { id: 'positions', label: 'Positions', icon: '📊' },
+  { id: 'details',   label: 'Details',   icon: 'ℹ️' },
+  { id: 'movers',    label: 'Movers',    icon: '🔥' },
+  { id: 'book',      label: 'Book',      icon: '📖' },
+  { id: 'stats',     label: 'Stats',     icon: '📈' },
+  { id: 'missions',  label: 'Missions',  icon: '🎯' },
+  { id: 'bots',      label: 'Traders',   icon: '👥' },
+  { id: 'news',      label: 'News',      icon: '📰' },
 ];
 
 export function Tabs() {
   const active = useGame(s => s.activeTab);
   const setActive = useGame(s => s.setActiveTab);
-  const beginnerMode = useGame(s => s.beginnerMode);
-  const visibleTabs = TABS.filter(t => !beginnerMode || !t.advanced);
   return (
     <>
-      <div className="tabs tabs-scroll">
-        {visibleTabs.map(t => (
-          <div key={t.id} className={'tab' + (active === t.id ? ' active' : '')} onClick={() => { setActive(t.id); Audio.click(); }}>
-            {t.label}
-          </div>
+      <div className="tabgrid">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            className={'tabgrid-btn' + (active === t.id ? ' active' : '')}
+            onClick={() => { setActive(t.id); Audio.click(); }}
+          >
+            <span className="tabgrid-icon">{t.icon}</span>
+            <span className="tabgrid-label">{t.label}</span>
+          </button>
         ))}
       </div>
-      {active === 'positions' && <PositionsTab />}
-      {active === 'details' && <StockDetailsTab />}
-      {active === 'movers' && <MoversTab />}
-      {active === 'book' && <OrderBook />}
-      {active === 'stats' && <StatsTab />}
-      {active === 'missions' && <MissionsTab />}
-      {active === 'bots' && <BotsTab />}
-      {active === 'news' && <NewsTab />}
-      {active === 'help' && <HelpTab />}
+      <div className="tabcontent">
+        {active === 'positions' && <PositionsTab />}
+        {active === 'details' && <StockDetailsTab />}
+        {active === 'movers' && <MoversTab />}
+        {active === 'book' && <OrderBook />}
+        {active === 'stats' && <StatsTab />}
+        {active === 'missions' && <MissionsTab />}
+        {active === 'bots' && <BotsTab />}
+        {active === 'news' && <NewsTab />}
+        {active === 'help' && <HelpTab />}
+      </div>
     </>
   );
 }

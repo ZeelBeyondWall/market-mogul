@@ -754,6 +754,8 @@ main{
 }
 /* center column has NO scroll — chart fills, tradebar docks bottom */
 main > .col:nth-child(2){overflow:hidden}
+/* right column: tab grid pinned top, content scrolls inside */
+main > .col:nth-child(3){display:flex;flex-direction:column;overflow:hidden}
 
 /* === ASSET LIST v8 === */
 .al-v8{padding:14px}
@@ -898,20 +900,26 @@ main > .col:nth-child(2){overflow:hidden}
 .tb-pos-item .v.dn{color:var(--red)}
 .tb-pos-item .v.flat{color:var(--dim)}
 
-/* === TABS v8 === */
-.tabs{
-  display:flex;border-bottom:1px solid #1a2438;
-  background:#0a1120;padding:0 4px;
-  gap:2px;
+/* === TAB GRID v8.3 — 4-col wrap, no scroll, icon+label === */
+.tabgrid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:5px;
+  padding:8px;background:#0a1120;border-bottom:1px solid #1a2438;
+  flex-shrink:0;
 }
-.tab{
-  padding:11px 12px;text-align:center;cursor:pointer;
-  font-size:11px;letter-spacing:.9px;color:var(--dim);text-transform:uppercase;
-  border-bottom:2px solid transparent;font-weight:700;
-  border-radius:5px 5px 0 0;transition:all .12s;
+.tabgrid-btn{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:8px 4px;background:#0e1626;border:1px solid #1a2438;
+  border-radius:7px;cursor:pointer;font-family:inherit;transition:all .12s;
 }
-.tab.active{color:var(--accent);border-bottom-color:var(--accent);background:linear-gradient(180deg,rgba(245,185,66,.10),transparent)}
-.tab:hover:not(.active){color:var(--text);background:rgba(255,255,255,.02)}
+.tabgrid-btn:hover{border-color:#2a3a52;background:#131d30;transform:translateY(-1px)}
+.tabgrid-btn.active{
+  background:linear-gradient(180deg,rgba(245,185,66,.16),rgba(245,185,66,.04));
+  border-color:var(--accent);box-shadow:0 0 12px rgba(245,185,66,.18);
+}
+.tabgrid-icon{font-size:16px;line-height:1}
+.tabgrid-label{font-size:10px;font-weight:700;letter-spacing:.4px;color:var(--dim);text-transform:uppercase}
+.tabgrid-btn.active .tabgrid-label{color:var(--accent)}
+.tabcontent{overflow-y:auto;flex:1;min-height:0}
 
 /* === SECTIONS / TAB CONTENT v8 === */
 .section{padding:14px 16px}
