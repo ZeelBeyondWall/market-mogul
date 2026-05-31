@@ -125,7 +125,7 @@ export function registerAdminApi(app: Express, deps: AdminDeps): void {
     const t = engine.state.traders[+req.params.id];
     if (!t) throw new Error('user not found');
     t.rekt = false;
-    if (t.cash <= 0) t.cash = 100; // give starting cash so they can trade
+    if (t.cash <= 0) t.cash = 1000; // give starting cash so they can trade
     return { id: t.id, unbanned: true };
   }));
   app.post('/admin/user/:id/giveCash', j, wrap('user.giveCash', r => +r.params.id, (req) => {

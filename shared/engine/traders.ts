@@ -109,8 +109,13 @@ export function takeProfitFor(s: StrategyId): number {
   return rand(0.2, 0.8);
 }
 
+// v8.5: starting cash raised 100 -> 1000 so whole-share trading works across
+// the asset price range (NEXA $180 etc). Bots can now afford + seed liquidity
+// on pricier assets from a fresh game. Player + bots both start here.
+export const STARTING_CASH = 1000;
+
 export function makeTrader(i: number, isPlayer: boolean, forcedStrat?: StrategyId): Trader {
-  const cash = 100;
+  const cash = STARTING_CASH;
   const strat: StrategyId = isPlayer ? 'player' : (forcedStrat || getStratForBot());
   const holdings: Record<string, Holding> = {};
   const indicators: Record<string, { emaFast: number | null; emaSlow: number | null }> = {};

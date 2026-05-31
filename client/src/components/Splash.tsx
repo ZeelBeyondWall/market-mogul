@@ -17,7 +17,7 @@ export function Splash() {
     hide();
     if (!isReturning) {
       setTimeout(() => showModal('💼 Welcome to MarketVerseX',
-        'You start with <b>$100</b> alongside <b>500 AI traders</b> — most are flawed humans (YOLO, FOMO, paper hands, perma-bulls/bears, gamblers). A few are smart (value, trend, MM).<br/><br/>• <b style="color:var(--green)">BUY</b> opens/extends long · <b style="color:var(--red)">SELL</b> opens/extends short · MAX half on each<br/>• Whole shares only — grow cash first to afford pricier tickers<br/>• <b>Positions</b> tab → CUT to close any position. Set <b>SL/TP</b> per position.<br/>• Bots evolve personalities — wins make bolder, losses make paper-handed/vengeful<br/>• Real order book — every price is a real trade<br/><br/>You start at <b style="color:var(--accent)">#501</b>. Climb.',
+        'You start with <b>$1,000</b> alongside <b>10,000 AI traders</b> — most are flawed humans (YOLO, FOMO, paper hands, perma-bulls/bears, gamblers). A few are smart (value, trend, MM).<br/><br/>• <b style="color:var(--green)">BUY</b> opens/extends long · <b style="color:var(--red)">SELL</b> opens/extends short · MAX uses your full buying power<br/>• Whole shares only — grow cash to afford pricier tickers<br/>• <b>Positions</b> tab → CUT to close any position. Set <b>SL/TP</b> per position.<br/>• Bots evolve personalities — wins make bolder, losses make paper-handed/vengeful<br/>• Real order book — every price is a real trade<br/><br/>Climb the leaderboard.',
       ), 600);
     }
   };
