@@ -157,9 +157,11 @@ export class Engine {
       onPlayerSellProfit: () => this.hooks.onPlayerSellProfit?.(),
       onPlayerSellLoss: () => this.hooks.onPlayerSellLoss?.(),
       onTrade: (b: number, s: number) => {
+        // PERF: heavy work (mutate/rekt — each calls O(assets) traderNet) is deferred
+        // to the 2s sweep. Hotpath stays cheap: just increment trade counter.
         const buyer = this.state.traders[b]; const seller = this.state.traders[s];
-        if (!buyer.isPlayer) { maybeMutate(buyer, this.state); checkRekt(buyer, this.state); }
-        if (!seller.isPlayer) { maybeMutate(seller, this.state); checkRekt(seller, this.state); }
+        if (!buyer.isPlayer) buyer.tradesSinceChange++;
+        if (!seller.isPlayer) seller.tradesSinceChange++;
       },
     };
   }
@@ -184,7 +186,13 @@ export class Engine {
     this.cleanAcc += dt;
     if (this.cleanAcc >= 2) {
       cleanupBooks(this.state, ASSETS.map(a => a.id));
-      for (let i = 1; i < this.state.traders.length; i++) checkRekt(this.state.traders[i], this.state);
+      for (let i = 1; i < this.state.traders.length; i++) {
+        const t = this.state.traders[i];
+        if (t.rekt) continue;
+        // Both heavy ops moved here (off the per-trade hotpath).
+        if (t.tradesSinceChange > 0) maybeMutate(t, this.state);
+        checkRekt(t, this.state);
+      }
       this.cleanAcc = 0;
     }
     this.rektAcc += dt;

@@ -216,7 +216,8 @@ export function placeOrder(
     remaining -= fillQty;
     if (top.qty <= 0) opp.shift();
   }
-  if (remaining > 0 && !t.isPlayer) {
+  // Unfilled remainder rests on the book — for BOTH players and bots.
+  if (remaining > 0) {
     const ord = { id: S.orderId++, ownerId: traderId, px: +limitPx.toFixed(4), qty: remaining, ts: Date.now() };
     insertOrder(book, side === 'buy' ? 'bids' : 'asks', ord);
     t.openOrders.push({ assetId, side: side === 'buy' ? 'bids' : 'asks', id: ord.id });

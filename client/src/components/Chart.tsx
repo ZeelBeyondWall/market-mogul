@@ -5,6 +5,7 @@ import { fmt, fmtNum, fmtPct } from '../../../shared/engine/helpers';
 import { bestAsk, bestBid } from '../../../shared/engine/orderbook';
 import { useGame } from '../store/gameStore';
 import { Audio } from '../audio/audio';
+import { getTickFrac } from '../net/wsClient';
 
 export function Chart() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -71,7 +72,7 @@ export function Chart() {
     const lineStart = Math.max(0, hist.length - LINE_POINTS - 1);
     const lineHist = hist.slice(lineStart);
     const sliceW = cw / (LINE_POINTS - 1);
-    const tickFrac = eng.tickFrac;
+    const tickFrac = getTickFrac();
 
     let pMin = Infinity, pMax = -Infinity;
     if (chartCandles && visible.length) {

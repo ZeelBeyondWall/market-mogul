@@ -32,6 +32,8 @@ interface TickPayload {
   serverTime: number;
   prices: Record<string, number>;
   cash: number;
+  playerHoldings?: Record<string, any>;
+  playerClosing?: Record<string, boolean>;
   activeId: string;
   activeTF: string;
   activeCandles: { o: number; h: number; l: number; c: number; v: number }[];
@@ -54,7 +56,14 @@ export type C2SMsg =
 
 let ws: WebSocket | null = null;
 let reconnectTimer: number | null = null;
+let reconnectAttempt = 0;
 let serverTimeOffset = 0; // server - local
+let lastTickT = 0;
+
+export function getTickFrac(): number {
+  if (!lastTickT) return 0;
+  return Math.min(1, (performance.now() - lastTickT) / 100);
+}
 
 const WS_URL = (() => {
   // Defaults to localhost:8787 in dev. Override via VITE_WS_URL for prod deploy.
@@ -71,23 +80,35 @@ export function send(msg: C2SMsg): void {
 }
 
 export function connect(engine: Engine): void {
-  if (ws) ws.close();
-  ws = new WebSocket(WS_URL);
-  ws.onopen = () => {
+  // Stale-socket guard — detach old handlers BEFORE close to avoid double-reconnect
+  if (ws) {
+    try {
+      ws.onopen = null; ws.onclose = null; ws.onerror = null; ws.onmessage = null;
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) ws.close();
+    } catch {}
+  }
+  const sock = new WebSocket(WS_URL);
+  ws = sock;
+  sock.onopen = () => {
+    if (ws !== sock) return; // stale
+    reconnectAttempt = 0;
     useGame.getState().setConnected(true);
-    // Sync our persisted prefs to the (potentially restarted) server so candles
-    // and active asset match what the user expects.
     const s = useGame.getState();
     send({ type: 'setTF', payload: { tf: s.activeTF } });
     if (s.engine.state.active) send({ type: 'setActive', payload: { aid: s.engine.state.active } });
   };
-  ws.onclose = () => {
+  sock.onclose = () => {
+    if (ws !== sock) return; // stale
     useGame.getState().setConnected(false);
     if (reconnectTimer) window.clearTimeout(reconnectTimer);
-    reconnectTimer = window.setTimeout(() => connect(engine), 1500);
+    // Exponential backoff with jitter, capped at 30s
+    reconnectAttempt++;
+    const base = Math.min(30000, 1000 * Math.pow(1.5, Math.min(reconnectAttempt, 8)));
+    const delay = base + Math.random() * 500;
+    reconnectTimer = window.setTimeout(() => connect(engine), delay);
   };
-  ws.onerror = () => { /* let onclose handle reconnect */ };
-  ws.onmessage = (e) => {
+  sock.onerror = () => { /* let onclose handle reconnect */ };
+  sock.onmessage = (e) => {
     let msg: any;
     try { msg = JSON.parse(e.data); } catch { return; }
     switch (msg.type) {
@@ -163,7 +184,27 @@ function applySnapshot(engine: Engine, snap: SnapshotPayload): void {
 
 function applyTick(engine: Engine, tick: TickPayload): void {
   serverTimeOffset = tick.serverTime - Date.now();
-  engine.player().cash = tick.cash;
+  lastTickT = performance.now();
+  const p = engine.player();
+  p.cash = tick.cash;
+  // Merge player holdings instead of replacing — preserves in-flight optimistic edits
+  // (e.g. user typing in SL% input) until server echo arrives.
+  if (tick.playerHoldings) {
+    for (const aid of Object.keys(p.holdings)) {
+      const incoming = tick.playerHoldings[aid];
+      if (incoming) {
+        Object.assign(p.holdings[aid], incoming);
+      } else if (p.holdings[aid].shares !== 0) {
+        p.holdings[aid].shares = 0;
+        p.holdings[aid].avgCost = 0;
+        p.holdings[aid].sl = 0;
+        p.holdings[aid].tp = 0;
+        p.holdings[aid].slPct = 0;
+        p.holdings[aid].tpPct = 0;
+      }
+    }
+  }
+  if (tick.playerClosing) p.closing = tick.playerClosing;
   for (const aid of Object.keys(tick.prices)) {
     const ast = engine.state.assets[aid];
     if (ast) ast.lastPrice = tick.prices[aid];

@@ -1,6 +1,6 @@
 import type { AssetDef, NewsEventDef, StrategyId } from './types';
 
-export const BOT_COUNT = 2000;
+export const BOT_COUNT = 10000;
 export const CANDLE_MS = 2000;
 export const SAVE_KEY = 'marketMogul_v3';
 

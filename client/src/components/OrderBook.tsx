@@ -20,13 +20,13 @@ export function OrderBook() {
         {asks.length === 0 ? (
           <div className="ob-row ask"><div className="p" style={{ gridColumn: '1/-1', color: 'var(--dim)', textAlign: 'center' }}>no asks</div></div>
         ) : asks.map(o => {
-          const t = eng.state.traders[o.ownerId];
+          const name = (o as any).ownerName || eng.state.traders[o.ownerId]?.name || '';
           return (
             <div key={o.id} className="ob-row ask">
               <div className="bar" style={{ width: o.qty / maxQ * 100 + '%' }} />
               <div className="p">{fmt(o.px, o.px < 10 ? 4 : 2)}</div>
               <div className="q">{fmtNum(o.qty)}</div>
-              <div className="who">{t ? t.name.slice(0, 10) : ''}</div>
+              <div className="who">{name.slice(0, 10)}</div>
             </div>
           );
         })}
@@ -37,13 +37,13 @@ export function OrderBook() {
         {bids.length === 0 ? (
           <div className="ob-row bid"><div className="p" style={{ gridColumn: '1/-1', color: 'var(--dim)', textAlign: 'center' }}>no bids</div></div>
         ) : bids.map(o => {
-          const t = eng.state.traders[o.ownerId];
+          const name = (o as any).ownerName || eng.state.traders[o.ownerId]?.name || '';
           return (
             <div key={o.id} className="ob-row bid">
               <div className="bar" style={{ width: o.qty / maxQ * 100 + '%' }} />
               <div className="p">{fmt(o.px, o.px < 10 ? 4 : 2)}</div>
               <div className="q">{fmtNum(o.qty)}</div>
-              <div className="who">{t ? t.name.slice(0, 10) : ''}</div>
+              <div className="who">{name.slice(0, 10)}</div>
             </div>
           );
         })}

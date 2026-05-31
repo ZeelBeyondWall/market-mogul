@@ -13,10 +13,30 @@ import { TF_LIST, TF_MS, type TFKey, type StrategyId } from '../../../shared/eng
 import { buildSnapshot, type C2S, type S2C, type TickPayload } from './protocol';
 import { diskLoad, diskSave } from './persistence';
 
-// per-connection (single-user for now) selected TF
-let activeTF: TFKey = '5s';
+// Per-WS state — each connected client has its own active asset + TF.
+// (engine.state.active retained for snapshot fallback when no per-ws state.)
+interface ClientState {
+  activeAsset: string;
+  activeTF: TFKey;
+  lastOrderT: number; // ms timestamp of last accepted order (rate-limit)
+  orderInFlight: boolean;
+}
+const clientState: WeakMap<WebSocket, ClientState> = new WeakMap();
+function getCS(ws: WebSocket): ClientState {
+  let c = clientState.get(ws);
+  if (!c) {
+    c = { activeAsset: engine.state.active, activeTF: '5s', lastOrderT: 0, orderInFlight: false };
+    clientState.set(ws, c);
+  }
+  return c;
+}
 
 // Drain any pending close intents by firing market orders against current book.
+// Tracks no-progress retries — if 20 consecutive ticks see no fill, give up to
+// prevent CPU spin on illiquid / underwater positions.
+const closeProgress: Map<string, { lastShares: number; stuckTicks: number }> = new Map();
+const STUCK_TICKS_LIMIT = 20;
+
 function drainCloses(): void {
   const p = engine.player();
   if (!p.closing) return;
@@ -25,22 +45,41 @@ function drainCloses(): void {
     const h = p.holdings[aid];
     if (!h || h.shares === 0) {
       delete p.closing[aid];
+      closeProgress.delete(aid);
       if (h) { h.sl = 0; h.tp = 0; h.slPct = 0; h.tpPct = 0; }
       continue;
     }
-    if (h.shares > 0) {
-      placeOrder(engine.state, 0, aid, 'sell', h.shares, 0, 'market', engine.callbacks());
-    } else {
-      placeOrder(engine.state, 0, aid, 'buy', -h.shares, 0, 'market', engine.callbacks());
-    }
-    // Verify post-trade — if drained to 0 clean up immediately
+    const before = h.shares;
+    if (h.shares > 0) placeOrder(engine.state, 0, aid, 'sell', h.shares, 0, 'market', engine.callbacks());
+    else placeOrder(engine.state, 0, aid, 'buy', -h.shares, 0, 'market', engine.callbacks());
     const h2 = engine.player().holdings[aid];
     if (!h2 || h2.shares === 0) {
       delete p.closing[aid];
+      closeProgress.delete(aid);
       if (h2) { h2.sl = 0; h2.tp = 0; h2.slPct = 0; h2.tpPct = 0; }
+      continue;
+    }
+    // Track no-progress
+    const prog = closeProgress.get(aid) || { lastShares: before, stuckTicks: 0 };
+    if (h2.shares === prog.lastShares) prog.stuckTicks++;
+    else { prog.stuckTicks = 0; prog.lastShares = h2.shares; }
+    closeProgress.set(aid, prog);
+    if (prog.stuckTicks >= STUCK_TICKS_LIMIT) {
+      console.warn(`drainCloses giving up on ${aid} (${h2.shares} sh stuck — no liquidity / insufficient cash)`);
+      delete p.closing[aid];
+      closeProgress.delete(aid);
     }
   }
 }
+
+// Process-level safety nets so any uncaught throw doesn't kill the engine silently.
+process.on('uncaughtException', (e) => {
+  console.error('uncaughtException:', e);
+  try { diskSave(engine.state); } catch {}
+});
+process.on('unhandledRejection', (e) => {
+  console.error('unhandledRejection:', e);
+});
 
 const PORT = Number(process.env.PORT) || 8788;
 
@@ -101,9 +140,9 @@ app.get('/admin/stats', (_, res) => {
     aliveTraders: alive,
     rektTraders: traders.length - alive,
     totalCash, totalNet, totalVolume,
-    totalTrades: totalVolume, // proxy: total shares traded ≈ trade volume
+    totalTrades: totalVolume,
     activeAsset: engine.state.active,
-    activeTF,
+    activeTF: '5s', // per-WS now; admin shows default
     botCounts: stratCounts,
     assetCount: ASSETS.length,
     recentEvents: engine.state.events.slice(0, 10),
@@ -223,18 +262,34 @@ const clients = new Set<WebSocket>();
 function broadcast(msg: S2C) {
   const data = JSON.stringify(msg);
   for (const ws of clients) {
-    if (ws.readyState === WebSocket.OPEN) ws.send(data);
+    if (ws.readyState !== WebSocket.OPEN) continue;
+    try { ws.send(data); }
+    catch (e) {
+      console.error('broadcast send failed:', (e as Error).message);
+      try { ws.terminate(); } catch {}
+      clients.delete(ws);
+    }
   }
 }
 
 function sendSnapshot(ws: WebSocket) {
+  const cs = getCS(ws);
   const rank = engine.playerRank();
-  const snap = buildSnapshot(engine.state, engine.state.active, rank, activeTF);
-  // fill in net worths
-  snap.leaderboard = snap.leaderboard
+  const snap = buildSnapshot(engine.state, cs.activeAsset, rank, cs.activeTF);
+  // Compute net worth + sort, then trim to top 200 + always include player (id=0)
+  const full = snap.leaderboard
     .map(b => ({ ...b, net: traderNet(engine.state.traders[b.id], engine.state), strat: engine.state.traders[b.id].strat as string }))
     .sort((a, b) => b.net - a.net);
-  ws.send(JSON.stringify({ type: 'snapshot', payload: snap } satisfies S2C));
+  const TOP_N = 200;
+  const top = full.slice(0, TOP_N);
+  const playerInTop = top.some(b => b.id === 0);
+  if (!playerInTop) {
+    const me = full.find(b => b.id === 0);
+    if (me) top.push(me);
+  }
+  snap.leaderboard = top;
+  try { ws.send(JSON.stringify({ type: 'snapshot', payload: snap } satisfies S2C)); }
+  catch (e) { console.error('snapshot send failed:', (e as Error).message); }
 }
 
 // hooks for event/SL-TP broadcast
@@ -261,63 +316,96 @@ wss.on('connection', (ws) => {
   ws.on('error', () => clients.delete(ws));
 });
 
+const ORDER_MIN_INTERVAL_MS = 50; // per-WS rate limit
+
 function handleClientMessage(ws: WebSocket, msg: C2S) {
+  const cs = getCS(ws);
   switch (msg.type) {
     case 'setActive': {
-      if (engine.state.assets[msg.payload.aid]) engine.state.active = msg.payload.aid;
+      if (typeof msg.payload?.aid !== 'string') return;
+      if (engine.state.assets[msg.payload.aid]) cs.activeAsset = msg.payload.aid;
       sendSnapshot(ws);
       return;
     }
     case 'setTF': {
-      if ((TF_LIST as string[]).includes(msg.payload.tf)) {
-        activeTF = msg.payload.tf as TFKey;
+      if (typeof msg.payload?.tf === 'string' && (TF_LIST as string[]).includes(msg.payload.tf)) {
+        cs.activeTF = msg.payload.tf as TFKey;
         sendSnapshot(ws);
       }
       return;
     }
     case 'order': {
       const p = msg.payload;
+      // ---- Validate ----
+      if (!p || typeof p.aid !== 'string') return;
       const ast = engine.state.assets[p.aid];
       if (!ast) return;
-      const hold = engine.player().holdings[p.aid];
-      // simple guards
-      if (p.side === 'buy' && hold.shares < 0) {
-        ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: 'Cover short first' } } satisfies S2C));
+      if (!Number.isFinite(p.qty) || p.qty <= 0 || !Number.isInteger(p.qty) || p.qty > 1e8) {
+        ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: 'Invalid qty' } } satisfies S2C));
         return;
       }
-      if (p.side === 'sell' && hold.shares > 0) {
-        ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: 'Sell long first' } } satisfies S2C));
+      if (p.orderType !== 'market' && p.orderType !== 'limit') return;
+      if (p.orderType === 'limit' && (!Number.isFinite(p.limitPx) || (p.limitPx as number) <= 0)) {
+        ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: 'Invalid limit price' } } satisfies S2C));
         return;
       }
-      const lpx = p.orderType === 'market' ? 0 : (p.limitPx ?? ast.lastPrice);
-      const res = placeOrder(engine.state, 0, p.aid, p.side, p.qty, lpx, p.orderType, engine.callbacks());
-      const h = engine.player().holdings[p.aid];
-      if (h && h.shares !== 0) {
-        if (p.slPct && p.slPct > 0) h.slPct = p.slPct;
-        if (p.tpPct && p.tpPct > 0) h.tpPct = p.tpPct;
+      // Rate limit
+      const now = Date.now();
+      if (cs.orderInFlight || now - cs.lastOrderT < ORDER_MIN_INTERVAL_MS) {
+        ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: 'Too fast' } } satisfies S2C));
+        return;
       }
-      ws.send(JSON.stringify({ type: 'order_result', payload: { ok: true, filled: res.filled, cost: res.cost } } satisfies S2C));
+      cs.orderInFlight = true;
+      try {
+        const hold = engine.player().holdings[p.aid];
+        if (!hold) return;
+        if (p.side === 'buy' && hold.shares < 0) {
+          ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: 'Cover short first' } } satisfies S2C));
+          return;
+        }
+        if (p.side === 'sell' && hold.shares > 0) {
+          ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: 'Sell long first' } } satisfies S2C));
+          return;
+        }
+        const lpx = p.orderType === 'market' ? 0 : (p.limitPx ?? ast.lastPrice);
+        const res = placeOrder(engine.state, 0, p.aid, p.side, p.qty, lpx, p.orderType, engine.callbacks());
+        const h = engine.player().holdings[p.aid];
+        if (h) {
+          // Allow explicit 0 to CLEAR — only check undefined.
+          if (p.slPct !== undefined) { h.slPct = Math.max(0, Math.min(1000, +p.slPct || 0)); h.sl = 0; }
+          if (p.tpPct !== undefined) { h.tpPct = Math.max(0, Math.min(10000, +p.tpPct || 0)); h.tp = 0; }
+        }
+        ws.send(JSON.stringify({ type: 'order_result', payload: { ok: true, filled: res.filled, cost: res.cost } } satisfies S2C));
+        broadcastTickNow();
+      } finally {
+        cs.lastOrderT = Date.now();
+        cs.orderInFlight = false;
+      }
       return;
     }
     case 'close': {
-      // Mark as pending close — server will keep firing market orders each tick
-      // until the position is fully drained (handles thin/empty books).
+      if (typeof msg.payload?.aid !== 'string') return;
       const p = engine.player();
       if (!p.closing) p.closing = {};
       p.closing[msg.payload.aid] = true;
-      drainCloses(); // immediate attempt
+      drainCloses();
+      broadcastTickNow();
       return;
     }
     case 'cancelClose': {
+      if (typeof msg.payload?.aid !== 'string') return;
       const p = engine.player();
       if (p.closing) delete p.closing[msg.payload.aid];
+      broadcastTickNow();
       return;
     }
     case 'setSLTP': {
+      if (typeof msg.payload?.aid !== 'string') return;
       const h = engine.player().holdings[msg.payload.aid];
       if (h) {
-        if (msg.payload.slPct !== undefined) { h.slPct = msg.payload.slPct; h.sl = 0; }
-        if (msg.payload.tpPct !== undefined) { h.tpPct = msg.payload.tpPct; h.tp = 0; }
+        if (msg.payload.slPct !== undefined) { h.slPct = Math.max(0, Math.min(1000, +msg.payload.slPct || 0)); h.sl = 0; }
+        if (msg.payload.tpPct !== undefined) { h.tpPct = Math.max(0, Math.min(10000, +msg.payload.tpPct || 0)); h.tp = 0; }
+        broadcastTickNow(); // instant chart line update
       }
       return;
     }
@@ -327,33 +415,62 @@ function handleClientMessage(ws: WebSocket, msg: C2S) {
 // ---- TICK LOOP (server-authoritative, 10 Hz) ----
 const TICK_MS = 100;
 let lastT = performance.now();
-setInterval(() => {
-  const now = performance.now();
-  engine.step(now);
-  drainCloses();
-  lastT = now;
-  // light broadcast: prices + active candle
+
+function buildTickFor(ws: WebSocket): TickPayload {
+  const cs = getCS(ws);
   const prices: Record<string, number> = {};
   ASSETS.forEach(a => { prices[a.id] = engine.state.assets[a.id].lastPrice; });
-  const active = engine.state.active;
-  const ast = engine.state.assets[active];
-  const series = ast.series[activeTF];
-  const tick: TickPayload = {
+  const active = cs.activeAsset;
+  const ast = engine.state.assets[active] || engine.state.assets[engine.state.active];
+  const tf = cs.activeTF;
+  const series = ast.series[tf];
+  const p = engine.player();
+  const playerHoldings: Record<string, any> = {};
+  for (const aid of Object.keys(p.holdings)) {
+    const h = p.holdings[aid];
+    if (h && h.shares !== 0) playerHoldings[aid] = h;
+  }
+  return {
     serverTime: Date.now(),
     prices,
-    cash: engine.player().cash,
+    cash: p.cash,
+    playerHoldings,
+    playerClosing: p.closing || {},
     activeId: active,
-    activeTF,
+    activeTF: tf,
     activeCandles: series.candles.slice(-60),
     activeCurCandle: series.curCandle ? { ...series.curCandle } : null,
     activeCandleStartT: series.candleStartT,
-    activeTFms: TF_MS[activeTF],
+    activeTFms: TF_MS[tf],
     activeHistory: ast.history.slice(-120),
     activeVolumeHist: ast.volumeHist.slice(-120),
     topBidsActive: ast.book.bids.slice(0, 10).map(o => ({ px: o.px, qty: o.qty, ownerName: engine.state.traders[o.ownerId]?.name || '' })),
     topAsksActive: ast.book.asks.slice(0, 10).map(o => ({ px: o.px, qty: o.qty, ownerName: engine.state.traders[o.ownerId]?.name || '' })),
   };
-  broadcast({ type: 'tick', payload: tick });
+}
+
+function broadcastTickNow(): void {
+  for (const ws of clients) {
+    if (ws.readyState !== WebSocket.OPEN) continue;
+    try {
+      const payload = buildTickFor(ws);
+      ws.send(JSON.stringify({ type: 'tick', payload } satisfies S2C));
+    } catch (e) {
+      console.error('tick send failed:', (e as Error).message);
+    }
+  }
+}
+
+setInterval(() => {
+  try {
+    const now = performance.now();
+    engine.step(now);
+    drainCloses();
+    lastT = now;
+    broadcastTickNow();
+  } catch (e) {
+    console.error('tick loop error:', e);
+  }
 }, TICK_MS);
 
 // periodic full snapshot every 5s to resync

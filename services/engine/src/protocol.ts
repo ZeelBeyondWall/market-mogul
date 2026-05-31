@@ -58,12 +58,16 @@ export interface TickPayload {
   serverTime: number;
   prices: Record<string, number>;
   cash: number;
+  // Only NON-ZERO player holdings — keeps tick payload small at 100+ assets.
+  // Client reflects position changes within 100ms of trade (no waiting for snapshot).
+  playerHoldings: Record<string, Holding>;
+  playerClosing: Record<string, boolean>;
   activeId: string;
   activeTF: string;
   activeCandles: { o: number; h: number; l: number; c: number; v: number }[];
   activeCurCandle: { o: number; h: number; l: number; c: number; v: number } | null;
   activeCandleStartT: number;
-  activeTFms: number; // duration of the current TF (ms) for client-side progress
+  activeTFms: number;
   activeHistory: number[];
   activeVolumeHist: number[];
   topBidsActive?: { px: number; qty: number; ownerName: string }[];
