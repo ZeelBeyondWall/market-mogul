@@ -88,6 +88,12 @@ export function executeTrade(
   ast.hi = Math.max(ast.hi, px);
   ast.lo = Math.min(ast.lo, px);
   ast.volume += qty;
+  // Capture every trade print into the current candle so wicks form between samples
+  if (ast.curCandle) {
+    ast.curCandle.h = Math.max(ast.curCandle.h, px);
+    ast.curCandle.l = Math.min(ast.curCandle.l, px);
+    ast.curCandle.c = px;
+  }
 
   if (buyer.isPlayer && onPlayerBuy) onPlayerBuy(qty);
   else if (seller.isPlayer && onPlayerSellProfit) onPlayerSellProfit();

@@ -1,6 +1,6 @@
 import { useGame } from '../store/gameStore';
 import { initAudio, resumeAudio } from '../audio/audio';
-import { fmt } from '../engine/helpers';
+import { fmt } from '../../../shared/engine/helpers';
 import { showModal } from './Modal';
 
 export function Splash() {

@@ -21,6 +21,7 @@ export interface Order {
   px: number;
   qty: number;
   ts: number;
+  ownerName?: string; // populated client-side from snapshots for display
 }
 
 export interface Book {

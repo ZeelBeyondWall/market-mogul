@@ -1,26 +1,27 @@
-import { STRATEGY_LABELS } from '../engine/constants';
-import { fmt } from '../engine/helpers';
-import { traderNet } from '../engine/strategies';
+import { STRATEGY_LABELS } from '../../../shared/engine/constants';
+import { fmt } from '../../../shared/engine/helpers';
 import { useGame } from '../store/gameStore';
 import { Audio } from '../audio/audio';
 
 const FILTERS = ['all','yolo','fomo','gambler','diamond','paper','permabull','permabear','lazy','newschase','conservative','value','trend','mm','copycat','revenge'];
 
 export function BotsTab() {
-  const eng = useGame(s => s.engine);
   useGame(s => s.tick);
+  const leaderboard = useGame(s => s.leaderboard);
+  const total = useGame(s => s.totalTraders);
   const botFilter = useGame(s => s.botFilter);
   const setBotFilter = useGame(s => s.setBotFilter);
 
-  const sorted = eng.state.traders.map(t => ({ t, net: traderNet(t, eng.state) })).sort((a, b) => b.net - a.net);
-  const filtered = botFilter === 'all' ? sorted : sorted.filter(x => x.t.isPlayer || x.t.strat === botFilter);
+  const filtered = botFilter === 'all'
+    ? leaderboard
+    : leaderboard.filter(x => x.id === 0 || x.strat === botFilter);
   const top = filtered.slice(0, 60);
-  const playerIdx = filtered.findIndex(x => x.t.isPlayer);
+  const playerIdx = filtered.findIndex(x => x.id === 0);
   const showPlayer = playerIdx >= 60;
 
   return (
     <div className="section">
-      <h3>Leaderboard <span className="badge">{sorted.length}</span></h3>
+      <h3>Leaderboard <span className="badge">{total}</span></h3>
       <div className="bot-filter">
         {FILTERS.map(s => (
           <button key={s} className={botFilter === s ? 'on' : ''} onClick={() => { setBotFilter(s); Audio.click(); }}>
@@ -30,15 +31,18 @@ export function BotsTab() {
       </div>
       <div>
         {top.map(x => {
-          const rank = sorted.indexOf(x) + 1;
-          const me = x.t.isPlayer ? ' me' : '';
-          const rekt = x.t.rekt ? ' rekt' : '';
-          const strat = x.t.isPlayer ? 'YOU' : (STRATEGY_LABELS[x.t.strat] || x.t.strat).toUpperCase();
+          const rank = leaderboard.indexOf(x) + 1;
+          const me = x.id === 0 ? ' me' : '';
+          const rekt = x.rekt ? ' rekt' : '';
+          const strat = x.id === 0 ? 'YOU' : (STRATEGY_LABELS[x.strat] || x.strat).toUpperCase();
           return (
-            <div key={x.t.id} className={'bot' + me + rekt}>
+            <div key={x.id} className={'bot' + me + rekt}>
               <div className="bot-rank">#{rank}</div>
               <div className="bot-info">
-                <div className="bot-name">{x.t.name}{x.t.rekt && <span style={{ color: 'var(--red)', fontSize: 9, fontWeight: 700, marginLeft: 6 }}>REKT</span>}</div>
+                <div className="bot-name">
+                  {x.name}
+                  {x.rekt && <span style={{ color: 'var(--red)', fontSize: 9, fontWeight: 700, marginLeft: 6 }}>REKT</span>}
+                </div>
                 <div className="bot-meta">{strat}</div>
               </div>
               <div className="bot-net">{fmt(x.net)}</div>

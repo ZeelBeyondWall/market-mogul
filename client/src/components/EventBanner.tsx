@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGame } from '../store/gameStore';
-import type { NewsEventDef } from '../engine/types';
+import type { NewsEventDef } from '../../../shared/engine/types';
 
 export function EventBanner() {
   const eng = useGame(s => s.engine);

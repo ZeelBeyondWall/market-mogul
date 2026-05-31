@@ -10,4 +10,7 @@ dist/
 *.tsbuildinfo
 vite.config.d.ts
 vite.config.js
+server/state.json
+server/dist/
+client/dist/
 

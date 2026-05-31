@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGame } from '../store/gameStore';
-import { roundShares, fmt, fmtNum, fmtPct } from '../engine/helpers';
+import { roundShares, fmt, fmtNum } from '../../../shared/engine/helpers';
 import { showModal } from './Modal';
+import { send } from '../net/wsClient';
 
 type Mode = 'buy' | 'short';
 
@@ -69,18 +70,22 @@ export function TradePanel() {
   const submit = async (mode: Mode, useMax: boolean) => {
     const blocked = (mode === 'buy' && hold.shares < 0) || (mode === 'short' && hold.shares > 0);
     if (blocked) { await showModal('Blocked', mode === 'buy' ? 'Cover short via Positions CUT first' : 'Sell long via Positions CUT first'); return; }
-    let q = useMax ? modeMaxQty(eng, aid, mode) : qty;
+    const q = useMax ? modeMaxQty(eng, aid, mode) : qty;
     if (q <= 0) return;
     const lpx = +limitPx || ast.lastPrice;
-    eng.placeOrder(mode === 'buy' ? 'buy' : 'sell', q, orderType, lpx);
-    // attach SL/TP if provided
-    const sl = +(slRef.current?.value || 0);
-    const tp = +(tpRef.current?.value || 0);
-    const h = eng.player().holdings[aid];
-    if (h && h.shares !== 0) {
-      if (sl > 0) h.sl = sl;
-      if (tp > 0) h.tp = tp;
-    }
+    const sl = +(slRef.current?.value || 0) || undefined;
+    const tp = +(tpRef.current?.value || 0) || undefined;
+    send({
+      type: 'order',
+      payload: {
+        aid,
+        side: mode === 'buy' ? 'buy' : 'sell',
+        qty: q,
+        orderType,
+        limitPx: lpx,
+        sl, tp,
+      },
+    });
   };
 
   const buyMax = modeMaxQty(eng, aid, 'buy');

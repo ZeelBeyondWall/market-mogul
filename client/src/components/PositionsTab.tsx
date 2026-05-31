@@ -1,7 +1,8 @@
-import { ASSETS } from '../engine/constants';
-import { fmt, fmtNum, fmtPct } from '../engine/helpers';
+import { ASSETS } from '../../../shared/engine/constants';
+import { fmt, fmtNum, fmtPct } from '../../../shared/engine/helpers';
 import { useGame } from '../store/gameStore';
 import { Audio } from '../audio/audio';
+import { send } from '../net/wsClient';
 
 export function PositionsTab() {
   const eng = useGame(s => s.engine);
@@ -21,14 +22,16 @@ export function PositionsTab() {
   });
 
   const updateSLTP = (aid: string, key: 'sl' | 'tp', val: string) => {
+    const num = +val || 0;
     const h = eng.player().holdings[aid];
-    if (h) h[key] = +val || 0;
+    if (h) h[key] = num; // optimistic
+    send({ type: 'setSLTP', payload: { aid, [key]: num } as { aid: string; sl?: number; tp?: number } });
   };
 
   const clearSLTP = (aid: string) => {
     const h = eng.player().holdings[aid];
     if (h) { h.sl = 0; h.tp = 0; }
-    eng; // force ref
+    send({ type: 'setSLTP', payload: { aid, sl: 0, tp: 0 } });
     Audio.click();
   };
 
@@ -61,7 +64,7 @@ export function PositionsTab() {
                     {(r.pl >= 0 ? '+' : '') + fmt(r.pl)}<br/>
                     <small style={{ opacity: .7, fontSize: 9 }}>{fmtPct(r.plPct)}</small>
                   </div>
-                  <button onClick={() => { eng.closePosition(r.a.id); Audio.click(); }}>CUT</button>
+                  <button onClick={() => { send({ type: 'close', payload: { aid: r.a.id } }); Audio.click(); }}>CUT</button>
                 </div>
                 <div className="pos-sltp">
                   <label>SL</label>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ASSETS } from '../engine/constants';
-import { fmt, fmtPct } from '../engine/helpers';
+import { ASSETS } from '../../../shared/engine/constants';
+import { fmt, fmtPct } from '../../../shared/engine/helpers';
 import { useGame } from '../store/gameStore';
 
 export function Ticker() {

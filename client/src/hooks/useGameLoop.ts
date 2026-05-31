@@ -1,17 +1,18 @@
 import { useEffect } from 'react';
 import { useGame } from '../store/gameStore';
+import { connect } from '../net/wsClient';
 
-// Drives the engine at every frame. Bumps store's tick to trigger React re-render.
+// Connects WS on mount + drives render-only RAF loop for chart smoothness.
+// Engine is hydrated by snapshots/ticks coming from the server.
 export function useGameLoop(): void {
   const engine = useGame.getState().engine;
   const notifyTick = useGame.getState().notifyTick;
 
   useEffect(() => {
+    connect(engine);
     let raf = 0;
     let lastNotify = 0;
     const loop = (now: number) => {
-      engine.step(now);
-      // re-render at ~30fps to avoid spamming React
       if (now - lastNotify > 33) {
         notifyTick();
         lastNotify = now;

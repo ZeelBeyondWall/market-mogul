@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { ASSETS, CANDLE_MS } from '../engine/constants';
-import { fmt, fmtNum, fmtPct } from '../engine/helpers';
-import { bestAsk, bestBid } from '../engine/orderbook';
+import { ASSETS, CANDLE_MS } from '../../../shared/engine/constants';
+import { fmt, fmtNum, fmtPct } from '../../../shared/engine/helpers';
+import { bestAsk, bestBid } from '../../../shared/engine/orderbook';
 import { useGame } from '../store/gameStore';
 import { Audio } from '../audio/audio';
 
@@ -69,12 +69,20 @@ export function Chart() {
     const tickFrac = eng.tickFrac;
 
     let pMin = Infinity, pMax = -Infinity;
-    if (chartCandles && visible.length) visible.forEach(c => { pMin = Math.min(pMin, c.l); pMax = Math.max(pMax, c.h); });
-    if (chartLine) lineHist.forEach(p => { pMin = Math.min(pMin, p); pMax = Math.max(pMax, p); });
+    // Prefer candle range when candles are shown (gives visible wicks).
+    // Line only widens range if candles are off.
+    if (chartCandles && visible.length) {
+      visible.forEach(c => { pMin = Math.min(pMin, c.l); pMax = Math.max(pMax, c.h); });
+    } else if (chartLine) {
+      lineHist.forEach(p => { pMin = Math.min(pMin, p); pMax = Math.max(pMax, p); });
+    }
     pMin = Math.min(pMin, ast.lastPrice);
     pMax = Math.max(pMax, ast.lastPrice);
-    if (!isFinite(pMin)) { pMin = ast.lastPrice * 0.99; pMax = ast.lastPrice * 1.01; }
-    const pad = (pMax - pMin) * 0.08 || ast.lastPrice * 0.01 || 1;
+    if (!isFinite(pMin) || pMin === pMax) {
+      pMin = ast.lastPrice * 0.995;
+      pMax = ast.lastPrice * 1.005;
+    }
+    const pad = (pMax - pMin) * 0.15 || ast.lastPrice * 0.005 || 1;
     pMin -= pad; pMax += pad;
     const range = pMax - pMin || 1;
 
