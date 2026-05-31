@@ -144,8 +144,16 @@ export function connect(engine: Engine): void {
       case 'order_result': {
         if (!msg.payload.ok && msg.payload.reason) {
           engine.state.events.unshift({ type: 'news', title: '✗ ' + msg.payload.reason, desc: '', t: Date.now() });
-        } else if (msg.payload.ok && msg.payload.filled > 0) {
-          Audio.buy(); // generic confirmation sound
+          // v8.1: surface the rejection as an obvious toast — was silently failing.
+          useGame.getState().pushToast(msg.payload.reason, 'err');
+        } else if (msg.payload.ok) {
+          if (msg.payload.filled > 0) {
+            Audio.buy();
+            useGame.getState().pushToast(`✓ Filled ${msg.payload.filled} sh @ $${(msg.payload.cost / msg.payload.filled).toFixed(2)}`, 'ok');
+          } else {
+            // Order accepted but no immediate fill (rested as limit on book).
+            useGame.getState().pushToast('Order placed — resting on book', 'info');
+          }
         }
         break;
       }

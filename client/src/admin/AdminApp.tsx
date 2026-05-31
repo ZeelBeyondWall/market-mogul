@@ -71,14 +71,24 @@ export function AdminApp() {
 
   useEffect(() => { document.body.setAttribute('data-admin', '1'); return () => { document.body.removeAttribute('data-admin'); }; }, []);
 
-  const flagsActive = economy?.flags
-    ? Object.entries(economy.flags).filter(([k, v]) => {
-        if (typeof v === 'boolean') return (k === 'maintenanceMode' || k === 'tradingHalted' || k === 'registrationDisabled') ? v : !v;
-        if (typeof v === 'string') return v.length > 0;
-        if (typeof v === 'number') return v !== 1 && k !== 'volatilityMult' && k !== 'spreadMult' && k !== 'activityMult'; // exclude defaults
-        return false;
-      }).length
-    : 0;
+  // v8.1: explicit list of "abnormal" states to count for badge.
+  // Previously the auto-flip logic counted new flags (botsRespectPlayerLevel=false)
+  // as active when default, showing a phantom (1) badge.
+  const flagsActive = (() => {
+    const f: any = economy?.flags;
+    if (!f) return 0;
+    let n = 0;
+    if (f.maintenanceMode) n++;
+    if (f.tradingHalted) n++;
+    if (f.botsEnabled === false) n++;
+    if (f.eventsEnabled === false) n++;
+    if (f.registrationDisabled) n++;
+    if (f.broadcastBanner) n++;
+    if (typeof f.volatilityMult === 'number' && f.volatilityMult !== 1) n++;
+    if (typeof f.spreadMult === 'number' && f.spreadMult !== 1) n++;
+    if (typeof f.activityMult === 'number' && f.activityMult !== 1) n++;
+    return n;
+  })();
 
   const pageEl = (() => {
     switch (page) {

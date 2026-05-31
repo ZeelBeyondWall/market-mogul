@@ -51,6 +51,8 @@ interface GameStore extends UIPrefs {
   tradingHalted: boolean;
   dailyMissions: MissionState[];
   weeklyMissions: MissionState[];
+  // v8.1: transient toast for order results (success / failure)
+  toast: { msg: string; kind: 'ok' | 'err' | 'info'; ts: number } | null;
   setActive: (aid: string) => void;
   setOrderType: (t: 'market' | 'limit') => void;
   setActiveTab: (t: TabId) => void;
@@ -59,6 +61,7 @@ interface GameStore extends UIPrefs {
   setBotFilter: (f: string) => void;
   setPlayerExtras: (s: { stats: PlayerStats; bonus: number; streak: number; daily: MissionState[]; weekly: MissionState[]; level: number; xp: number; xpAtCurrent: number; xpToNext: number }) => void;
   setServerFlags: (s: { banner: string; maintenanceMode: boolean; tradingHalted: boolean }) => void;
+  pushToast: (msg: string, kind?: 'ok' | 'err' | 'info') => void;
   toggleChartLayer: (k: keyof ChartToggles) => void;
   toggleMute: () => void;
   hideSplash: () => void;
@@ -145,6 +148,7 @@ export const useGame = create<GameStore>((set, get) => {
     tradingHalted: false,
     dailyMissions: [],
     weeklyMissions: [],
+    toast: null,
     ...initialPrefs,
     setActive: (aid) => {
       engine.state.active = aid;
@@ -189,6 +193,11 @@ export const useGame = create<GameStore>((set, get) => {
       xpToNext: s.xpToNext,
     }),
     setServerFlags: (s) => set({ banner: s.banner, maintenanceMode: s.maintenanceMode, tradingHalted: s.tradingHalted }),
+    pushToast: (msg, kind = 'info') => {
+      // Use Date.now() inside callback (safe — not in render).
+      const t = { msg, kind, ts: typeof performance !== 'undefined' ? performance.now() : 0 };
+      set({ toast: t });
+    },
     setTheme: (t) => { applyTheme(t); set({ theme: t }); persist(); },
     setReduceMotion: (v) => { set({ reduceMotion: v }); persist(); },
     setShowParticles: (v) => { set({ showParticles: v }); persist(); },

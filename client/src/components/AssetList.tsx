@@ -18,11 +18,8 @@ export function AssetList() {
   const active = eng.state.active;
   const nw = eng.netWorth();
   const [query, setQuery] = useState('');
-  const [openCats, setOpenCats] = useState<Record<string, boolean>>(() => {
-    const o: Record<string, boolean> = {};
-    CATEGORY_ORDER.forEach(c => { o[c] = true; });
-    return o;
-  });
+  // v8.1: default ALL categories CLOSED — user expands what they want to browse.
+  const [openCats, setOpenCats] = useState<Record<string, boolean>>(() => ({}));
 
   const q = query.trim().toUpperCase();
   const inMarket = ASSETS.filter(a => a.market === activeMarket);
@@ -87,7 +84,7 @@ export function AssetList() {
         {CATEGORY_ORDER.map(cat => {
           const items = grouped[cat];
           if (!items || !items.length) return null;
-          const open = openCats[cat] !== false;
+          const open = openCats[cat] === true;
           return (
             <div key={cat} className="al-cat">
               <button className="al-cat-head" onClick={() => { toggleCat(cat); Audio.click(); }}>
@@ -119,6 +116,20 @@ function AssetRow({ a, eng, nw, active, playerLevel, setActive, watched, toggleW
   const tickClass = ast.lastPrice > prevHist ? 'up' : ast.lastPrice < prevHist ? 'dn' : 'flat';
   const sh = eng.player().holdings[a.id]?.shares || 0;
   const hpct = sh !== 0 && nw > 0 ? Math.min(100, Math.abs(sh) * ast.lastPrice / nw * 100) : 0;
+
+  // v8.1: mini sparkline from last 20 history points — adds visual life to each row
+  const hist: number[] = (ast.history || []).slice(-20);
+  let sparkPath = '';
+  if (hist.length >= 2) {
+    const mn = Math.min(...hist), mx = Math.max(...hist);
+    const rg = (mx - mn) || 1;
+    sparkPath = hist.map((p, i) => {
+      const x = (i / (hist.length - 1)) * 60;
+      const y = 14 - ((p - mn) / rg) * 12 - 1;
+      return (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+    }).join(' ');
+  }
+  const sparkColor = chg >= 0 ? 'var(--green)' : 'var(--red)';
   return (
     <div
       className={'asset-v8' + (active === a.id ? ' active' : '') + (locked ? ' locked' : '')}
@@ -140,6 +151,11 @@ function AssetRow({ a, eng, nw, active, playerLevel, setActive, watched, toggleW
         <span className={'av-chg ' + chgClass}>{tick} {fmtPct(chg)}</span>
       </div>
       {hpct > 0 && <div className="av-hold-bar" style={{ width: hpct + '%' }} />}
+      {sparkPath && (
+        <svg className="av-spark" viewBox="0 0 60 14" preserveAspectRatio="none">
+          <path d={sparkPath} stroke={sparkColor} />
+        </svg>
+      )}
       <button
         className={'av-star' + (watched ? ' on' : '')}
         onClick={(e) => { e.stopPropagation(); toggleWatch(a.id); Audio.click(); }}

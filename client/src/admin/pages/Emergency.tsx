@@ -412,56 +412,22 @@ export default function Emergency() {
           <div className="a-empty">Loading health…</div>
         ) : (
           <>
-            <div className="a-grid-3" style={{ marginBottom: 14 }}>
-              <StatCard
-                label="Uptime"
-                value={fmtDuration(health.uptimeSec)}
-                icon="⏱"
-              />
-              <StatCard
-                label="Memory"
-                value={`${memUsedMb.toFixed(0)} / ${memTotalMb.toFixed(0)} MB`}
-                icon="💾"
-                tone={memWarn ? 'warn' : undefined}
-                sub={memPct.toFixed(1) + '% heap used'}
-              />
-              <StatCard
-                label="Traders"
-                value={fmtNum(health.tradersCount)}
-                icon="👥"
-              />
-              <StatCard
-                label="Clients"
-                value={fmtNum(health.clientCount)}
-                icon="🔌"
-              />
-              <StatCard
-                label="Assets"
-                value={fmtNum(health.assetsCount)}
-                icon="📈"
-              />
-              <StatCard
-                label="PID"
-                value={String(health.pid)}
-                icon="🆔"
-              />
+            {/* v8.1: compact horizontal summary instead of cramped 3-col cards */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, marginBottom: 14 }}>
+              <HealthKV label="Uptime"  value={fmtDuration(health.uptimeSec)} />
+              <HealthKV label="Memory"  value={`${memUsedMb.toFixed(0)} / ${memTotalMb.toFixed(0)} MB`} tone={memWarn ? 'warn' : undefined} />
+              <HealthKV label="Traders" value={fmtNum(health.tradersCount)} />
+              <HealthKV label="Clients" value={fmtNum(health.clientCount)} />
+              <HealthKV label="Assets"  value={fmtNum(health.assetsCount)} />
+              <HealthKV label="PID"     value={String(health.pid)} />
             </div>
             <div>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: 11,
-                color: 'var(--a-text-mute)',
-                marginBottom: 4,
-              }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--a-text-mute)', marginBottom: 4 }}>
                 <span>Heap usage</span>
                 <span>{memPct.toFixed(1)}%</span>
               </div>
               <div className="a-meter">
-                <div
-                  className={'a-meter-fill' + (memWarn ? ' warn' : '')}
-                  style={{ width: Math.min(100, memPct).toFixed(1) + '%' }}
-                />
+                <div className={'a-meter-fill' + (memWarn ? ' warn' : '')} style={{ width: Math.min(100, memPct).toFixed(1) + '%' }} />
               </div>
             </div>
           </>
@@ -494,5 +460,15 @@ export default function Emergency() {
         onCancel={closeConfirm}
       />
     </>
+  );
+}
+
+// v8.1: inline KV pair for server-health summary (avoids cramped 3-col grid)
+function HealthKV({ label, value, tone }: { label: string; value: string; tone?: 'warn' }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 80 }}>
+      <span style={{ fontSize: 9, color: 'var(--a-text-mute)', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>{label}</span>
+      <span style={{ fontSize: 16, fontWeight: 700, color: tone === 'warn' ? 'var(--a-amber)' : 'var(--a-text)', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+    </div>
   );
 }

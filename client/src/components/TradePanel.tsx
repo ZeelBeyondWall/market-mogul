@@ -205,16 +205,16 @@ export function TradePanel() {
         </button>
       </div>
 
-      {/* SELL / SHORT side */}
-      <div className={'dbl-btn sell' + (sellIsRisky ? ' risky' : '')}>
+      {/* SELL / SHORT side — visual matches BUY (normal action); modal on first short remains as safety */}
+      <div className="dbl-btn sell">
         <button
           className="a"
           disabled={sq <= 0 || sRev < 0}
           onClick={() => submit('short', false)}
-          title={sellReason || (isLong ? 'Sell shares to close your long' : isFlat ? '⚠ Opens a SHORT — you receive cash but owe shares back' : 'Add to short (risky)')}
+          title={sellReason || (isLong ? 'Sell shares to close your long' : isFlat ? 'Open a short — confirm dialog explains' : 'Add to existing short')}
         >
           <span>{sellLabel} {fmt(sRev < 0 ? 0 : sRev)}</span>
-          <small>{sellReason || (fmtNum(sq) + ' sh' + (sellIsRisky ? ' ⚠' : ''))}</small>
+          <small>{sellReason || (fmtNum(sq) + ' sh')}</small>
         </button>
         <button className="b" disabled={shortMax <= 0} onClick={() => submit('short', true)}>
           <span>MAX {fmt(sMaxRev < 0 ? 0 : sMaxRev)}</span>

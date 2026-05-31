@@ -946,3 +946,42 @@ main{
   font-family:inherit;font-weight:600;transition:all .12s;
 }
 .trade-advanced-toggle:hover{border-color:var(--accent);color:var(--accent);background:rgba(245,185,66,.04)}
+
+/* === ORDER TOAST v8.1 === */
+.order-toast{
+  position:fixed;bottom:90px;right:20px;z-index:500;
+  display:flex;align-items:center;gap:10px;
+  padding:12px 18px;border-radius:10px;
+  font-family:inherit;font-size:13px;font-weight:600;letter-spacing:.3px;
+  background:linear-gradient(180deg,#101827,#0a1120);
+  border:1px solid #1a2438;box-shadow:0 12px 32px rgba(0,0,0,.5);
+  animation:toastIn .25s cubic-bezier(.16,1,.3,1);max-width:380px;
+}
+.order-toast .ot-icon{font-size:18px;font-weight:800}
+.order-toast-ok{border-left:3px solid var(--green);color:#fff}
+.order-toast-ok .ot-icon{color:var(--green)}
+.order-toast-err{border-left:3px solid var(--red);color:#fecaca}
+.order-toast-err .ot-icon{color:var(--red)}
+.order-toast-info{border-left:3px solid var(--blue);color:#bfdbfe}
+.order-toast-info .ot-icon{color:var(--blue)}
+@keyframes toastIn{from{opacity:0;transform:translateY(20px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+/* v8.1: remove the risky red on sell — user said "sell is normal as buy" */
+.dbl-btn.sell.risky .a{background:linear-gradient(180deg,#fbbf24,#d97706) !important;color:#000 !important;border:none}
+.dbl-btn.sell.risky .a::before{content:none}
+.dbl-btn.sell.risky .b{background:linear-gradient(180deg,#b45309,#7c2d12)}
+
+/* === ASSET CARD MINI SPARKLINE v8.1 === */
+.av-spark{position:absolute;right:32px;top:8px;width:60px;height:16px;opacity:.55;pointer-events:none}
+.av-spark path{fill:none;stroke-width:1.2;vector-effect:non-scaling-stroke}
+
+/* === PRICE TICK FLASH === */
+@keyframes priceTickUp{0%{background:rgba(34,197,94,.35)}100%{background:transparent}}
+@keyframes priceTickDn{0%{background:rgba(239,68,68,.35)}100%{background:transparent}}
+.tick-up{animation:priceTickUp .6s ease-out}
+.tick-dn{animation:priceTickDn .6s ease-out}
+
+/* === BUY/SELL CLICK PULSE === */
+.dbl-btn .a:active:not(:disabled),.dbl-btn .b:active:not(:disabled){
+  transform:scale(.97);filter:brightness(.95);
+}

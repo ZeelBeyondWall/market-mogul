@@ -17,6 +17,7 @@ import { ParticleSpawner } from './components/Particles';
 import { Mascot } from './components/Mascot';
 import { AdminBanner } from './components/AdminBanner';
 import { MarketBar } from './components/MarketBar';
+import { OrderToast } from './components/OrderToast';
 
 export function App() {
   useGameLoop();
@@ -56,6 +57,7 @@ export function App() {
       <ParticleSpawner />
       {splashShown && <Mascot />}
       <ModalRoot />
+      <OrderToast />
       <KillButton />
     </>
   );
