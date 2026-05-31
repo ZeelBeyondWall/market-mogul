@@ -23,6 +23,7 @@ export interface UIPrefs extends ChartToggles {
   autoConfirm: boolean;
   activeTF: TFKey;
   watchlist: string[]; // user-pinned asset ids
+  beginnerMode: boolean; // hides advanced UI when true (v7.2)
 }
 
 export interface LeaderboardEntry {
@@ -66,12 +67,13 @@ interface GameStore extends UIPrefs {
   setAutoConfirm: (v: boolean) => void;
   setSettingsOpen: (v: boolean) => void;
   setActiveTF: (tf: TFKey) => void;
+  setBeginnerMode: (v: boolean) => void;
 }
 
 const STORAGE = 'mm_ui_prefs_v3';
 const UI_KEYS: (keyof UIPrefs)[] = [
   'muted','chartLine','chartCandles','chartVol','orderType','activeTab','activeMarket','botFilter','splashShown',
-  'theme','reduceMotion','showParticles','autoConfirm','activeTF','watchlist',
+  'theme','reduceMotion','showParticles','autoConfirm','activeTF','watchlist','beginnerMode',
 ];
 function defaultPrefs(): UIPrefs {
   return {
@@ -81,6 +83,7 @@ function defaultPrefs(): UIPrefs {
     theme: 'game', reduceMotion: false, showParticles: true, autoConfirm: false,
     activeTF: '5s',
     watchlist: [],
+    beginnerMode: true, // v7.2: default ON for new users
   };
 }
 function loadPrefs(): UIPrefs {
@@ -188,6 +191,7 @@ export const useGame = create<GameStore>((set, get) => {
       persist();
       import('../net/wsClient').then(m => m.send({ type: 'setTF', payload: { tf } }));
     },
+    setBeginnerMode: (v) => { set({ beginnerMode: v }); persist(); },
   };
 });
 

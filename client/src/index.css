@@ -603,6 +603,36 @@ body[data-theme="game"] #splash h1{
 
 /* v7.1: bot level badge in Traders tab */
 .bot-lvl{display:inline-block;font-size:9px;font-weight:700;color:var(--accent);background:rgba(245,185,66,.12);padding:1px 5px;border-radius:3px;margin-left:6px;letter-spacing:.5px;font-variant-numeric:tabular-nums}
+
+/* v7.2: trade panel polish — bigger buttons, clearer labels, risky-action warning */
+.dbl-btn button{transition:background .15s,transform .08s,box-shadow .15s}
+.dbl-btn button:not(:disabled):hover{transform:translateY(-1px);filter:brightness(1.08)}
+.dbl-btn button:not(:disabled):active{transform:translateY(0)}
+.dbl-btn.sell.risky button.a{
+  background:linear-gradient(180deg,#7a1f23,#5a1418) !important;
+  color:#ffbac0 !important;
+  border:1px solid var(--red);
+  position:relative;
+}
+.dbl-btn.sell.risky button.a::before{
+  content:'⚠';position:absolute;top:4px;right:6px;font-size:10px;color:var(--accent);
+}
+.dbl-btn.sell.risky button.a:hover:not(:disabled){box-shadow:0 0 14px rgba(239,68,68,.4)}
+.trade-advanced-toggle{
+  background:transparent;border:1px dashed var(--border);color:var(--dim);
+  padding:6px 10px;font-size:10px;letter-spacing:.5px;
+  cursor:pointer;border-radius:4px;width:100%;margin:6px 0;
+  font-family:inherit;
+}
+.trade-advanced-toggle:hover{border-color:var(--accent);color:var(--accent)}
+button[title]{cursor:help}
+.trade-hint{
+  background:linear-gradient(90deg,rgba(110,168,255,.10),rgba(168,85,247,.05));
+  border:1px solid rgba(110,168,255,.25);
+  color:var(--text);font-size:11px;line-height:1.45;
+  padding:8px 10px;border-radius:5px;margin-bottom:8px;
+}
+.trade-hint b{color:var(--accent)}
 .watch-star{position:absolute;top:4px;right:4px;background:transparent;border:none;color:var(--dim);font-size:14px;cursor:pointer;padding:2px 4px;line-height:1;border-radius:3px}
 .watch-star:hover{background:rgba(255,255,255,.05);color:var(--accent)}
 .watch-star.on{color:var(--accent);text-shadow:0 0 6px rgba(245,185,66,.5)}

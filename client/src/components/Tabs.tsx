@@ -10,11 +10,12 @@ import { MissionsTab } from './MissionsTab';
 import { MoversTab } from './MoversTab';
 import { HelpTab } from './HelpTab';
 
-const TABS: { id: TabId; label: string }[] = [
+// v7.2: tabs split by complexity. Beginner mode hides Book, Movers, Stats.
+const TABS: { id: TabId; label: string; advanced?: boolean }[] = [
   { id: 'positions', label: 'Positions' },
   { id: 'details',   label: 'Details' },
-  { id: 'movers',    label: 'Movers' },
-  { id: 'book',      label: 'Book' },
+  { id: 'movers',    label: 'Movers', advanced: true },
+  { id: 'book',      label: 'Book',   advanced: true },
   { id: 'stats',     label: 'Stats' },
   { id: 'missions',  label: 'Missions' },
   { id: 'bots',      label: 'Traders' },
@@ -25,10 +26,12 @@ const TABS: { id: TabId; label: string }[] = [
 export function Tabs() {
   const active = useGame(s => s.activeTab);
   const setActive = useGame(s => s.setActiveTab);
+  const beginnerMode = useGame(s => s.beginnerMode);
+  const visibleTabs = TABS.filter(t => !beginnerMode || !t.advanced);
   return (
     <>
       <div className="tabs tabs-scroll">
-        {TABS.map(t => (
+        {visibleTabs.map(t => (
           <div key={t.id} className={'tab' + (active === t.id ? ' active' : '')} onClick={() => { setActive(t.id); Audio.click(); }}>
             {t.label}
           </div>

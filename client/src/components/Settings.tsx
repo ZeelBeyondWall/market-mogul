@@ -16,6 +16,8 @@ export function Settings() {
   const setShowParticles = useGame(s => s.setShowParticles);
   const autoConfirm = useGame(s => s.autoConfirm);
   const setAutoConfirm = useGame(s => s.setAutoConfirm);
+  const beginnerMode = useGame(s => s.beginnerMode);
+  const setBeginnerMode = useGame(s => s.setBeginnerMode);
 
   if (!open) return null;
 
@@ -55,6 +57,10 @@ export function Settings() {
         <Section title="Display">
           <Toggle label="Show particles on wins" value={showParticles} onChange={v => { setShowParticles(v); Audio.click(); }} />
           <Toggle label="Reduce motion (instant updates)" value={reduceMotion} onChange={v => { setReduceMotion(v); Audio.click(); }} />
+        </Section>
+
+        <Section title="Difficulty">
+          <Toggle label="🌱 Beginner Mode (hides advanced tabs + collapses SL/TP)" value={beginnerMode} onChange={v => { setBeginnerMode(v); Audio.click(); }} />
         </Section>
 
         <Section title="Trading">

@@ -36,10 +36,10 @@ function getCS(ws: WebSocket): ClientState {
 }
 
 // Drain any pending close intents by firing market orders against current book.
-// Tracks no-progress retries — if 20 consecutive ticks see no fill, give up to
-// prevent CPU spin on illiquid / underwater positions.
-const closeProgress: Map<string, { lastShares: number; stuckTicks: number }> = new Map();
-const STUCK_TICKS_LIMIT = 20;
+// v7.2: extended stuck timeout 20 → 600 ticks (60s). Keeps PENDING badge visible
+// while liquidity slowly refills instead of flipping back to CUT mid-close.
+const closeProgress: Map<string, { lastShares: number; stuckTicks: number; warned: boolean }> = new Map();
+const STUCK_TICKS_LIMIT = 600; // 60s at 10Hz
 
 function drainCloses(): void {
   const p = engine.player();
@@ -63,11 +63,15 @@ function drainCloses(): void {
       if (h2) { h2.sl = 0; h2.tp = 0; h2.slPct = 0; h2.tpPct = 0; }
       continue;
     }
-    // Track no-progress
-    const prog = closeProgress.get(aid) || { lastShares: before, stuckTicks: 0 };
+    const prog = closeProgress.get(aid) || { lastShares: before, stuckTicks: 0, warned: false };
     if (h2.shares === prog.lastShares) prog.stuckTicks++;
     else { prog.stuckTicks = 0; prog.lastShares = h2.shares; }
     closeProgress.set(aid, prog);
+    // Early warn at 200 ticks (~20s) so user knows it's struggling.
+    if (prog.stuckTicks === 200 && !prog.warned) {
+      prog.warned = true;
+      console.warn(`drainCloses slow on ${aid}: ${h2.shares} sh remain, retrying for 40 more seconds`);
+    }
     if (prog.stuckTicks >= STUCK_TICKS_LIMIT) {
       console.warn(`drainCloses giving up on ${aid} (${h2.shares} sh stuck — no liquidity / insufficient cash)`);
       delete p.closing[aid];
