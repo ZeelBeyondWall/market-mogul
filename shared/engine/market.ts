@@ -1,7 +1,38 @@
 import { ASSETS, NEWS_EVENTS } from './constants';
 import { rand } from './helpers';
+import { insertOrder } from './orderbook';
 import type { AssetCategory, GameState, NewsEvent, NewsEventDef } from './types';
 import { TF_LIST, TF_MS } from './types';
+
+// v8.9: House Market Maker — guarantees a tradeable book on EVERY asset by
+// quoting a tight band around fair value, independent of bot level/cash. The
+// house is an infinite counterparty (executeTrade skips its cash/holdings), so
+// these orders effectively never run dry.
+const HOUSE_SPREAD = 0.0035;   // ±0.35% around fair value
+const HOUSE_QTY = 1_000_000;   // deep single level — house supplies infinitely
+
+export function provideLiquidity(S: GameState, houseId: number, now: number): void {
+  const house = S.traders[houseId];
+  if (!house || !house.isHouse) return;
+  for (const a of ASSETS) {
+    const ast = S.assets[a.id];
+    const book = ast.book;
+    // Drop the house's previous quotes (compact in place — cheap).
+    let w = 0;
+    for (let k = 0; k < book.bids.length; k++) if (book.bids[k].ownerId !== houseId) book.bids[w++] = book.bids[k];
+    book.bids.length = w;
+    w = 0;
+    for (let k = 0; k < book.asks.length; k++) if (book.asks[k].ownerId !== houseId) book.asks[w++] = book.asks[k];
+    book.asks.length = w;
+    // Re-quote around fair value (price is band-clamped in tickMarket anyway).
+    const ref = ast.fv > 0 ? ast.fv : a.fairValue;
+    const dec = ref < 10 ? 4 : 2;
+    const bidPx = +(ref * (1 - HOUSE_SPREAD)).toFixed(dec);
+    const askPx = +(ref * (1 + HOUSE_SPREAD)).toFixed(dec);
+    insertOrder(book, 'bids', { id: S.orderId++, ownerId: houseId, px: bidPx, qty: HOUSE_QTY, ts: now });
+    insertOrder(book, 'asks', { id: S.orderId++, ownerId: houseId, px: askPx, qty: HOUSE_QTY, ts: now });
+  }
+}
 
 // Pre-computed category → asset-id list. Built once at module load — ASSETS is static.
 const SECTOR_INDEX: Record<AssetCategory, string[]> = (() => {

@@ -292,7 +292,7 @@ export function tickBots(S: GameState, dt: number): void {
   while (scanned < budget) {
     if (i >= total) i = 1;
     const t = S.traders[i];
-    if (!t.rekt) {
+    if (!t.rekt && !t.isHouse) { // v8.9: House never acts as a bot
       t.cooldown -= effectiveDt;
       if (t.cooldown <= 0) {
         t.cooldown = rand(0.5, 2) / Math.max(0.05, t.activity);

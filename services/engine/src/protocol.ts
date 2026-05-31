@@ -133,7 +133,7 @@ export function buildSnapshot(
     assets,
     events: S.events.slice(0, 30),
     leaderboard: [],
-    totalTraders: S.traders.length,
+    totalTraders: Math.max(0, S.traders.length - 1), // v8.9: exclude House
     playerRank,
     playerStats: {
       totalTrades: 0, wins: 0, losses: 0, winRate: 0,

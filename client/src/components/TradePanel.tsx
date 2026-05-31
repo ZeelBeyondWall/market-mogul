@@ -134,15 +134,22 @@ export function TradePanel() {
     : isShort ? 'ADD SHORT'
     : (shortAllowed ? 'SHORT' : 'SELL');
 
-  // v7.4/v8.8: helpful reason text when a side is disabled.
+  // v8.9: helpful reason text — distinguish "no liquidity" (empty book) from
+  // "not enough cash". An empty book can't fill at ANY cash level.
+  const hasAsks = ast.book.asks.length > 0;
+  const hasBids = ast.book.bids.length > 0;
+  const cashShort = Math.max(0, ast.lastPrice - eng.player().cash);
   const buyReason = buyMax === 0
-    ? (isShort ? 'Already flat' : `Need $${Math.max(0, ast.lastPrice - eng.player().cash).toFixed(0)} more cash`)
+    ? (isShort ? 'Already flat'
+       : !hasAsks ? 'No sellers yet — building liquidity'
+       : cashShort > 0 ? `Need $${cashShort.toFixed(0)} more cash`
+       : 'No sellers at your price')
     : null;
   const sellReason = shortMax === 0
     ? (isFlat
-        ? (shortAllowed
-            ? `Need $${Math.max(0, ast.lastPrice * 0.5 - eng.player().cash).toFixed(0)} more for margin`
-            : 'Nothing to sell — BUY first')
+        ? (!shortAllowed ? 'Nothing to sell — BUY first'
+           : !hasBids ? 'No buyers yet — building liquidity'
+           : `Need $${Math.max(0, ast.lastPrice * 0.5 - eng.player().cash).toFixed(0)} more for margin`)
         : 'Nothing to sell')
     : null;
 

@@ -116,8 +116,8 @@ export const ASSETS: AssetDef[] = [
   { id:'DRFG', name:'DreamForge',          icon:'t-blue', cat:'gaming', market:'stocks', minLevel:5, fairValue:155, div:0,      vol:0.018, float:3e8,  desc:'Indie publisher' },
 
   // ============ CRYPTO — LARGE CAP (10) ============
-  { id:'NOVA', name:'NovaCoin',     icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:42000, div:0, vol:0.026, float:2.1e7, desc:'Reserve crypto' },
-  { id:'TTNC', name:'TitanCoin',    icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:2800,  div:0, vol:0.028, float:1.2e8, desc:'Smart contracts' },
+  { id:'NOVA', name:'NovaCoin',     icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:650, div:0, vol:0.026, float:2.1e7, desc:'Reserve crypto' },
+  { id:'TTNC', name:'TitanCoin',    icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:420,  div:0, vol:0.028, float:1.2e8, desc:'Smart contracts' },
   { id:'QTMC', name:'QuantumCoin',  icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:380,   div:0, vol:0.030, float:1.5e8, desc:'Privacy chain' },
   { id:'APXC', name:'ApexChain',    icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:95,    div:0, vol:0.032, float:4e8,   desc:'L1 platform' },
   { id:'SOLR', name:'SolarCoin',    icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:28,    div:0, vol:0.034, float:3.5e8, desc:'Energy chain' },

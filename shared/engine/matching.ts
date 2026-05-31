@@ -36,9 +36,14 @@ export function executeTrade(
   if (!seller.holdings[assetId]) seller.holdings[assetId] = { shares: 0, avgCost: 0 };
   if (!buyer.holdings[assetId]) buyer.holdings[assetId] = { shares: 0, avgCost: 0 };
 
+  // v8.9: House is an infinite counterparty — skip all affordability/margin
+  // limits when it's the buyer or seller.
+  const buyerHouse = !!buyer.isHouse;
+  const sellerHouse = !!seller.isHouse;
+
   const sh0 = seller.holdings[assetId];
-  // v7.3: margin check applies to EVERYONE including player (was bypassed before).
-  {
+  // v7.3: margin check applies to everyone (except the House).
+  if (!sellerHouse) {
     const uncovered = Math.max(0, qty - Math.max(0, sh0.shares));
     if (uncovered > 0) {
       const needed = uncovered * px * 0.5;
@@ -50,15 +55,16 @@ export function executeTrade(
     }
   }
   if (qty <= 0) return;
-  if (!buyer.isPlayer) {
+  if (!buyer.isPlayer && !buyerHouse) {
     const aff = roundShares(buyer.cash / px);
     if (aff < qty) qty = aff;
   }
   if (qty <= 0) return;
 
   const cash = px * qty;
-  buyer.cash -= cash;
-  seller.cash += cash;
+  // House cash is never mutated (it accumulates nothing → no pollution).
+  if (!buyerHouse) buyer.cash -= cash;
+  if (!sellerHouse) seller.cash += cash;
 
   // Capture pre-trade state for player closed-trade detection.
   const bh = buyer.holdings[assetId];
@@ -68,34 +74,38 @@ export function executeTrade(
   const shSharesBefore = sh.shares;
   const shAvgBefore = sh.avgCost;
 
-  // BUYER side
-  if (bh.shares < 0) {
-    bh.shares += qty;
-    if (bh.shares === 0) bh.avgCost = 0;
-  } else if (bh.shares === 0) {
-    bh.shares = qty;
-    bh.avgCost = px;
-  } else {
-    bh.avgCost = (bh.avgCost * bh.shares + px * qty) / (bh.shares + qty);
-    bh.shares += qty;
+  // BUYER side (House holdings never change)
+  if (!buyerHouse) {
+    if (bh.shares < 0) {
+      bh.shares += qty;
+      if (bh.shares === 0) bh.avgCost = 0;
+    } else if (bh.shares === 0) {
+      bh.shares = qty;
+      bh.avgCost = px;
+    } else {
+      bh.avgCost = (bh.avgCost * bh.shares + px * qty) / (bh.shares + qty);
+      bh.shares += qty;
+    }
   }
 
-  // SELLER side
-  if (sh.shares > 0) {
-    sh.shares -= qty;
-    if (sh.shares === 0) sh.avgCost = 0;
-    else if (sh.shares < 0) {
-      const excess = -sh.shares;
-      sh.shares = -excess;
+  // SELLER side (House holdings never change)
+  if (!sellerHouse) {
+    if (sh.shares > 0) {
+      sh.shares -= qty;
+      if (sh.shares === 0) sh.avgCost = 0;
+      else if (sh.shares < 0) {
+        const excess = -sh.shares;
+        sh.shares = -excess;
+        sh.avgCost = px;
+      }
+    } else if (sh.shares === 0) {
+      sh.shares = -qty;
       sh.avgCost = px;
+    } else {
+      const absSh = -sh.shares;
+      sh.avgCost = (sh.avgCost * absSh + px * qty) / (absSh + qty);
+      sh.shares -= qty;
     }
-  } else if (sh.shares === 0) {
-    sh.shares = -qty;
-    sh.avgCost = px;
-  } else {
-    const absSh = -sh.shares;
-    sh.avgCost = (sh.avgCost * absSh + px * qty) / (absSh + qty);
-    sh.shares -= qty;
   }
 
   // PLAYER closed-trade detection. Fires whenever any portion of the player's
@@ -291,12 +301,15 @@ export function cleanupBooks(S: GameState, assetIds: string[]): void {
     ast.book.bids = ast.book.bids.filter(o => {
       if (o.qty <= 0 || !isFinite(o.px) || o.px <= 0) return false;
       const t = S.traders[o.ownerId];
-      return t && t.cash >= o.px * o.qty * 0.99;
+      if (!t) return false;
+      if (t.isHouse) return true; // v8.9: House liquidity is never culled
+      return t.cash >= o.px * o.qty * 0.99;
     });
     ast.book.asks = ast.book.asks.filter(o => {
       if (o.qty <= 0 || !isFinite(o.px) || o.px <= 0) return false;
       const t = S.traders[o.ownerId];
       if (!t) return false;
+      if (t.isHouse) return true; // v8.9: House liquidity is never culled
       const sh = t.holdings[aid]?.shares || 0;
       if (sh >= o.qty) return true;
       const uncovered = o.qty - Math.max(0, sh);

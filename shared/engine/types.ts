@@ -124,6 +124,11 @@ export interface Trader {
   bornAt: number;
   rekt?: boolean;
   closing?: Record<string, boolean>;
+  // v8.9: House Market Maker — provides liquidity on every asset around fair
+  // value. Excluded from bot ticking, rekt sweep, leaderboard, and economy
+  // aggregates. In executeTrade its cash/holdings are NOT mutated (infinite
+  // counterparty), so it never accumulates or pollutes totals.
+  isHouse?: boolean;
   // Perf cache — invalidated on any trade involving this trader.
   _netCache?: number;
   _netDirty?: boolean;

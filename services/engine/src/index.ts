@@ -330,6 +330,7 @@ function computeLeaderboard(): { top: LbEntry[]; playerRank: number } {
   let playerRank = 1;
   for (let i = 0; i < traders.length; i++) {
     const t = traders[i];
+    if (t.isHouse) continue; // v8.9: House excluded from leaderboard
     const net = traderNet(t, engine.state);
     if (t.id === 0) playerNet = net;
     if (top.length < TOP_N) {
@@ -353,7 +354,7 @@ function computeLeaderboard(): { top: LbEntry[]; playerRank: number } {
   top.reverse();
   // Player rank scan — single pass over already-cached nets.
   for (let i = 0; i < traders.length; i++) {
-    if (traders[i].id === 0) continue;
+    if (traders[i].id === 0 || traders[i].isHouse) continue;
     if (traderNet(traders[i], engine.state) > playerNet) playerRank++;
   }
   // Ensure player present in returned top list.
@@ -380,7 +381,7 @@ function sendSnapshot(ws: WebSocket) {
   // Player extras — stats + missions + bonus + streak.
   const stats = engine.getPlayerStats();
   stats.rank = playerRank;
-  stats.total = engine.state.traders.length;
+  stats.total = Math.max(0, engine.state.traders.length - 1); // v8.9: exclude House
   snap.playerStats = stats;
   const p = engine.player();
   snap.playerBonus = p.bonus || 0;

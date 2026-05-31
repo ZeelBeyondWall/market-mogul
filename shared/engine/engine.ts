@@ -1,6 +1,6 @@
 import { ASSETS, BOT_COUNT, levelFromXp, xpForTrade } from './constants';
 import { rand, roundShares } from './helpers';
-import { applyEvent, maybeFireEvent, payDividends, tickMarket } from './market';
+import { applyEvent, maybeFireEvent, payDividends, provideLiquidity, tickMarket } from './market';
 import { cancelTraderOrders, cleanupBooks, placeOrder } from './matching';
 import { ensureMissionsCurrent, rolloverDailyLogin, tickMissionProgress, recordClosedTradeForMissions } from './missions';
 import { insertOrder, makeBook } from './orderbook';
@@ -52,6 +52,8 @@ export class Engine {
   private rektAcc = 0;
   private lastT = 0;
   private rektShard = 0;
+  private liqAcc = 0;
+  houseId = -1; // v8.9: index of the House Market Maker trader
   tickFrac = 0;
 
   constructor(loaded?: GameState) {
@@ -64,6 +66,15 @@ export class Engine {
     resetStratPool();
     const traders: Trader[] = [makeTrader(0, true)];
     for (let i = 1; i <= BOT_COUNT; i++) traders.push(makeTrader(i, false));
+    // v8.9: House Market Maker (last index). Provides liquidity on every asset.
+    const house = makeTrader(traders.length, false);
+    house.isHouse = true;
+    house.name = 'House Liquidity';
+    house.cash = 0;
+    house.activity = 0;
+    house.pickedAssets = [];
+    this.houseId = traders.length;
+    traders.push(house);
     const assets: Record<string, AssetState> = {};
     ASSETS.forEach(a => {
       assets[a.id] = {
@@ -265,6 +276,12 @@ export class Engine {
       this.tickAcc -= 0.1;
     }
     this.tickFrac = this.tickAcc / 0.1;
+    // v8.9: refresh House liquidity every ~0.5s so every asset stays tradeable.
+    this.liqAcc += dt;
+    if (this.liqAcc >= 0.5 && this.houseId >= 0) {
+      provideLiquidity(this.state, this.houseId, now);
+      this.liqAcc = 0;
+    }
     // v6: admin can disable bots globally.
     if (this.config.botsEnabled) tickBots(this.state, dt);
     this.divAcc += dt;
@@ -283,7 +300,7 @@ export class Engine {
         this.rektShard = (this.rektShard + 1) % REKT_SHARDS;
         for (let i = start; i < end; i++) {
           const t = this.state.traders[i];
-          if (t.rekt) continue;
+          if (t.rekt || t.isHouse) continue; // v8.9: never rekt the House
           t._netDirty = true;
           if (t.tradesSinceChange > 0) {
             // v5: bot earns 5 XP per trade since last sweep — slow level grind.
@@ -343,7 +360,9 @@ export class Engine {
     const me = traderNet(this.player(), this.state);
     let rank = 1;
     for (let i = 1; i < this.state.traders.length; i++) {
-      if (traderNet(this.state.traders[i], this.state) > me) rank++;
+      const t = this.state.traders[i];
+      if (t.isHouse) continue; // v8.9: House not ranked
+      if (traderNet(t, this.state) > me) rank++;
     }
     return rank;
   }

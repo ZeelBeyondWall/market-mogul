@@ -40,6 +40,7 @@ export function registerAdminApi(app: Express, deps: AdminDeps): void {
     const offset = Math.max(0, Number(req.query.offset) || 0);
     const out = [];
     for (const t of engine.state.traders) {
+      if (t.isHouse) continue; // v8.9: House is infra, not a user
       if (q && !t.name.toLowerCase().includes(q) && !String(t.id).includes(q)) continue;
       if (rektFilter === 'true' && !t.rekt) continue;
       if (rektFilter === 'false' && t.rekt) continue;
@@ -193,8 +194,10 @@ export function registerAdminApi(app: Express, deps: AdminDeps): void {
     let totalCash = 0, totalNet = 0, openPos = 0, openOrders = 0;
     const traders = engine.state.traders;
     let richest = { id: 0, name: '', net: 0 };
+    let houseCount = 0;
     for (let i = 0; i < traders.length; i++) {
       const t = traders[i];
+      if (t.isHouse) { houseCount++; continue; } // v8.9: House excluded from economy aggregates
       totalCash += t.cash || 0;
       const n = traderNet(t, engine.state);
       totalNet += n;
@@ -215,10 +218,10 @@ export function registerAdminApi(app: Express, deps: AdminDeps): void {
     }
     res.json({
       ok: true,
-      totalRegistered: traders.length,
-      totalActive: traders.filter(t => !t.rekt).length,
+      totalRegistered: traders.length - houseCount,
+      totalActive: traders.filter(t => !t.rekt && !t.isHouse).length,
       totalOnline: clients.size,
-      totalBots: traders.length - 1,
+      totalBots: traders.length - houseCount - 1,
       totalCash, totalNet,
       totalMarketVolume: ASSETS.reduce((s, a) => s + (engine.state.assets[a.id]?.volume || 0), 0),
       openPositions: openPos,
