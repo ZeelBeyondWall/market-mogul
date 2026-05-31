@@ -12,8 +12,9 @@ import GameMaster from './pages/GameMaster';
 import Emergency from './pages/Emergency';
 import Analytics from './pages/Analytics';
 import AuditLog from './pages/AuditLog';
+import Manual from './pages/Manual';
 
-type PageId = 'dashboard' | 'users' | 'economy' | 'gm' | 'analytics' | 'audit' | 'emergency';
+type PageId = 'dashboard' | 'users' | 'economy' | 'gm' | 'analytics' | 'audit' | 'emergency' | 'manual';
 
 interface NavItem { id: PageId; label: string; icon: string; section: string; danger?: boolean }
 
@@ -24,6 +25,7 @@ const NAV: NavItem[] = [
   { id: 'economy',   label: 'Economy',      icon: '$',  section: 'Operations' },
   { id: 'gm',        label: 'Game Master',  icon: '⚙',  section: 'Operations' },
   { id: 'audit',     label: 'Audit Log',    icon: '◰',  section: 'System' },
+  { id: 'manual',    label: 'Manual',       icon: '📖', section: 'System' },
   { id: 'emergency', label: 'Emergency',    icon: '🚨', section: 'System', danger: true },
 ];
 
@@ -34,6 +36,7 @@ const PAGE_TITLES: Record<PageId, { title: string; sub: string }> = {
   economy:   { title: 'Economy Control',   sub: 'Liquidity, tuning + global market parameters' },
   gm:        { title: 'Game Master',       sub: 'Balancing tools + simulation controls' },
   audit:     { title: 'Audit Log',         sub: 'Every administrative action is recorded' },
+  manual:    { title: 'Admin Manual',      sub: 'Operations runbook + reference' },
   emergency: { title: 'Emergency Center',  sub: 'Critical controls — handle with care' },
 };
 
@@ -86,6 +89,7 @@ export function AdminApp() {
       case 'emergency': return <Emergency />;
       case 'analytics': return <Analytics />;
       case 'audit':     return <AuditLog />;
+      case 'manual':    return <Manual />;
     }
   })();
 

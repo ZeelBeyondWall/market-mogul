@@ -8,7 +8,7 @@ export type Theme = 'game' | 'pro';
 
 type ChartToggles = { chartLine: boolean; chartCandles: boolean; chartVol: boolean };
 
-export type TabId = 'positions' | 'book' | 'bots' | 'news' | 'details' | 'stats' | 'missions' | 'movers';
+export type TabId = 'positions' | 'book' | 'bots' | 'news' | 'details' | 'stats' | 'missions' | 'movers' | 'help';
 
 export interface UIPrefs extends ChartToggles {
   muted: boolean;

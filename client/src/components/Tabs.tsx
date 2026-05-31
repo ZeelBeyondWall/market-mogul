@@ -8,6 +8,7 @@ import { StockDetailsTab } from './StockDetailsTab';
 import { StatsTab } from './StatsTab';
 import { MissionsTab } from './MissionsTab';
 import { MoversTab } from './MoversTab';
+import { HelpTab } from './HelpTab';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'positions', label: 'Positions' },
@@ -18,6 +19,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'missions',  label: 'Missions' },
   { id: 'bots',      label: 'Traders' },
   { id: 'news',      label: 'News' },
+  { id: 'help',      label: '? Help' },
 ];
 
 export function Tabs() {
@@ -40,6 +42,7 @@ export function Tabs() {
       {active === 'missions' && <MissionsTab />}
       {active === 'bots' && <BotsTab />}
       {active === 'news' && <NewsTab />}
+      {active === 'help' && <HelpTab />}
     </>
   );
 }

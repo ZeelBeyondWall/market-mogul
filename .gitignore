@@ -17,3 +17,4 @@ services/engine/dist/
 services/gateway/dist/
 client/dist/
 
+admin-audit.jsonl
