@@ -106,25 +106,41 @@ export default function Dashboard() {
           <button className="a-btn primary" disabled={acting} onClick={() => setConfirm('event')}>
             Fire Random Event
           </button>
-          {/* v8.4: editable bot count + quick presets */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        </div>
+      </div>
+
+      {/* v8.6: dedicated Bot Management card — spawn controls no longer crammed
+          into the header (they were overflowing off-screen). */}
+      <div className="a-card" style={{ marginBottom: 16 }}>
+        <h3 className="a-card-title">Bot Management</h3>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label className="a-label">How many bots</label>
             <input
               type="number"
               className="a-input"
-              style={{ width: 110 }}
+              style={{ width: 160 }}
               min={1}
               max={1000000}
               value={spawnCount}
               onChange={e => setSpawnCount(+e.target.value || 0)}
-              title="How many bots to spawn (1 – 1,000,000)"
+              title="1 – 1,000,000"
             />
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
             <button className="a-btn sm ghost" onClick={() => setSpawnCount(1000)}>1K</button>
             <button className="a-btn sm ghost" onClick={() => setSpawnCount(10000)}>10K</button>
             <button className="a-btn sm ghost" onClick={() => setSpawnCount(100000)}>100K</button>
-            <button className="a-btn primary" disabled={acting || spawnCount < 1} onClick={() => setConfirm('spawn')}>
-              Spawn Bots
-            </button>
+            <button className="a-btn sm ghost" onClick={() => setSpawnCount(500000)}>500K</button>
           </div>
+          <button className="a-btn success" disabled={acting || spawnCount < 1} onClick={() => setConfirm('spawn')}>
+            ➕ Spawn {spawnCount.toLocaleString()} Bots
+          </button>
+          {eco && (
+            <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--a-text-mute)' }}>
+              Current: <b style={{ color: 'var(--a-text)' }}>{eco.totalBots.toLocaleString()}</b> bots
+            </div>
+          )}
         </div>
       </div>
 
