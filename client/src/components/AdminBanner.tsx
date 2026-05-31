@@ -11,8 +11,8 @@ export function AdminBanner() {
   if (halted)      items.push({ text: '⛔ TRADING HALTED by admin', kind: 'halt' });
   if (banner)      items.push({ text: '📢 ' + banner, kind: 'info' });
 
-  if (items.length === 0) return null;
-
+  // FIX: ALWAYS render the wrapper — grid rows in #app depend on this slot
+  // existing. Returning null breaks the grid template alignment.
   return (
     <div className="admin-banners">
       {items.map((b, i) => (
