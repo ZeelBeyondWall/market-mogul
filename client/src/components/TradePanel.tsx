@@ -1,20 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { useGame } from '../store/gameStore';
+import { useGame, getAssetDef } from '../store/gameStore';
 import { roundShares, fmt, fmtNum } from '../../../shared/engine/helpers';
 import { send } from '../net/wsClient';
 
 type Mode = 'buy' | 'short';
 
-// v7.2: Trade actions now context-aware. Three distinct intents shown by state:
-//
-//   NO POSITION:    [BUY (long)]  [SHORT (advanced — owes shares back)]
-//   LONG POSITION:  [BUY MORE]    [CLOSE LONG (sell)]
-//   SHORT POSITION: [CLOSE SHORT (buy back)]  [ADD TO SHORT (risky)]
-//
-// Eliminates the "I sold and my cash went UP" confusion — now SHORT is
-// explicit + warned, and CLOSE is always labeled as exit not sell.
+// v8.8: shorting is now PER-MARKET.
+//   STOCKS  → no shorting. BUY to open/add long, SELL only to close/reduce
+//             what you OWN (real cash-delivery behaviour).
+//   CRYPTO/FOREX → full shorting. SELL opens/extends short, BUY covers.
+// This kills the "SELL while flat = surprise negative holdings" confusion on
+// stocks, while keeping the proper short concept where it makes sense.
 
-function modeMaxQty(eng: any, aid: string, mode: Mode): number {
+function modeMaxQty(eng: any, aid: string, mode: Mode, shortAllowed: boolean): number {
   const book = eng.state.assets[aid].book;
   const hold = eng.player().holdings[aid];
   const ast = eng.state.assets[aid];
@@ -29,10 +27,11 @@ function modeMaxQty(eng: any, aid: string, mode: Mode): number {
     }
     return roundShares(qty);
   }
-  // mode === 'short' — closing long OR opening new short
-  if (hold.shares > 0) return hold.shares; // closing long — max = position size
-  // FIX v7.4: SHORT requires 50% margin not 100% — same as server's sellableQty.
-  // Previously this was floor(cash/px) which showed 0 for ANY cash < full price.
+  // mode === 'short' (the SELL side)
+  const longPart = Math.max(0, hold.shares);
+  if (longPart > 0) return longPart;     // close/reduce long — max = what you own
+  if (!shortAllowed) return 0;           // STOCKS flat → nothing to sell
+  // CRYPTO/FOREX: open short with 50% margin (matches server sellableQty)
   const px = ast.lastPrice || 0.01;
   const limit = Math.floor((eng.player().cash * 2) / px);
   let qty = 0;
@@ -68,6 +67,8 @@ export function TradePanel() {
   const aid = eng.state.active;
   const ast = eng.state.assets[aid];
   const hold = eng.player().holdings[aid];
+  const def = getAssetDef(aid);
+  const shortAllowed = def?.market !== 'stocks'; // v8.8: only crypto + forex short
   const [qty, setQty] = useState(1);
   const [limitPx, setLimitPx] = useState('');
   const slRef = useRef<HTMLInputElement>(null);
@@ -88,7 +89,10 @@ export function TradePanel() {
   const isFlat  = hold.shares === 0;
 
   const submit = async (mode: Mode, useMax: boolean) => {
-    const q = useMax ? modeMaxQty(eng, aid, mode) : qty;
+    // Always clamp to the legal max for this mode — prevents a stock SELL from
+    // exceeding owned shares (which would otherwise open an unwanted short).
+    const cap = modeMaxQty(eng, aid, mode, shortAllowed);
+    const q = Math.min(useMax ? cap : qty, cap);
     if (q <= 0) return;
     const lpx = +limitPx || ast.lastPrice;
     const slPct = +(slRef.current?.value || 0) || undefined;
@@ -106,8 +110,8 @@ export function TradePanel() {
     });
   };
 
-  const buyMax   = modeMaxQty(eng, aid, 'buy');
-  const shortMax = modeMaxQty(eng, aid, 'short');
+  const buyMax   = modeMaxQty(eng, aid, 'buy', shortAllowed);
+  const shortMax = modeMaxQty(eng, aid, 'short', shortAllowed);
   const isLimit  = orderType === 'limit';
   const lpx      = +limitPx || ast.lastPrice;
 
@@ -123,15 +127,23 @@ export function TradePanel() {
     : isShort ? (-hold.shares) * (hold.avgCost - ast.lastPrice) : 0;
   const posClass = isLong ? 'up' : isShort ? 'dn' : 'flat';
 
-  const buyLabel    = isShort ? 'CLOSE SHORT' : isLong ? 'BUY MORE' : 'BUY';
-  const sellLabel   = isLong ? 'CLOSE LONG' : isShort ? 'ADD TO SHORT' : 'OPEN SHORT';
+  const buyLabel  = isShort ? 'CLOSE SHORT' : isLong ? 'BUY MORE' : 'BUY';
+  // SELL side label depends on market: stocks just SELL (close), crypto/forex short.
+  const sellLabel = isLong
+    ? 'SELL'
+    : isShort ? 'ADD SHORT'
+    : (shortAllowed ? 'SHORT' : 'SELL');
 
-  // v7.4: helpful reason text when button is disabled.
+  // v7.4/v8.8: helpful reason text when a side is disabled.
   const buyReason = buyMax === 0
-    ? (isShort ? 'Already flat' : `Need $${(ast.lastPrice - eng.player().cash).toFixed(0)} more cash`)
+    ? (isShort ? 'Already flat' : `Need $${Math.max(0, ast.lastPrice - eng.player().cash).toFixed(0)} more cash`)
     : null;
   const sellReason = shortMax === 0
-    ? (isLong ? 'No long to close' : `Need $${(ast.lastPrice * 0.5 - eng.player().cash).toFixed(0)} more cash for margin`)
+    ? (isFlat
+        ? (shortAllowed
+            ? `Need $${Math.max(0, ast.lastPrice * 0.5 - eng.player().cash).toFixed(0)} more for margin`
+            : 'Nothing to sell — BUY first')
+        : 'Nothing to sell')
     : null;
 
   // v8.2: HORIZONTAL trade bar docked under the chart (TradingView-style).
