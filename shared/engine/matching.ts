@@ -98,6 +98,10 @@ export function executeTrade(
     }
   }
 
+  // PERF: invalidate cached net worth for both sides
+  buyer._netDirty = true;
+  seller._netDirty = true;
+
   if (buyer.isPlayer && onPlayerBuy) onPlayerBuy(qty);
   else if (seller.isPlayer && onPlayerSellProfit) onPlayerSellProfit();
 }

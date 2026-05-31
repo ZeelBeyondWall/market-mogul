@@ -182,15 +182,17 @@ app.post('/admin/kill-bot', express.json(), (req, res) => {
 // Spawn N new bots. Optional `strategy` forces a specific personality.
 app.post('/admin/spawn', express.json(), (req, res) => {
   const { n = 1, strategy } = (req.body || {}) as { n?: number; strategy?: string };
-  const count = Math.max(1, Math.min(50000, Math.floor(n)));
+  // Cap raised to 1M for stress testing — engine handles via fixed-budget tick scan.
+  const count = Math.max(1, Math.min(1_000_000, Math.floor(n)));
   let strat: StrategyId | undefined;
   if (strategy && (STRATEGIES as string[]).includes(strategy)) strat = strategy as StrategyId;
+  const startId = engine.state.traders.length;
   for (let k = 0; k < count; k++) {
     const id = engine.state.traders.length;
     engine.state.traders.push(makeTrader(id, false, strat));
   }
-  // seed initial books for these new bots so they have liquidity to draw from
-  engine.seedBooks();
+  // Only seed books for the newly-added range (avoids quadratic re-seed of existing bots).
+  engine.seedBooks(startId);
   for (const ws of clients) sendSnapshot(ws);
   res.json({ ok: true, added: count, total: engine.state.traders.length });
 });
@@ -272,21 +274,68 @@ function broadcast(msg: S2C) {
   }
 }
 
+// PERF: leaderboard cache shared across all clients. Recomputed lazily after
+// LEADERBOARD_TTL_MS — avoids O(N log N) sort per client per snapshot.
+const LEADERBOARD_TTL_MS = 1500;
+const TOP_N = 200;
+interface LbEntry { id: number; name: string; net: number; strat: string; rekt: boolean }
+let lbCache: { top: LbEntry[]; playerRank: number; ts: number } | null = null;
+
+function computeLeaderboard(): { top: LbEntry[]; playerRank: number } {
+  const traders = engine.state.traders;
+  // Heap-light: insertion-sort against top-N min element. O(N) avg, no full sort.
+  const top: LbEntry[] = [];
+  let minNet = -Infinity;
+  let playerNet = 0;
+  let playerRank = 1;
+  for (let i = 0; i < traders.length; i++) {
+    const t = traders[i];
+    const net = traderNet(t, engine.state);
+    if (t.id === 0) playerNet = net;
+    if (top.length < TOP_N) {
+      top.push({ id: t.id, name: t.name, net, strat: t.strat as string, rekt: !!t.rekt });
+      if (top.length === TOP_N) {
+        top.sort((a, b) => a.net - b.net);
+        minNet = top[0].net;
+      }
+    } else if (net > minNet) {
+      top[0] = { id: t.id, name: t.name, net, strat: t.strat as string, rekt: !!t.rekt };
+      // Re-bubble new entry to its sorted slot (still ascending by net).
+      let j = 0;
+      while (j + 1 < TOP_N && top[j + 1].net < top[j].net) {
+        const tmp = top[j]; top[j] = top[j + 1]; top[j + 1] = tmp; j++;
+      }
+      minNet = top[0].net;
+    }
+  }
+  // Now top is ascending — reverse for descending display.
+  if (top.length < TOP_N) top.sort((a, b) => a.net - b.net);
+  top.reverse();
+  // Player rank scan — single pass over already-cached nets.
+  for (let i = 0; i < traders.length; i++) {
+    if (traders[i].id === 0) continue;
+    if (traderNet(traders[i], engine.state) > playerNet) playerRank++;
+  }
+  // Ensure player present in returned top list.
+  if (!top.some(b => b.id === 0)) {
+    const p = traders[0];
+    top.push({ id: 0, name: p.name, net: playerNet, strat: p.strat as string, rekt: !!p.rekt });
+  }
+  return { top, playerRank };
+}
+
+function getLeaderboard(): { top: LbEntry[]; playerRank: number } {
+  const now = Date.now();
+  if (lbCache && now - lbCache.ts < LEADERBOARD_TTL_MS) return lbCache;
+  const fresh = computeLeaderboard();
+  lbCache = { ...fresh, ts: now };
+  return lbCache;
+}
+
 function sendSnapshot(ws: WebSocket) {
   const cs = getCS(ws);
-  const rank = engine.playerRank();
-  const snap = buildSnapshot(engine.state, cs.activeAsset, rank, cs.activeTF);
-  // Compute net worth + sort, then trim to top 200 + always include player (id=0)
-  const full = snap.leaderboard
-    .map(b => ({ ...b, net: traderNet(engine.state.traders[b.id], engine.state), strat: engine.state.traders[b.id].strat as string }))
-    .sort((a, b) => b.net - a.net);
-  const TOP_N = 200;
-  const top = full.slice(0, TOP_N);
-  const playerInTop = top.some(b => b.id === 0);
-  if (!playerInTop) {
-    const me = full.find(b => b.id === 0);
-    if (me) top.push(me);
-  }
+  const { top, playerRank } = getLeaderboard();
+  const snap = buildSnapshot(engine.state, cs.activeAsset, playerRank, cs.activeTF);
   snap.leaderboard = top;
   try { ws.send(JSON.stringify({ type: 'snapshot', payload: snap } satisfies S2C)); }
   catch (e) { console.error('snapshot send failed:', (e as Error).message); }
@@ -478,8 +527,19 @@ setInterval(() => {
   for (const ws of clients) sendSnapshot(ws);
 }, 5000);
 
-// disk save every 15s
-setInterval(() => diskSave(engine.state), 15000);
+// PERF: save interval scales with population — heavy JSON.stringify of 100K+
+// traders blocks the event loop for ~1s. Less frequent at scale.
+function saveInterval(): number {
+  const n = engine.state.traders.length;
+  if (n > 100_000) return 60_000;
+  if (n > 20_000) return 30_000;
+  return 15_000;
+}
+let saveTimer: NodeJS.Timeout;
+function scheduleSave() {
+  saveTimer = setTimeout(() => { diskSave(engine.state); scheduleSave(); }, saveInterval());
+}
+scheduleSave();
 process.on('SIGINT', () => { diskSave(engine.state); process.exit(0); });
 process.on('SIGTERM', () => { diskSave(engine.state); process.exit(0); });
 

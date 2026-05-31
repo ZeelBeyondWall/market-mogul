@@ -22,9 +22,12 @@ export function diskSave(S: GameState): void {
 
 async function doSave(S: GameState): Promise<void> {
   try {
+    // PERF: skip rekt bots (they're dead — recreate as fresh fodder on reload).
+    // Player ALWAYS saved (id 0).
+    const persistedTraders = S.traders.filter(t => t.isPlayer || !t.rekt);
     const out = {
       v: FORMAT_VERSION,
-      traders: S.traders.map(t => ({
+      traders: persistedTraders.map(t => ({
         id: t.id, name: t.name, cash: t.cash,
         holdings: nonZeroHoldings(t.holdings), // ~20x smaller
         strat: t.strat,

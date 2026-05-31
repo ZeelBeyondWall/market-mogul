@@ -100,9 +100,12 @@ export function makeTrader(i: number, isPlayer: boolean, forcedStrat?: StrategyI
   const strat: StrategyId = isPlayer ? 'player' : (forcedStrat || getStratForBot());
   const holdings: Record<string, Holding> = {};
   const indicators: Record<string, { emaFast: number | null; emaSlow: number | null }> = {};
+  // PERF: only the `trend` strategy reads indicators. Skip alloc for everyone
+  // else — saves ~5KB/bot × 100K bots = 500MB at scale.
+  const needIndicators = strat === 'trend';
   ASSETS.forEach(a => {
     holdings[a.id] = { shares: 0, avgCost: 0 };
-    indicators[a.id] = { emaFast: null, emaSlow: null };
+    if (needIndicators) indicators[a.id] = { emaFast: null, emaSlow: null };
   });
   return {
     id: i,

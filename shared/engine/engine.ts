@@ -31,6 +31,8 @@ export class Engine {
   private cleanAcc = 0;
   private rektAcc = 0;
   private lastT = 0;
+  // Round-robin rekt/mutate sweep — 1/REKT_SHARDS of traders per 2s tick.
+  private rektShard = 0;
   tickFrac = 0;
 
   constructor(loaded?: GameState) {
@@ -65,9 +67,11 @@ export class Engine {
     return { traders, assets, events: [], active: 'PUMP', orderId: 1 };
   }
 
-  seedBooks(): void {
+  // Optional fromId — only seed traders whose id >= fromId (avoids re-seeding
+  // existing bots on incremental spawn). Defaults to 1 (full re-seed).
+  seedBooks(fromId: number = 1): void {
     const S = this.state;
-    for (let i = 1; i < S.traders.length; i++) {
+    for (let i = fromId; i < S.traders.length; i++) {
       const t = S.traders[i];
       const picks = t.pickedAssets || [];
       picks.forEach(aid => {
@@ -186,12 +190,23 @@ export class Engine {
     this.cleanAcc += dt;
     if (this.cleanAcc >= 2) {
       cleanupBooks(this.state, ASSETS.map(a => a.id));
-      for (let i = 1; i < this.state.traders.length; i++) {
-        const t = this.state.traders[i];
-        if (t.rekt) continue;
-        // Both heavy ops moved here (off the per-trade hotpath).
-        if (t.tradesSinceChange > 0) maybeMutate(t, this.state);
-        checkRekt(t, this.state);
+      // PERF: shard sweep — 1/REKT_SHARDS of population each 2s, full pass = 8s.
+      // Cuts per-tick scan cost 4x on 100K+ bots.
+      const REKT_SHARDS = 4;
+      const total = this.state.traders.length;
+      if (total > 1) {
+        const sliceSize = Math.ceil((total - 1) / REKT_SHARDS);
+        const start = 1 + this.rektShard * sliceSize;
+        const end = Math.min(total, start + sliceSize);
+        this.rektShard = (this.rektShard + 1) % REKT_SHARDS;
+        for (let i = start; i < end; i++) {
+          const t = this.state.traders[i];
+          if (t.rekt) continue;
+          // Mark dirty so checkRekt/maybeMutate re-prices vs current market.
+          t._netDirty = true;
+          if (t.tradesSinceChange > 0) maybeMutate(t, this.state);
+          checkRekt(t, this.state);
+        }
       }
       this.cleanAcc = 0;
     }

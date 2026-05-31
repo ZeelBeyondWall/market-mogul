@@ -108,8 +108,7 @@ export function buildSnapshot(
       volumeHist: isActive ? a.volumeHist.slice(-120) : [],
     };
   }
-  const sorted = S.traders.map(t => ({ id: t.id, name: t.name, net: 0, strat: t.strat as string, rekt: !!t.rekt })).slice();
-  // net computed by caller-side via engine
+  // Leaderboard left empty — caller (sendSnapshot) overwrites with cached top-N.
   return {
     serverTime: Date.now(),
     active,
@@ -117,7 +116,7 @@ export function buildSnapshot(
     player: trimTraderForPublic(p),
     assets,
     events: S.events.slice(0, 15),
-    leaderboard: sorted,
+    leaderboard: [],
     totalTraders: S.traders.length,
     playerRank,
   };

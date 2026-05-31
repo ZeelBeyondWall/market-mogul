@@ -112,8 +112,10 @@ export interface Trader {
   mutateCooldown: number;
   bornAt: number;
   rekt?: boolean;
-  // Pending close intents — assetId -> true means "drain this position to 0 over upcoming ticks"
   closing?: Record<string, boolean>;
+  // Perf cache — invalidated on any trade involving this trader.
+  _netCache?: number;
+  _netDirty?: boolean;
 }
 
 export interface NewsEventDef {
