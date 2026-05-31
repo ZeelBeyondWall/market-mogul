@@ -134,6 +134,7 @@ export function placeOrder(
       const top = opp[0];
       const fillQty = Math.min(remaining, top.qty);
       const fillPx = top.px;
+      if (fillQty <= 0) { opp.shift(); continue; }
       if (side === 'buy') {
         const cost = fillPx * fillQty;
         if (t.cash < cost) {
@@ -218,10 +219,12 @@ export function cleanupBooks(S: GameState, assetIds: string[]): void {
   assetIds.forEach(aid => {
     const ast = S.assets[aid];
     ast.book.bids = ast.book.bids.filter(o => {
+      if (o.qty <= 0 || !isFinite(o.px) || o.px <= 0) return false;
       const t = S.traders[o.ownerId];
       return t && t.cash >= o.px * o.qty * 0.99;
     });
     ast.book.asks = ast.book.asks.filter(o => {
+      if (o.qty <= 0 || !isFinite(o.px) || o.px <= 0) return false;
       const t = S.traders[o.ownerId];
       if (!t) return false;
       const sh = t.holdings[aid]?.shares || 0;

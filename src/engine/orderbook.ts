@@ -5,6 +5,7 @@ export function makeBook(): Book {
 }
 
 export function insertOrder(book: Book, side: 'bids' | 'asks', order: Order): void {
+  if (!order || order.qty <= 0 || !isFinite(order.px) || order.px <= 0) return;
   const arr = book[side];
   if (side === 'bids') {
     let i = 0; while (i < arr.length && arr[i].px > order.px) i++;
