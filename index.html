@@ -230,6 +230,18 @@
     padding:4px 10px;border-radius:3px;font-family:inherit;font-size:10px;cursor:pointer;font-weight:600;letter-spacing:.5px;
   }
   .pos-row button:hover{border-color:var(--accent);color:var(--accent)}
+  .pos-sltp{display:flex;gap:4px;margin-top:6px;font-size:10px;align-items:center;grid-column:1/-1}
+  .pos-sltp label{color:var(--dim);font-size:9px;letter-spacing:.5px}
+  .pos-sltp input{
+    background:#03060b;border:1px solid var(--border);color:var(--text);
+    padding:3px 6px;border-radius:3px;font-family:inherit;font-size:10px;
+    width:70px;font-variant-numeric:tabular-nums;
+  }
+  .pos-sltp input.sl{border-color:#5a1a1a;color:#fca5a5}
+  .pos-sltp input.tp{border-color:#1a5a2a;color:#86efac}
+  .pos-sltp input:focus{outline:none;border-color:var(--accent)}
+  .sltp-row label{min-width:25px}
+  .sltp-row input{min-width:60px;font-size:11px}
   .position-info{
     display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:11px;
     color:var(--dim);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);
@@ -524,6 +536,12 @@
           <div class="trade-row">
             <label>Qty</label>
             <input type="number" class="qty" id="qty" value="1" min="1" step="1">
+          </div>
+          <div class="trade-row sltp-row">
+            <label>SL $</label>
+            <input type="number" class="limit-price" id="slPx" step="0.01" placeholder="optional">
+            <label>TP $</label>
+            <input type="number" class="limit-price" id="tpPx" step="0.01" placeholder="optional">
           </div>
           <div class="dbl-btn buy">
             <button class="a" id="btnBuy"><span>BUY $0</span><small>0 sh</small></button>
@@ -1703,6 +1721,14 @@ function placePlayerOrder(side, qty){
     const px = +$('limitPx').value || ast.lastPrice;
     placeOrder(0, aid, side, qty, px, 'limit');
   }
+  // attach SL/TP if provided (applies to resulting position)
+  const sl = +$('slPx').value || 0;
+  const tp = +$('tpPx').value || 0;
+  const h = player().holdings[aid];
+  if(h && h.shares !== 0){
+    if(sl>0) h.sl = sl;
+    if(tp>0) h.tp = tp;
+  }
 }
 function playerBuy(useMax){
   const aid = S.active;
@@ -1714,6 +1740,31 @@ function playerSell(useMax){
   const qty = useMax ? modeMaxQty(aid,'short') : roundShares(+$('qty').value || 0);
   placePlayerOrder('sell', qty);
 }
+function checkPlayerSLTP(){
+  const p = player();
+  ASSETS.forEach(a=>{
+    const h = p.holdings[a.id];
+    if(!h || h.shares === 0) return;
+    const px = S.assets[a.id].lastPrice;
+    if(h.shares > 0){ // long
+      if(h.sl > 0 && px <= h.sl){
+        const sl = h.sl; closePosition(a.id);
+        logEvent('news','🛑 SL HIT', a.id+' long closed @ '+fmt(px,px<10?3:2)+' (SL '+fmt(sl,sl<10?3:2)+')');
+      } else if(h.tp > 0 && px >= h.tp){
+        const tp = h.tp; closePosition(a.id);
+        logEvent('news','🎯 TP HIT', a.id+' long closed @ '+fmt(px,px<10?3:2)+' (TP '+fmt(tp,tp<10?3:2)+')');
+      }
+    } else { // short
+      if(h.sl > 0 && px >= h.sl){
+        const sl = h.sl; closePosition(a.id);
+        logEvent('news','🛑 SL HIT', a.id+' short closed @ '+fmt(px,px<10?3:2)+' (SL '+fmt(sl,sl<10?3:2)+')');
+      } else if(h.tp > 0 && px <= h.tp){
+        const tp = h.tp; closePosition(a.id);
+        logEvent('news','🎯 TP HIT', a.id+' short closed @ '+fmt(px,px<10?3:2)+' (TP '+fmt(tp,tp<10?3:2)+')');
+      }
+    }
+  });
+}
 function closePosition(aid){
   const hold = player().holdings[aid];
   if(!hold || hold.shares===0) return;
@@ -1721,6 +1772,11 @@ function closePosition(aid){
     placeOrder(0, aid, 'sell', hold.shares, 0, 'market');
   } else {
     placeOrder(0, aid, 'buy', -hold.shares, 0, 'market');
+  }
+  // clear SL/TP once flat
+  if(player().holdings[aid].shares === 0){
+    player().holdings[aid].sl = 0;
+    player().holdings[aid].tp = 0;
   }
 }
 
@@ -1953,6 +2009,34 @@ function renderChart(){
   cctx.fillStyle='#000'; cctx.font='bold 11px monospace';
   cctx.fillText(fmt(ast.lastPrice, ast.lastPrice<10?3:2), w-padR+6, yNow+4);
 
+  // Player position lines (MT5-style entry / SL / TP)
+  const playerHold = player().holdings[S.active];
+  if(playerHold && playerHold.shares !== 0){
+    const drawHLine = (price, color, label)=>{
+      if(!(price>0)) return;
+      const y = padT + ch - (price-pMin)/range*ch;
+      if(y<padT-2 || y>padT+ch+2) return;
+      cctx.strokeStyle = color;
+      cctx.setLineDash([5,4]);
+      cctx.lineWidth = 1;
+      cctx.beginPath();
+      cctx.moveTo(padL, y); cctx.lineTo(w-padR-2, y);
+      cctx.stroke();
+      cctx.setLineDash([]);
+      // label badge on left
+      const labelW = 42;
+      cctx.fillStyle = color;
+      cctx.fillRect(padL, y-7, labelW, 13);
+      cctx.fillStyle = '#000';
+      cctx.font = 'bold 9px monospace';
+      cctx.textAlign = 'center';
+      cctx.fillText(label, padL+labelW/2, y+3);
+      cctx.textAlign = 'left';
+    };
+    drawHLine(playerHold.avgCost, '#fbbf24', playerHold.shares>0?'LONG':'SHORT');
+    drawHLine(playerHold.sl||0, '#ef4444', 'SL');
+    drawHLine(playerHold.tp||0, '#22c55e', 'TP');
+  }
   // Best bid/ask markers
   const bb = bestBid(ast.book), ba = bestAsk(ast.book);
   if(bb>0 && bb>=pMin && bb<=pMax){
@@ -2061,14 +2145,15 @@ function renderPositions(){
   if(rows.length===0){list.innerHTML='<div class="empty">No open positions. Click BUY or SHORT.</div>'; return;}
   list.innerHTML = rows.map(r=>{
     const plCls = r.pl>=0?'up':'dn';
+    const dec = r.h.avgCost<10?3:2;
     return `<div class="pos-row" data-aid="${r.a.id}">
       <svg><use href="#${r.a.icon}"/></svg>
       <div class="info">
         <div class="sym">${r.a.id} <span class="tag ${r.isLong?'long':'short'}">${r.isLong?'LONG':'SHORT'}</span></div>
         <div class="stats">
           <span>Qty <b>${fmtShares(r.qty)}</b></span>
-          <span>Avg <b>${fmt(r.h.avgCost, r.h.avgCost<10?3:2)}</b></span>
-          <span>Now <b>${fmt(r.ast.lastPrice, r.ast.lastPrice<10?3:2)}</b></span>
+          <span>Avg <b>${fmt(r.h.avgCost, dec)}</b></span>
+          <span>Now <b>${fmt(r.ast.lastPrice, dec)}</b></span>
           <span>Val <b>${fmt(r.val)}</b></span>
         </div>
       </div>
@@ -2076,20 +2161,37 @@ function renderPositions(){
         <div class="pl ${plCls}">${r.pl>=0?'+':''}${fmt(r.pl)}<br><small style="opacity:.7;font-size:9px">${fmtPct(r.plPct)}</small></div>
         <button class="close-btn" data-aid="${r.a.id}">CUT</button>
       </div>
+      <div class="pos-sltp">
+        <label>SL</label><input type="number" class="sl sltp-input" data-aid="${r.a.id}" data-k="sl" value="${r.h.sl||''}" placeholder="—" step="0.01">
+        <label>TP</label><input type="number" class="tp sltp-input" data-aid="${r.a.id}" data-k="tp" value="${r.h.tp||''}" placeholder="—" step="0.01">
+        <button class="clear-sltp-btn" data-aid="${r.a.id}" style="padding:3px 8px;font-size:9px">CLR</button>
+      </div>
     </div>`;
   }).join('');
   list.querySelectorAll('.pos-row').forEach(row=>{
     row.onclick = (e)=>{
-      if(e.target.classList.contains('close-btn')){
-        closePosition(e.target.dataset.aid);
-        sndClick();
+      const tg = e.target;
+      if(tg.classList.contains('close-btn')){
+        closePosition(tg.dataset.aid); sndClick();
+      } else if(tg.classList.contains('clear-sltp-btn')){
+        const h = player().holdings[tg.dataset.aid];
+        if(h){ h.sl=0; h.tp=0; }
+        renderPositions(); sndClick();
+      } else if(tg.classList.contains('sltp-input')){
+        // let input handle itself
       } else {
         S.active = row.dataset.aid;
-        buildAssetList();
-        renderChartHeader();
-        sndClick();
+        buildAssetList(); renderChartHeader(); sndClick();
       }
     };
+  });
+  list.querySelectorAll('.sltp-input').forEach(inp=>{
+    inp.onchange = ()=>{
+      const h = player().holdings[inp.dataset.aid];
+      if(!h) return;
+      h[inp.dataset.k] = +inp.value || 0;
+    };
+    inp.onclick = e=>e.stopPropagation();
   });
 }
 function costToBuy(book, qty){
@@ -2442,6 +2544,7 @@ function init(){
     tickAcc += dt;
     while(tickAcc >= 0.1){
       tickMarket(0.1);
+      checkPlayerSLTP();
       tickAcc -= 0.1;
     }
     GLOBAL_TICK_FRAC = tickAcc / 0.1;
