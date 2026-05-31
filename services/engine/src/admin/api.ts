@@ -257,6 +257,12 @@ export function registerAdminApi(app: Express, deps: AdminDeps): void {
     const { key, value } = req.body || {};
     if (!(key in ENGINE_FLAGS)) throw new Error('unknown flag ' + key);
     (ENGINE_FLAGS as any)[key] = value;
+    // v7.1: sync engine.config when relevant flags change.
+    if (key === 'botsEnabled') engine.config.botsEnabled = !!value;
+    if (key === 'eventsEnabled') engine.config.eventsEnabled = !!value;
+    if (key === 'botsRespectPlayerLevel') engine.config.strictBotLevelGate = !!value;
+    if (key === 'volatilityMult') engine.config.volMult = +value || 1;
+    if (key === 'activityMult') engine.config.activityMult = +value || 1;
     return { key, value };
   }));
 

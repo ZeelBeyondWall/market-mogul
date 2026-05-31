@@ -41,6 +41,7 @@ export function BotsTab() {
               <div className="bot-info">
                 <div className="bot-name">
                   {x.name}
+                  <span className="bot-lvl">L{x.level || 1}</span>
                   {x.rekt && <span style={{ color: 'var(--red)', fontSize: 9, fontWeight: 700, marginLeft: 6 }}>REKT</span>}
                 </div>
                 <div className="bot-meta">{strat}</div>
@@ -55,7 +56,7 @@ export function BotsTab() {
             <div className="bot me">
               <div className="bot-rank">#{playerIdx + 1}</div>
               <div className="bot-info">
-                <div className="bot-name">YOU</div>
+                <div className="bot-name">YOU <span className="bot-lvl">L{filtered[playerIdx].level || 1}</span></div>
                 <div className="bot-meta">YOU</div>
               </div>
               <div className="bot-net">{fmt(filtered[playerIdx].net)}</div>

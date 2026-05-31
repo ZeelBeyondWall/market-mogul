@@ -23,7 +23,7 @@ interface SnapshotPayload {
   player: { cash: number; holdings: Record<string, any>; isPlayer: true; closing?: Record<string, boolean> };
   assets: Record<string, PublicAsset>;
   events: { type: 'boom'|'crash'|'news'; title: string; desc: string; t: number; assetIds?: string[]; cat?: NewsCategory }[];
-  leaderboard: { id: number; name: string; net: number; strat: string; rekt: boolean }[];
+  leaderboard: { id: number; name: string; net: number; strat: string; rekt: boolean; level: number }[];
   totalTraders: number;
   playerRank: number;
   playerStats?: PlayerStats;

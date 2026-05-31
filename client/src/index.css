@@ -594,10 +594,15 @@ body[data-theme="game"] #splash h1{
 .ml-t{font-size:14px;font-weight:700;color:var(--accent)}
 .ml-d{font-size:11px;color:var(--dim)}
 
-/* ===== v5: asset row enhancements ===== */
-.asset.locked{opacity:.4;cursor:not-allowed}
-.asset.locked:hover{transform:none}
+/* ===== v5/v7.1: asset row enhancements ===== */
+.asset.locked{opacity:.28;cursor:not-allowed;filter:grayscale(.6)}
+.asset.locked:hover{transform:none;opacity:.4}
+.asset.locked .price{color:var(--dim) !important;font-weight:500}
+.asset.locked .chg{opacity:.4}
 .lock-tag{color:var(--accent);font-size:9px;font-weight:600;margin-left:4px}
+
+/* v7.1: bot level badge in Traders tab */
+.bot-lvl{display:inline-block;font-size:9px;font-weight:700;color:var(--accent);background:rgba(245,185,66,.12);padding:1px 5px;border-radius:3px;margin-left:6px;letter-spacing:.5px;font-variant-numeric:tabular-nums}
 .watch-star{position:absolute;top:4px;right:4px;background:transparent;border:none;color:var(--dim);font-size:14px;cursor:pointer;padding:2px 4px;line-height:1;border-radius:3px}
 .watch-star:hover{background:rgba(255,255,255,.05);color:var(--accent)}
 .watch-star.on{color:var(--accent);text-shadow:0 0 6px rgba(245,185,66,.5)}

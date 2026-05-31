@@ -34,14 +34,17 @@ const MAX_PLAYER_TRADES = 500;
 export interface EngineConfig {
   botsEnabled: boolean;
   eventsEnabled: boolean;
-  volMult: number;        // applied to per-asset vol in tickMarket (planned)
-  activityMult: number;   // multiplies bot cooldown decay (planned)
+  volMult: number;
+  activityMult: number;
+  // v7.1: when true, bots can only trade assets with minLevel <= player.level.
+  // Default false — bots use their OWN level for asset access (design).
+  strictBotLevelGate: boolean;
 }
 
 export class Engine {
   state: GameState;
   hooks: EngineHooks = {};
-  config: EngineConfig = { botsEnabled: true, eventsEnabled: true, volMult: 1, activityMult: 1 };
+  config: EngineConfig = { botsEnabled: true, eventsEnabled: true, volMult: 1, activityMult: 1, strictBotLevelGate: false };
   private eventCD = { cooldown: 25 };
   private divAcc = 0;
   private tickAcc = 0;
@@ -249,11 +252,12 @@ export class Engine {
   step(now: number): void {
     const dt = Math.min(0.1, (now - this.lastT) / 1000);
     this.lastT = now;
-    // Mission/login rollover runs once per tick. Cheap when nothing to do.
     const wallNow = Date.now();
     ensureMissionsCurrent(this.player(), wallNow);
     rolloverDailyLogin(this.player(), wallNow);
     tickMissionProgress(this.player(), wallNow, () => this.netWorth());
+    // v7.1: propagate strict-gate cap to state (read by botDecide each call).
+    this.state.playerLevelCap = this.config.strictBotLevelGate ? (this.player().level || 1) : 0;
     this.tickAcc += dt;
     while (this.tickAcc >= 0.1) {
       tickMarket(this.state, 0.1, now);

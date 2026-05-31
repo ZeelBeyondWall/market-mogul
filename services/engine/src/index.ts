@@ -312,7 +312,7 @@ function broadcast(msg: S2C) {
 // LEADERBOARD_TTL_MS — avoids O(N log N) sort per client per snapshot.
 const LEADERBOARD_TTL_MS = 1500;
 const TOP_N = 200;
-interface LbEntry { id: number; name: string; net: number; strat: string; rekt: boolean }
+interface LbEntry { id: number; name: string; net: number; strat: string; rekt: boolean; level: number }
 let lbCache: { top: LbEntry[]; playerRank: number; ts: number } | null = null;
 
 function computeLeaderboard(): { top: LbEntry[]; playerRank: number } {
@@ -327,13 +327,13 @@ function computeLeaderboard(): { top: LbEntry[]; playerRank: number } {
     const net = traderNet(t, engine.state);
     if (t.id === 0) playerNet = net;
     if (top.length < TOP_N) {
-      top.push({ id: t.id, name: t.name, net, strat: t.strat as string, rekt: !!t.rekt });
+      top.push({ id: t.id, name: t.name, net, strat: t.strat as string, rekt: !!t.rekt, level: t.level || 1 });
       if (top.length === TOP_N) {
         top.sort((a, b) => a.net - b.net);
         minNet = top[0].net;
       }
     } else if (net > minNet) {
-      top[0] = { id: t.id, name: t.name, net, strat: t.strat as string, rekt: !!t.rekt };
+      top[0] = { id: t.id, name: t.name, net, strat: t.strat as string, rekt: !!t.rekt, level: t.level || 1 };
       // Re-bubble new entry to its sorted slot (still ascending by net).
       let j = 0;
       while (j + 1 < TOP_N && top[j + 1].net < top[j].net) {
@@ -353,7 +353,7 @@ function computeLeaderboard(): { top: LbEntry[]; playerRank: number } {
   // Ensure player present in returned top list.
   if (!top.some(b => b.id === 0)) {
     const p = traders[0];
-    top.push({ id: 0, name: p.name, net: playerNet, strat: p.strat as string, rekt: !!p.rekt });
+    top.push({ id: 0, name: p.name, net: playerNet, strat: p.strat as string, rekt: !!p.rekt, level: p.level || 1 });
   }
   return { top, playerRank };
 }

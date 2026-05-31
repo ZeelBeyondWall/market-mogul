@@ -240,4 +240,7 @@ export interface GameState {
   events: NewsEvent[];
   active: string;
   orderId: number;
+  // v7.1: transient cap for bot asset access. Set by engine each tick when
+  // admin enables strictBotLevelGate. 0/undefined = no cap (default).
+  playerLevelCap?: number;
 }

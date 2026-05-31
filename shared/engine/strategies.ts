@@ -1,4 +1,4 @@
-import { ASSETS, TRANSITIONS } from './constants';
+import { ASSETS, ASSET_BY_ID, TRANSITIONS } from './constants';
 import { calcEMA, rand, roundShares } from './helpers';
 import { cullStaleOrders, placeOrder } from './matching';
 import { bestBid, bestAsk, insertOrder, midPrice } from './orderbook';
@@ -87,6 +87,12 @@ export function botDecide(t: Trader, S: GameState): void {
   const ast = S.assets[aid];
   // GUARD: pickedAssets may contain stale ids from old saves (e.g. v2 PUMP).
   if (!ast) return;
+  // v7.1: strict gate — if admin enabled "Bots respect player level", bots can
+  // only trade assets whose minLevel <= player.level. Default off.
+  if (S.playerLevelCap && S.playerLevelCap > 0) {
+    const def = ASSET_BY_ID[aid];
+    if (def && def.minLevel > S.playerLevelCap) return;
+  }
   const last = ast.lastPrice || ast.fv;
   const fv = ast.fv * t.fairBias;
   const hold = t.holdings[aid];

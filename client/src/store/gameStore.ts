@@ -26,7 +26,7 @@ export interface UIPrefs extends ChartToggles {
 }
 
 export interface LeaderboardEntry {
-  id: number; name: string; net: number; strat: string; rekt: boolean;
+  id: number; name: string; net: number; strat: string; rekt: boolean; level: number;
 }
 
 interface GameStore extends UIPrefs {

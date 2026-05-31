@@ -331,6 +331,13 @@ export const CATEGORY_ORDER: string[] = [
 export const MARKET_LABELS = { stocks: '📈 Stocks', crypto: '⚡ Crypto', forex: '💱 Forex' } as const;
 export const MARKET_ORDER: Market[] = ['stocks', 'crypto', 'forex'];
 
+// v7.1: O(1) asset lookup. Built once after ASSETS defined.
+export const ASSET_BY_ID: Record<string, AssetDef> = (() => {
+  const m: Record<string, AssetDef> = {};
+  for (const a of ASSETS) m[a.id] = a;
+  return m;
+})();
+
 export const NEWS_EVENTS: NewsEventDef[] = [
   // ===== ORIGINAL 12 (preserved, tagged with cat) =====
   { type:'boom',  title:'FED CUTS RATES',        desc:'Dovish Fed rallies markets',           weight:.6,  fvDelta:0.08,  vol:1.5, dur:30, cat:'macro' },

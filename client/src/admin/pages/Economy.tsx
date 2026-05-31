@@ -235,6 +235,15 @@ export default function Economy() {
             if (r) { toast('Events ' + (v ? 'enabled' : 'disabled'), 'ok'); load(); }
           }}
         />
+        <ToggleRow
+          label="Bots Respect Player Level"
+          sub="When on, bots can only trade assets the player has unlocked. Default off — bots use their own levels (gives player a chase target)."
+          on={!!(flags as any)?.botsRespectPlayerLevel}
+          onChange={async v => {
+            const r = await safe(() => apiPost('/admin/economy/flag', { key: 'botsRespectPlayerLevel', value: v }));
+            if (r) { toast('Strict bot gate ' + (v ? 'enabled' : 'disabled'), 'ok'); load(); }
+          }}
+        />
       </div>
 
       <ConfirmModal
