@@ -13,6 +13,9 @@ import { makeTrader } from '../../../shared/engine/traders';
 import { TF_LIST, TF_MS, type TFKey, type StrategyId } from '../../../shared/engine/types';
 import { buildSnapshot, type C2S, type S2C, type TickPayload } from './protocol';
 import { diskLoad, diskSave } from './persistence';
+import { registerAdminApi } from './admin/api';
+import { ENGINE_FLAGS } from './admin/flags';
+import { recordTrade as recordAnalyticsTrade, sample as sampleAnalytics } from './admin/analytics';
 
 // Per-WS state — each connected client has its own active asset + TF.
 // (engine.state.active retained for snapshot fallback when no per-ws state.)
@@ -96,7 +99,37 @@ if (loaded) {
 
 // ---- HTTP + WS ----
 const app = express();
-app.use(cors());
+// v6 fix: scope CORS — admin paths get strict (or no) CORS; non-admin stays open.
+app.use((req, res, next) => {
+  if (req.path.startsWith('/admin')) {
+    // Admin: only same-origin OR explicit MM_ADMIN_ORIGIN env.
+    const allow = process.env.MM_ADMIN_ORIGIN || '';
+    if (allow) res.setHeader('Access-Control-Allow-Origin', allow);
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,X-Admin-Token,X-Admin-Actor');
+    if (req.method === 'OPTIONS') { res.status(204).end(); return; }
+    next();
+  } else {
+    cors()(req, res, next);
+  }
+});
+
+// v6 fix: admin auth gate — applies to ALL /admin/* paths including legacy.
+// In dev (no token), prints loud warning every 60s instead of one-time.
+const ADMIN_TOKEN_GATE = process.env.MM_ADMIN_TOKEN || '';
+if (!ADMIN_TOKEN_GATE) {
+  console.warn('\n' + '='.repeat(72));
+  console.warn('⚠  ADMIN API UNPROTECTED — MM_ADMIN_TOKEN env var is NOT SET.');
+  console.warn('⚠  Anyone reaching /admin/* can mutate game state. SET TOKEN IN PROD!');
+  console.warn('='.repeat(72) + '\n');
+  setInterval(() => console.warn('⚠ admin api still unprotected — set MM_ADMIN_TOKEN'), 60_000);
+}
+app.use('/admin', (req, res, next) => {
+  if (!ADMIN_TOKEN_GATE) return next();
+  if (req.header('X-Admin-Token') === ADMIN_TOKEN_GATE) return next();
+  res.status(401).json({ ok: false, reason: 'invalid admin token' });
+});
+
 app.get('/health', (_, res) => res.json({ ok: true, time: Date.now() }));
 
 // Reset: wipe disk save + kill server so start.bat must be re-run.
@@ -353,6 +386,7 @@ function sendSnapshot(ws: WebSocket) {
   snap.playerXp = p.xp || 0;
   snap.xpAtCurrent = xpToReach(snap.playerLevel);
   snap.xpToNext = xpToReach(snap.playerLevel + 1);
+  snap.banner = ENGINE_FLAGS.broadcastBanner || '';
   try { ws.send(JSON.stringify({ type: 'snapshot', payload: snap } satisfies S2C)); }
   catch (e) { console.error('snapshot send failed:', (e as Error).message); }
 }
@@ -402,9 +436,13 @@ function handleClientMessage(ws: WebSocket, msg: C2S) {
     case 'order': {
       const p = msg.payload;
       if (!p || typeof p.aid !== 'string') return;
+      // v6: emergency trading-halt gate (admin).
+      if (ENGINE_FLAGS.tradingHalted) {
+        ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: 'Trading halted by admin' } } satisfies S2C));
+        return;
+      }
       const ast = engine.state.assets[p.aid];
       if (!ast) return;
-      // v5: level gate — block orders on locked assets.
       const def = ASSETS.find(a => a.id === p.aid);
       const playerLvl = engine.player().level || 1;
       if (def && def.minLevel > playerLvl) {
@@ -538,13 +576,29 @@ function broadcastTickNow(): void {
   }
 }
 
+// v6: fast-forward queue — drained one batch per main tick to avoid racing.
+let fastForwardRemaining = 0;
+const FF_BATCH_PER_TICK = 50; // ~5s of virtual time per real tick
+function scheduleFastForward(ticks: number) { fastForwardRemaining += Math.max(0, Math.floor(ticks)); }
+
 setInterval(() => {
   try {
     const now = performance.now();
     engine.step(now);
+    // Drain fast-forward queue serially with the main loop — no concurrency.
+    if (fastForwardRemaining > 0) {
+      const batch = Math.min(FF_BATCH_PER_TICK, fastForwardRemaining);
+      let virtNow = now;
+      for (let i = 0; i < batch; i++) {
+        virtNow += TICK_MS;
+        engine.step(virtNow);
+      }
+      fastForwardRemaining -= batch;
+    }
     drainCloses();
     lastT = now;
     broadcastTickNow();
+    sampleAnalytics(engine.state, clients.size);
   } catch (e) {
     console.error('tick loop error:', e);
   }
@@ -570,6 +624,12 @@ function scheduleSave() {
 scheduleSave();
 process.on('SIGINT', () => { diskSave(engine.state); process.exit(0); });
 process.on('SIGTERM', () => { diskSave(engine.state); process.exit(0); });
+
+// v6: register the new admin API surface (users/economy/gm/emergency/analytics/audit).
+registerAdminApi(app, { engine, clients, sendSnapshot, serverStartMs: SERVER_START, scheduleFastForward });
+
+// v6: trade counter for analytics — engine fires onAnyTrade per trade.
+engine.hooks.onAnyTrade = () => recordAnalyticsTrade();
 
 httpServer.listen(PORT, () => {
   console.log(`🟢 server listening :${PORT}  (ws on /ws)`);

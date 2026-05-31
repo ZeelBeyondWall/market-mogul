@@ -23,20 +23,31 @@ export interface EngineHooks {
   onSLTPHit?: (assetId: string, kind: 'SL' | 'TP', price: number, refPrice: number) => void;
   onPlayerTradeClosed?: (trade: Trade) => void;
   onMissionClaim?: (missionId: string, reward: number) => void;
+  // v6: fires per trade (player or bot) — used by analytics + audit.
+  onAnyTrade?: (buyerId: number, sellerId: number, assetId: string) => void;
 }
 
 const MAX_PLAYER_TRADES = 500;
 
+// v6: runtime-toggleable config. Admin API mutates this — engine reads from it
+// each tick. Kept on the Engine instance so multiple engines (tests) stay isolated.
+export interface EngineConfig {
+  botsEnabled: boolean;
+  eventsEnabled: boolean;
+  volMult: number;        // applied to per-asset vol in tickMarket (planned)
+  activityMult: number;   // multiplies bot cooldown decay (planned)
+}
+
 export class Engine {
   state: GameState;
   hooks: EngineHooks = {};
+  config: EngineConfig = { botsEnabled: true, eventsEnabled: true, volMult: 1, activityMult: 1 };
   private eventCD = { cooldown: 25 };
   private divAcc = 0;
   private tickAcc = 0;
   private cleanAcc = 0;
   private rektAcc = 0;
   private lastT = 0;
-  // Round-robin rekt/mutate sweep — 1/REKT_SHARDS of traders per 2s tick.
   private rektShard = 0;
   tickFrac = 0;
 
@@ -165,10 +176,11 @@ export class Engine {
       onPlayerBuy: (q: number) => this.hooks.onPlayerBuy?.(this.state.active, q),
       onPlayerSellProfit: () => this.hooks.onPlayerSellProfit?.(),
       onPlayerSellLoss: () => this.hooks.onPlayerSellLoss?.(),
-      onTrade: (b: number, s: number) => {
+      onTrade: (b: number, s: number, aid: string) => {
         const buyer = this.state.traders[b]; const seller = this.state.traders[s];
         if (!buyer.isPlayer) buyer.tradesSinceChange++;
         if (!seller.isPlayer) seller.tradesSinceChange++;
+        this.hooks.onAnyTrade?.(b, s, aid);
       },
       onPlayerTradeClosed: (trade: Trade) => {
         const p = this.player();
@@ -249,7 +261,8 @@ export class Engine {
       this.tickAcc -= 0.1;
     }
     this.tickFrac = this.tickAcc / 0.1;
-    tickBots(this.state, dt);
+    // v6: admin can disable bots globally.
+    if (this.config.botsEnabled) tickBots(this.state, dt);
     this.divAcc += dt;
     if (this.divAcc >= 0.5) { payDividends(this.state, this.divAcc); this.divAcc = 0; }
     this.cleanAcc += dt;
@@ -284,10 +297,13 @@ export class Engine {
       this.cleanAcc = 0;
     }
     this.rektAcc += dt;
-    const ev = maybeFireEvent(this.state, dt, this.eventCD);
-    if (ev) {
-      applyEvent(this.state, ev);
-      this.hooks.onEvent?.(ev);
+    // v6: admin can disable scheduled news events.
+    if (this.config.eventsEnabled) {
+      const ev = maybeFireEvent(this.state, dt, this.eventCD);
+      if (ev) {
+        applyEvent(this.state, ev);
+        this.hooks.onEvent?.(ev);
+      }
     }
   }
 

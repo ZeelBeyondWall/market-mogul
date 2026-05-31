@@ -38,8 +38,10 @@ export interface SnapshotPayload {
   // v5: progression
   playerLevel: number;
   playerXp: number;
-  xpToNext: number;        // total XP needed to reach next level (cumulative)
-  xpAtCurrent: number;     // XP needed to have reached current level (cumulative)
+  xpToNext: number;
+  xpAtCurrent: number;
+  // v6: admin emergency broadcast banner. Empty string = no banner.
+  banner?: string;
 }
 
 export interface PublicTrader {
