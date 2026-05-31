@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGame } from '../store/gameStore';
 import { roundShares, fmt, fmtNum } from '../../../shared/engine/helpers';
-import { showModal } from './Modal';
 import { send } from '../net/wsClient';
 
 type Mode = 'buy' | 'short';
@@ -89,19 +88,6 @@ export function TradePanel() {
   const isFlat  = hold.shares === 0;
 
   const submit = async (mode: Mode, useMax: boolean) => {
-    // Opening a brand-new short → require explicit confirmation (UX safety).
-    if (mode === 'short' && isFlat) {
-      const body =
-        '<b>You are about to SELL SHORT.</b><br><br>' +
-        'You do not own this asset. The engine borrows shares for you.<br><br>' +
-        '• Your CASH will <b>INCREASE</b> by the sale amount<br>' +
-        '• You will <b>OWE</b> the shares back<br>' +
-        '• You profit if price <b>DROPS</b>; lose if it RISES<br>' +
-        '• Risk is UNLIMITED if price rockets — set a stop loss!<br><br>' +
-        'Continue?';
-      const ok = await showModal('⚠ OPEN SHORT POSITION', body, true);
-      if (!ok) return;
-    }
     const q = useMax ? modeMaxQty(eng, aid, mode) : qty;
     if (q <= 0) return;
     const lpx = +limitPx || ast.lastPrice;

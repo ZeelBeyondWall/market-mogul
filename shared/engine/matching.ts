@@ -31,6 +31,11 @@ export function executeTrade(
   const buyer = S.traders[buyerId];
   const seller = S.traders[sellerId];
 
+  // DEFENSIVE: ensure both sides have a holdings entry for this asset. A missing
+  // entry (e.g. from a sparse save load) would crash the whole tick loop.
+  if (!seller.holdings[assetId]) seller.holdings[assetId] = { shares: 0, avgCost: 0 };
+  if (!buyer.holdings[assetId]) buyer.holdings[assetId] = { shares: 0, avgCost: 0 };
+
   const sh0 = seller.holdings[assetId];
   // v7.3: margin check applies to EVERYONE including player (was bypassed before).
   {

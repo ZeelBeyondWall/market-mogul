@@ -121,12 +121,19 @@ function loadFrom(target: GameState, file: string): boolean {
       }
       t.cooldown = 0;
       t.openOrders = [];
-      // Holdings: server now saves only non-zero — restore zeros for the rest
+      // CRITICAL FIX: Object.assign(t, td) above replaced t.holdings with the
+      // SPARSE saved holdings (only non-zero). Rebuild a FULL holdings map so
+      // every current asset has an entry — otherwise trading a zero-held asset
+      // hits holdings[aid] === undefined and crashes executeTrade (.shares).
       const incoming = (td as any).holdings || {};
-      for (const aid of Object.keys(t.holdings)) {
-        if (incoming[aid]) t.holdings[aid] = incoming[aid];
-        else { t.holdings[aid].shares = 0; t.holdings[aid].avgCost = 0; }
+      const rebuilt: Record<string, Holding> = {};
+      for (const a of ASSETS) {
+        const h = incoming[a.id];
+        rebuilt[a.id] = (h && typeof h.shares === 'number')
+          ? { shares: h.shares, avgCost: h.avgCost || 0, slPct: h.slPct, tpPct: h.tpPct, sl: h.sl, tp: h.tp }
+          : { shares: 0, avgCost: 0 };
       }
+      t.holdings = rebuilt;
       if (!t.indicators) {
         t.indicators = {};
         ASSETS.forEach(a => { t.indicators[a.id] = { emaFast: null, emaSlow: null }; });
