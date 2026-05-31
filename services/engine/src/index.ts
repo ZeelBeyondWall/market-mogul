@@ -477,16 +477,8 @@ function handleClientMessage(ws: WebSocket, msg: C2S) {
       try {
         const hold = engine.player().holdings[p.aid];
         if (!hold) return;
-        // v8.8: STOCKS are no-short. A SELL may only reduce/close an owned long.
-        if (p.side === 'sell' && def && def.market === 'stocks') {
-          const longShares = Math.max(0, hold.shares);
-          if (longShares <= 0) {
-            ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: 'Nothing to sell — buy first' } } satisfies S2C));
-            return;
-          }
-          p.qty = Math.min(p.qty, longShares); // never cross into a short on stocks
-        }
-        // (crypto/forex: shorting allowed; buy covers short, sell opens/extends short)
+        // v8.10: shorting allowed on all markets. BUY opens/extends long or
+        // covers short; SELL closes long or opens/extends short. No special cap.
         const lpx = p.orderType === 'market' ? 0 : (p.limitPx ?? ast.lastPrice);
         const res = placeOrder(engine.state, 0, p.aid, p.side, p.qty, lpx, p.orderType, engine.callbacks());
         const h = engine.player().holdings[p.aid];

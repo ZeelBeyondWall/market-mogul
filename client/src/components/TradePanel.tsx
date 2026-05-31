@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useGame, getAssetDef } from '../store/gameStore';
+import { useGame } from '../store/gameStore';
 import { roundShares, fmt, fmtNum } from '../../../shared/engine/helpers';
 import { send } from '../net/wsClient';
 
@@ -67,8 +67,7 @@ export function TradePanel() {
   const aid = eng.state.active;
   const ast = eng.state.assets[aid];
   const hold = eng.player().holdings[aid];
-  const def = getAssetDef(aid);
-  const shortAllowed = def?.market !== 'stocks'; // v8.8: only crypto + forex short
+  const shortAllowed = true; // v8.10: shorting allowed on ALL markets (user choice)
   const [qty, setQty] = useState(1);
   const [limitPx, setLimitPx] = useState('');
   const slRef = useRef<HTMLInputElement>(null);

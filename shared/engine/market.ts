@@ -8,8 +8,11 @@ import { TF_LIST, TF_MS } from './types';
 // quoting a tight band around fair value, independent of bot level/cash. The
 // house is an infinite counterparty (executeTrade skips its cash/holdings), so
 // these orders effectively never run dry.
-const HOUSE_SPREAD = 0.0035;   // ±0.35% around fair value
-const HOUSE_QTY = 1_000_000;   // deep single level — house supplies infinitely
+const HOUSE_SPREAD = 0.0035;        // ±0.35% around fair value
+const HOUSE_DEPTH_USD = 250_000;    // ~$ value of liquidity per side
+// Refreshed every ~0.5s and re-filled on consumption, so even a big trade just
+// eats a level and the next refresh restores it — feels deep without showing
+// an absurd 1,000,000-share quote in the book.
 
 export function provideLiquidity(S: GameState, houseId: number, now: number): void {
   const house = S.traders[houseId];
@@ -29,8 +32,10 @@ export function provideLiquidity(S: GameState, houseId: number, now: number): vo
     const dec = ref < 10 ? 4 : 2;
     const bidPx = +(ref * (1 - HOUSE_SPREAD)).toFixed(dec);
     const askPx = +(ref * (1 + HOUSE_SPREAD)).toFixed(dec);
-    insertOrder(book, 'bids', { id: S.orderId++, ownerId: houseId, px: bidPx, qty: HOUSE_QTY, ts: now });
-    insertOrder(book, 'asks', { id: S.orderId++, ownerId: houseId, px: askPx, qty: HOUSE_QTY, ts: now });
+    // Realistic, price-scaled depth (whole shares). Caps the displayed qty.
+    const qty = Math.max(20, Math.min(9999, Math.round(HOUSE_DEPTH_USD / Math.max(0.01, ref))));
+    insertOrder(book, 'bids', { id: S.orderId++, ownerId: houseId, px: bidPx, qty, ts: now });
+    insertOrder(book, 'asks', { id: S.orderId++, ownerId: houseId, px: askPx, qty, ts: now });
   }
 }
 
