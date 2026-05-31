@@ -1,6 +1,16 @@
-import { ASSETS, BOT_NAMES, NAME_FIRST, NAME_LAST, STRATEGY_MIX, STRATEGIES } from './constants';
+import { ASSETS, BOT_NAMES, NAME_FIRST, NAME_LAST, STRATEGY_MIX, STRATEGIES, xpToReach } from './constants';
 import { rand } from './helpers';
 import type { Holding, StrategyId, Trader } from './types';
+
+// v5: Bot level distribution — most bots are early-game, rare whales at max level.
+// Weighted: 50% L1-5, 30% L6-15, 15% L16-25, 5% L26-50.
+function randomBotLevel(): number {
+  const r = Math.random();
+  if (r < 0.50) return 1 + Math.floor(Math.random() * 5);
+  if (r < 0.80) return 6 + Math.floor(Math.random() * 10);
+  if (r < 0.95) return 16 + Math.floor(Math.random() * 10);
+  return 26 + Math.floor(Math.random() * 25);
+}
 
 let _stratPool: StrategyId[] | null = null;
 
@@ -27,27 +37,31 @@ export function genName(): string {
     ' ' + NAME_LAST[Math.floor(Math.random() * NAME_LAST.length)];
 }
 
-export function pickAssetsFor(strat: StrategyId): string[] {
-  const byCats = (cats: string[]) => ASSETS.filter(a => cats.includes(a.cat)).map(a => a.id);
+// v5: pickAssetsFor takes level — bot can only target assets with minLevel <= level.
+export function pickAssetsFor(strat: StrategyId, level: number = 1): string[] {
+  const byCats = (cats: string[]) =>
+    ASSETS.filter(a => cats.includes(a.cat) && a.minLevel <= level).map(a => a.id);
   let pool: string[];
   switch (strat) {
-    case 'yolo':         pool = byCats(['penny','crypto','options']); break;
-    case 'diamond':      pool = byCats(['tech','crypto','bank','commodity']); break;
-    case 'paper':        pool = byCats(['tech','penny','index','crypto']); break;
-    case 'permabull':    pool = byCats(['tech','crypto','index']); break;
-    case 'permabear':    pool = byCats(['index','bank','tech','forex']); break;
-    case 'lazy':         pool = byCats(['index','bond','bank']); break;
-    case 'newschase':    pool = byCats(['tech','crypto','forex','commodity']); break;
-    case 'fomo':         pool = byCats(['penny','crypto','tech','options']); break;
-    case 'conservative': pool = byCats(['bond','index','bank']); break;
-    case 'gambler':      pool = byCats(['penny','options','crypto']); break;
-    case 'value':        pool = byCats(['bank','tech','commodity','bond']); break;
-    case 'trend':        pool = byCats(['crypto','forex','commodity','tech']); break;
-    case 'mm':           pool = byCats(['penny','crypto','forex']); break;
-    case 'copycat':      pool = byCats(['tech','crypto','penny','index']); break;
-    case 'revenge':      pool = byCats(['penny','options','crypto']); break;
-    default:             pool = byCats(['penny']);
+    case 'yolo':         pool = byCats(['gaming','crypto_mid','crypto_meme','tech']); break;
+    case 'diamond':      pool = byCats(['tech','bank','crypto_large','health']); break;
+    case 'paper':        pool = byCats(['tech','consumer','gaming']); break;
+    case 'permabull':    pool = byCats(['tech','crypto_large','gaming','crypto_mid']); break;
+    case 'permabear':    pool = byCats(['bank','forex_major','consumer']); break;
+    case 'lazy':         pool = byCats(['bank','consumer','forex_major']); break;
+    case 'newschase':    pool = byCats(['tech','crypto_large','energy']); break;
+    case 'fomo':         pool = byCats(['crypto_mid','crypto_meme','gaming','tech']); break;
+    case 'conservative': pool = byCats(['bank','consumer','forex_major','health']); break;
+    case 'gambler':      pool = byCats(['crypto_meme','forex_cross','gaming','crypto_mid']); break;
+    case 'value':        pool = byCats(['bank','tech','consumer','health']); break;
+    case 'trend':        pool = byCats(['tech','crypto_large','energy','forex_major']); break;
+    case 'mm':           pool = byCats(['crypto_large','forex_major','tech']); break;
+    case 'copycat':      pool = byCats(['tech','crypto_large','consumer']); break;
+    case 'revenge':      pool = byCats(['gaming','crypto_meme','crypto_mid']); break;
+    default:             pool = byCats(['tech']);
   }
+  // Fallback — if strategy's preferred cats are all gated, draw any accessible asset.
+  if (pool.length === 0) pool = ASSETS.filter(a => a.minLevel <= level).map(a => a.id);
   pool = pool.slice();
   const n = 2 + Math.floor(Math.random() * 4);
   const picks: string[] = [];
@@ -100,13 +114,14 @@ export function makeTrader(i: number, isPlayer: boolean, forcedStrat?: StrategyI
   const strat: StrategyId = isPlayer ? 'player' : (forcedStrat || getStratForBot());
   const holdings: Record<string, Holding> = {};
   const indicators: Record<string, { emaFast: number | null; emaSlow: number | null }> = {};
-  // PERF: only the `trend` strategy reads indicators. Skip alloc for everyone
-  // else — saves ~5KB/bot × 100K bots = 500MB at scale.
   const needIndicators = strat === 'trend';
   ASSETS.forEach(a => {
     holdings[a.id] = { shares: 0, avgCost: 0 };
     if (needIndicators) indicators[a.id] = { emaFast: null, emaSlow: null };
   });
+  // v5: progression. Player starts L1, bots roll random level + seeded XP.
+  const level = isPlayer ? 1 : randomBotLevel();
+  const xp = isPlayer ? 0 : xpToReach(level);
   return {
     id: i,
     name: isPlayer ? 'YOU' : (BOT_NAMES[i - 1] || genName()),
@@ -117,7 +132,7 @@ export function makeTrader(i: number, isPlayer: boolean, forcedStrat?: StrategyI
     activity: isPlayer ? 0 : activityFor(strat),
     cooldown: isPlayer ? 0 : rand(0, 3),
     openOrders: [],
-    pickedAssets: isPlayer ? null : pickAssetsFor(strat),
+    pickedAssets: isPlayer ? null : pickAssetsFor(strat, level),
     fairBias: isPlayer ? 1 : rand(0.85, 1.15),
     riskTol: isPlayer ? 0 : rand(0.05, 0.3),
     stopLoss: isPlayer ? 0 : stopLossFor(strat),
@@ -128,5 +143,7 @@ export function makeTrader(i: number, isPlayer: boolean, forcedStrat?: StrategyI
     mutateCooldown: rand(10, 40),
     bornAt: 0,
     closing: {},
+    level,
+    xp,
   };
 }

@@ -1,4 +1,4 @@
-import { ASSETS, BOT_COUNT } from './constants';
+import { ASSETS, BOT_COUNT, levelFromXp, xpForTrade } from './constants';
 import { rand, roundShares } from './helpers';
 import { applyEvent, maybeFireEvent, payDividends, tickMarket } from './market';
 import { cancelTraderOrders, cleanupBooks, placeOrder } from './matching';
@@ -69,7 +69,7 @@ export class Engine {
         volEventTicks: 0,
       };
     });
-    return { traders, assets, events: [], active: 'PUMP', orderId: 1 };
+    return { traders, assets, events: [], active: ASSETS[0]?.id || 'NEXA', orderId: 1 };
   }
 
   // Optional fromId — only seed traders whose id >= fromId (avoids re-seeding
@@ -176,6 +176,10 @@ export class Engine {
         p.playerTrades.push(trade);
         if (p.playerTrades.length > MAX_PLAYER_TRADES) p.playerTrades.shift();
         recordClosedTradeForMissions(p, trade, Date.now());
+        // v5: player gains XP per closed trade; level recomputed from cumulative XP.
+        p.xp = (p.xp || 0) + xpForTrade(trade.pnl);
+        const newLevel = levelFromXp(p.xp);
+        if (newLevel > (p.level || 1)) p.level = newLevel;
         this.hooks.onPlayerTradeClosed?.(trade);
       },
     };
@@ -263,9 +267,17 @@ export class Engine {
         for (let i = start; i < end; i++) {
           const t = this.state.traders[i];
           if (t.rekt) continue;
-          // Mark dirty so checkRekt/maybeMutate re-prices vs current market.
           t._netDirty = true;
-          if (t.tradesSinceChange > 0) maybeMutate(t, this.state);
+          if (t.tradesSinceChange > 0) {
+            // v5: bot earns 5 XP per trade since last sweep — slow level grind.
+            t.xp = (t.xp || 0) + t.tradesSinceChange * 5;
+            const newLevel = levelFromXp(t.xp);
+            if (newLevel > (t.level || 1)) t.level = newLevel;
+            maybeMutate(t, this.state);
+            // CRITICAL: reset counter regardless of mutation outcome, otherwise
+            // unmutated bots double-count trades next sweep (XP balloons).
+            t.tradesSinceChange = 0;
+          }
           checkRekt(t, this.state);
         }
       }

@@ -75,7 +75,7 @@ export function maybeMutate(t: Trader, S: GameState): void {
   t.activity = activityFor(newStrat);
   t.stopLoss = stopLossFor(newStrat);
   t.takeProfit = takeProfitFor(newStrat);
-  if (Math.random() < 0.4) t.pickedAssets = pickAssetsFor(newStrat);
+  if (Math.random() < 0.4) t.pickedAssets = pickAssetsFor(newStrat, t.level || 1);
 }
 
 // PERF: variance/sigma only computed for strategies that actually use them.
@@ -85,6 +85,8 @@ export function botDecide(t: Trader, S: GameState): void {
   const assets = t.pickedAssets && t.pickedAssets.length ? t.pickedAssets : ASSET_IDS;
   const aid = assets[(Math.random() * assets.length) | 0];
   const ast = S.assets[aid];
+  // GUARD: pickedAssets may contain stale ids from old saves (e.g. v2 PUMP).
+  if (!ast) return;
   const last = ast.lastPrice || ast.fv;
   const fv = ast.fv * t.fairBias;
   const hold = t.holdings[aid];

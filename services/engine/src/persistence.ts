@@ -9,9 +9,10 @@ import { TF_LIST } from '../../../shared/engine/types';
 const SAVE_FILE = path.resolve(process.cwd(), 'state.json');
 const TMP_FILE = SAVE_FILE + '.tmp';
 const BAK_FILE = SAVE_FILE + '.bak';
-// v3 — adds player-only extras: playerTrades, playerEntryTs, bonus, streak, missions.
-// Backward-compat load: v2 saves drop the new fields and load with defaults.
-const FORMAT_VERSION = 3;
+// v3 — added player-only extras (trades, bonus, missions).
+// v4 — added level/xp on Trader (player + bots).
+// Backward-compat: v2/v3 saves load fine — missing fields default-fill at runtime.
+const FORMAT_VERSION = 4;
 
 let saving = false; // prevent overlapping saves
 
@@ -37,6 +38,7 @@ async function doSave(S: GameState): Promise<void> {
         fairBias: t.fairBias, riskTol: t.riskTol, stopLoss: t.stopLoss, takeProfit: t.takeProfit,
         bornNet: t.bornNet, tradesSinceChange: t.tradesSinceChange, mutateCooldown: t.mutateCooldown,
         rekt: t.rekt,
+        level: t.level, xp: t.xp,    // v4: progression
         // Player-only extras (no-op for bots — fields will be undefined).
         playerTrades: t.isPlayer ? (t.playerTrades || []) : undefined,
         playerEntryTs: t.isPlayer ? (t.playerEntryTs || {}) : undefined,
@@ -100,16 +102,23 @@ function loadFrom(target: GameState, file: string): boolean {
     const raw = fs.readFileSync(file, 'utf-8');
     if (!raw.trim()) return false;
     const d = JSON.parse(raw);
-    // Accept v2 (legacy) and v3 (current) — older versions discarded.
-    if (d.v !== FORMAT_VERSION && d.v !== 2) {
+    // Accept v2, v3, v4 — older discarded. Missing fields default-fill.
+    if (d.v !== FORMAT_VERSION && d.v !== 2 && d.v !== 3) {
       console.log(`🗑 incompatible save format v${d.v} in ${path.basename(file)} — ignoring`);
       return false;
     }
-    if (d.v === 2) console.log(`⚙ migrating v2 → v3 save (defaults filled for new player fields)`);
+    if (d.v !== FORMAT_VERSION) console.log(`⚙ migrating v${d.v} → v${FORMAT_VERSION} save`);
+    // Build valid-asset-id set once for stale pickedAssets filtering.
+    const validAssetIds = new Set(ASSETS.map(a => a.id));
     d.traders.forEach((td: Partial<Trader>, i: number) => {
       if (!target.traders[i]) return;
       const t = target.traders[i];
       Object.assign(t, td);
+      // Drop pickedAssets entries that no longer exist (old asset universe).
+      if (Array.isArray(t.pickedAssets)) {
+        t.pickedAssets = t.pickedAssets.filter(id => validAssetIds.has(id));
+        if (t.pickedAssets.length === 0) t.pickedAssets = null;
+      }
       t.cooldown = 0;
       t.openOrders = [];
       // Holdings: server now saves only non-zero — restore zeros for the rest
@@ -147,7 +156,7 @@ function loadFrom(target: GameState, file: string): boolean {
       }
     });
     target.events = d.events || [];
-    target.active = d.active || 'PUMP';
+    target.active = (d.active && target.assets[d.active]) ? d.active : (ASSETS[0]?.id || 'NEXA');
     console.log(`💾 loaded from ${path.basename(file)}`);
     return true;
   } catch (e) {

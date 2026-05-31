@@ -1,19 +1,20 @@
 import { create } from 'zustand';
 import { Engine } from '../../../shared/engine/engine';
 import { ASSETS } from '../../../shared/engine/constants';
-import type { MissionState, PlayerStats, TFKey } from '../../../shared/engine/types';
+import type { Market, MissionState, PlayerStats, TFKey } from '../../../shared/engine/types';
 import { setMuted } from '../audio/audio';
 
 export type Theme = 'game' | 'pro';
 
 type ChartToggles = { chartLine: boolean; chartCandles: boolean; chartVol: boolean };
 
-export type TabId = 'positions' | 'book' | 'bots' | 'news' | 'details' | 'stats' | 'missions';
+export type TabId = 'positions' | 'book' | 'bots' | 'news' | 'details' | 'stats' | 'missions' | 'movers';
 
 export interface UIPrefs extends ChartToggles {
   muted: boolean;
   orderType: 'market' | 'limit';
   activeTab: TabId;
+  activeMarket: Market;
   botFilter: string;
   splashShown: boolean;
   theme: Theme;
@@ -21,6 +22,7 @@ export interface UIPrefs extends ChartToggles {
   showParticles: boolean;
   autoConfirm: boolean;
   activeTF: TFKey;
+  watchlist: string[]; // user-pinned asset ids
 }
 
 export interface LeaderboardEntry {
@@ -39,13 +41,19 @@ interface GameStore extends UIPrefs {
   playerStats: PlayerStats | null;
   playerBonus: number;
   playerStreak: number;
+  playerLevel: number;
+  playerXp: number;
+  xpAtCurrent: number;
+  xpToNext: number;
   dailyMissions: MissionState[];
   weeklyMissions: MissionState[];
   setActive: (aid: string) => void;
   setOrderType: (t: 'market' | 'limit') => void;
   setActiveTab: (t: TabId) => void;
+  setActiveMarket: (m: Market) => void;
+  toggleWatchlist: (aid: string) => void;
   setBotFilter: (f: string) => void;
-  setPlayerExtras: (s: { stats: PlayerStats; bonus: number; streak: number; daily: MissionState[]; weekly: MissionState[] }) => void;
+  setPlayerExtras: (s: { stats: PlayerStats; bonus: number; streak: number; daily: MissionState[]; weekly: MissionState[]; level: number; xp: number; xpAtCurrent: number; xpToNext: number }) => void;
   toggleChartLayer: (k: keyof ChartToggles) => void;
   toggleMute: () => void;
   hideSplash: () => void;
@@ -60,17 +68,19 @@ interface GameStore extends UIPrefs {
   setActiveTF: (tf: TFKey) => void;
 }
 
-const STORAGE = 'mm_ui_prefs_v2';
+const STORAGE = 'mm_ui_prefs_v3';
 const UI_KEYS: (keyof UIPrefs)[] = [
-  'muted','chartLine','chartCandles','chartVol','orderType','activeTab','botFilter','splashShown',
-  'theme','reduceMotion','showParticles','autoConfirm','activeTF',
+  'muted','chartLine','chartCandles','chartVol','orderType','activeTab','activeMarket','botFilter','splashShown',
+  'theme','reduceMotion','showParticles','autoConfirm','activeTF','watchlist',
 ];
 function defaultPrefs(): UIPrefs {
   return {
     muted: false, chartLine: true, chartCandles: true, chartVol: true,
-    orderType: 'market', activeTab: 'positions', botFilter: 'all', splashShown: false,
+    orderType: 'market', activeTab: 'positions', activeMarket: 'stocks',
+    botFilter: 'all', splashShown: false,
     theme: 'game', reduceMotion: false, showParticles: true, autoConfirm: false,
     activeTF: '5s',
+    watchlist: [],
   };
 }
 function loadPrefs(): UIPrefs {
@@ -119,6 +129,10 @@ export const useGame = create<GameStore>((set, get) => {
     playerStats: null,
     playerBonus: 0,
     playerStreak: 0,
+    playerLevel: 1,
+    playerXp: 0,
+    xpAtCurrent: 0,
+    xpToNext: 100,
     dailyMissions: [],
     weeklyMissions: [],
     ...initialPrefs,
@@ -129,6 +143,21 @@ export const useGame = create<GameStore>((set, get) => {
     },
     setOrderType: (t) => { set({ orderType: t }); persist(); },
     setActiveTab: (t) => { set({ activeTab: t }); persist(); },
+    setActiveMarket: (m) => {
+      set({ activeMarket: m }); persist();
+      // If current active asset isn't in new market, switch to first asset of new market.
+      const cur = get().engine.state.active;
+      const curDef = ASSETS.find(a => a.id === cur);
+      if (!curDef || curDef.market !== m) {
+        const first = ASSETS.find(a => a.market === m);
+        if (first) get().setActive(first.id);
+      }
+    },
+    toggleWatchlist: (aid) => {
+      const cur = get().watchlist;
+      const next = cur.includes(aid) ? cur.filter(x => x !== aid) : [...cur, aid];
+      set({ watchlist: next }); persist();
+    },
     setBotFilter: (f) => { set({ botFilter: f }); persist(); },
     toggleChartLayer: (k) => { set(s => ({ ...s, [k]: !s[k] } as GameStore)); persist(); },
     toggleMute: () => {
@@ -144,6 +173,10 @@ export const useGame = create<GameStore>((set, get) => {
       playerStreak: s.streak,
       dailyMissions: s.daily,
       weeklyMissions: s.weekly,
+      playerLevel: s.level,
+      playerXp: s.xp,
+      xpAtCurrent: s.xpAtCurrent,
+      xpToNext: s.xpToNext,
     }),
     setTheme: (t) => { applyTheme(t); set({ theme: t }); persist(); },
     setReduceMotion: (v) => { set({ reduceMotion: v }); persist(); },

@@ -568,3 +568,52 @@ body[data-theme="game"] #splash h1{
 .mr-tag.pending{background:rgba(245,185,66,.15);color:var(--accent)}
 .mr-tag.claimed{background:rgba(255,255,255,.05);color:var(--dim)}
 
+/* ===== v5: market switcher ===== */
+.market-switcher{display:flex;gap:4px;background:rgba(0,0,0,.3);padding:4px;border-radius:6px;margin-bottom:8px}
+.mkt-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;border:1px solid var(--border);background:transparent;color:var(--dim);border-radius:4px;cursor:pointer;font-weight:600;font-size:11px;letter-spacing:.5px;transition:.15s}
+.mkt-btn:hover{border-color:var(--accent);color:var(--text)}
+.mkt-btn.active{background:linear-gradient(180deg,var(--accent),var(--accent2));color:#000;border-color:var(--accent)}
+.mkt-btn.locked{opacity:.55}
+.mkt-lock{font-size:8px;color:var(--dim);font-weight:500}
+.mkt-btn.active .mkt-lock{color:#000;opacity:.6}
+
+/* ===== v5: market locked panel ===== */
+.market-locked{display:flex;gap:12px;align-items:center;background:linear-gradient(135deg,rgba(245,185,66,.08),rgba(0,0,0,.3));border:1px dashed var(--accent);border-radius:6px;padding:18px;margin:10px 0}
+.ml-icon{font-size:32px}
+.ml-t{font-size:14px;font-weight:700;color:var(--accent)}
+.ml-d{font-size:11px;color:var(--dim)}
+
+/* ===== v5: asset row enhancements ===== */
+.asset.locked{opacity:.4;cursor:not-allowed}
+.asset.locked:hover{transform:none}
+.lock-tag{color:var(--accent);font-size:9px;font-weight:600;margin-left:4px}
+.watch-star{position:absolute;top:4px;right:4px;background:transparent;border:none;color:var(--dim);font-size:14px;cursor:pointer;padding:2px 4px;line-height:1;border-radius:3px}
+.watch-star:hover{background:rgba(255,255,255,.05);color:var(--accent)}
+.watch-star.on{color:var(--accent);text-shadow:0 0 6px rgba(245,185,66,.5)}
+.asset{position:relative}
+
+/* ===== v5: level badge in header ===== */
+.lvl-badge{display:flex;flex-direction:column;align-items:center;gap:3px;background:linear-gradient(135deg,rgba(245,185,66,.15),rgba(168,85,247,.1));border:1px solid var(--accent);border-radius:6px;padding:4px 10px;min-width:60px}
+.lvl-num{font-size:14px;font-weight:700;color:var(--accent);letter-spacing:1px;text-shadow:0 0 4px rgba(245,185,66,.4);line-height:1}
+.lvl-bar{width:50px;height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
+.lvl-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--purple));transition:width .3s}
+
+/* ===== v5: movers tab ===== */
+.movers-group{margin-bottom:10px}
+.mg-title{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--text);padding:4px 6px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.mg-title.up{color:var(--green)}
+.mg-title.dn{color:var(--red)}
+.mover-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:6px 8px;background:rgba(0,0,0,.15);border-radius:3px;margin-bottom:3px;cursor:pointer;transition:.1s;border-left:2px solid transparent}
+.mover-row:hover{background:rgba(255,255,255,.04);border-left-color:var(--accent)}
+.mover-row.locked{opacity:.4;cursor:not-allowed}
+.mover-row.locked:hover{border-left-color:transparent}
+.mv-sym{display:flex;gap:6px;align-items:center;min-width:0}
+.mv-sym svg{width:18px;height:18px;flex-shrink:0}
+.mv-id{font-size:11px;font-weight:700;color:var(--text)}
+.mv-name{font-size:9px;color:var(--dim)}
+.mv-px{font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text)}
+.mv-chg{font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;min-width:56px;text-align:right}
+.mv-chg.up{color:var(--green)}
+.mv-chg.dn{color:var(--red)}
+.mv-vol{font-size:10px;color:var(--dim);font-variant-numeric:tabular-nums;min-width:56px;text-align:right}
+

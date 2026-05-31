@@ -13,15 +13,28 @@ const SECTOR_INDEX: Record<AssetCategory, string[]> = (() => {
 })();
 
 function resolveEventAssetIds(ev: NewsEventDef): string[] {
-  if (ev.filter && ev.filter.length) return ev.filter;
+  if (ev.filter && ev.filter.length) {
+    // Drop any filter ids that aren't real assets (stale legacy refs).
+    const valid = ev.filter.filter(id => !!SECTOR_INDEX && ASSETS.find(a => a.id === id));
+    if (valid.length !== ev.filter.length) {
+      console.warn(`[news] event "${ev.title}" has ${ev.filter.length - valid.length} dead asset filter id(s)`);
+    }
+    if (valid.length) return valid;
+    // fall through to sectorFilter / market-wide if filter resolved to nothing
+  }
   if (ev.sectorFilter && ev.sectorFilter.length) {
     const ids = new Set<string>();
     for (const sec of ev.sectorFilter) {
-      for (const id of (SECTOR_INDEX[sec] || [])) ids.add(id);
+      const list = SECTOR_INDEX[sec];
+      if (!list || list.length === 0) {
+        console.warn(`[news] event "${ev.title}" references unknown/empty sector "${sec}"`);
+        continue;
+      }
+      for (const id of list) ids.add(id);
     }
-    return [...ids];
+    if (ids.size > 0) return [...ids];
   }
-  return ASSETS.map(a => a.id); // market-wide
+  return ASSETS.map(a => a.id); // market-wide fallback
 }
 
 export function tickMarket(S: GameState, _dt: number, now: number): void {

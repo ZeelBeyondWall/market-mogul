@@ -1,10 +1,183 @@
-import type { AssetDef, NewsEventDef, StrategyId } from './types';
+import type { AssetDef, Market, NewsEventDef, StrategyId } from './types';
 
 export const BOT_COUNT = 10000;
 export const CANDLE_MS = 2000;
-export const SAVE_KEY = 'marketMogul_v3';
+export const SAVE_KEY = 'marketMogul_v5';
 
+// v5: Level progression. XP needed to REACH level N (cumulative from level 1).
+// Formula: floor(100 * N^1.5). L1=100 (to reach L2), L5=1118, L10=3162,
+// L20=8944, L30=16432, L50=35355.
+export function xpToReach(level: number): number {
+  if (level <= 1) return 0;
+  return Math.floor(100 * Math.pow(level, 1.5));
+}
+
+export function levelFromXp(xp: number): number {
+  // Cheap iterative — caps at L99.
+  let lvl = 1;
+  while (lvl < 99 && xp >= xpToReach(lvl + 1)) lvl++;
+  return lvl;
+}
+
+// Market unlock thresholds (per user spec).
+export const UNLOCK_LEVELS = {
+  stocksBasic: 1,
+  stocksAll: 5,
+  crypto: 10,
+  forex: 20,
+  advanced: 30,
+  premium: 50,
+} as const;
+
+export function marketUnlockLevel(m: Market): number {
+  if (m === 'stocks') return UNLOCK_LEVELS.stocksBasic;
+  if (m === 'crypto') return UNLOCK_LEVELS.crypto;
+  return UNLOCK_LEVELS.forex;
+}
+
+// XP gained per closed trade. Caps so a single $10M whale doesn't level instantly.
+export function xpForTrade(pnl: number): number {
+  return Math.min(500, Math.max(1, Math.floor(Math.abs(pnl) / 10)));
+}
+
+// v5 ASSETS — fully renamed per spec: 60 stocks + 25 crypto + 15 forex = 100.
+// minLevel maps to UNLOCK_LEVELS so the gating reads cleanly.
 export const ASSETS: AssetDef[] = [
+  // ============ STOCKS — TECHNOLOGY (10) ============
+  { id:'NEXA', name:'NexaTech',       icon:'t-blue', cat:'tech', market:'stocks', minLevel:1, fairValue:180, div:0.0009, vol:0.013, float:9e8,  desc:'AI infrastructure' },
+  { id:'QSFT', name:'QuantumSoft',    icon:'t-blue', cat:'tech', market:'stocks', minLevel:1, fairValue:340, div:0.0008, vol:0.012, float:7e8,  desc:'Enterprise software' },
+  { id:'CYCR', name:'CyberCore',      icon:'t-blue', cat:'tech', market:'stocks', minLevel:1, fairValue:220, div:0,      vol:0.015, float:5e8,  desc:'Cybersecurity' },
+  { id:'TTSY', name:'Titan Systems',  icon:'t-blue', cat:'tech', market:'stocks', minLevel:1, fairValue:155, div:0.0007, vol:0.013, float:8e8,  desc:'Systems integrator' },
+  { id:'VTAI', name:'Vertex AI',      icon:'t-blue', cat:'tech', market:'stocks', minLevel:5, fairValue:520, div:0,      vol:0.020, float:4e8,  desc:'AI research lab' },
+  { id:'NVLG', name:'Nova Logic',     icon:'t-blue', cat:'tech', market:'stocks', minLevel:5, fairValue:285, div:0.0006, vol:0.016, float:5e8,  desc:'Cloud compute' },
+  { id:'SKNX', name:'SkyNetix',       icon:'t-blue', cat:'tech', market:'stocks', minLevel:5, fairValue:95,  div:0,      vol:0.018, float:6e8,  desc:'Satellite network' },
+  { id:'PXDY', name:'Pixel Dynamics', icon:'t-blue', cat:'tech', market:'stocks', minLevel:5, fairValue:62,  div:0,      vol:0.017, float:7e8,  desc:'Graphics chips' },
+  { id:'HYLK', name:'HyperLink',      icon:'t-blue', cat:'tech', market:'stocks', minLevel:5, fairValue:118, div:0.0005, vol:0.014, float:6e8,  desc:'Networking hardware' },
+  { id:'OMCM', name:'OmniCompute',    icon:'t-blue', cat:'tech', market:'stocks', minLevel:5, fairValue:430, div:0.0007, vol:0.014, float:5e8,  desc:'HPC platforms' },
+
+  // ============ STOCKS — BANKING & FINANCE (10) ============
+  { id:'ABNK', name:'Apex Bank',         icon:'t-blue', cat:'bank', market:'stocks', minLevel:1, fairValue:140, div:0.0013, vol:0.012, float:6e8,  desc:'Money center bank' },
+  { id:'GTST', name:'Global Trust',      icon:'t-blue', cat:'bank', market:'stocks', minLevel:1, fairValue:88,  div:0.0014, vol:0.011, float:7e8,  desc:'Custody bank' },
+  { id:'COPX', name:'CapitalOneX',       icon:'t-blue', cat:'bank', market:'stocks', minLevel:1, fairValue:165, div:0.0011, vol:0.013, float:5e8,  desc:'Consumer credit' },
+  { id:'ZFIN', name:'Zenith Finance',    icon:'t-blue', cat:'bank', market:'stocks', minLevel:1, fairValue:295, div:0.0010, vol:0.014, float:3e8,  desc:'Investment bank' },
+  { id:'TBNK', name:'Titan Bank',        icon:'t-blue', cat:'bank', market:'stocks', minLevel:5, fairValue:62,  div:0.0013, vol:0.012, float:5e8,  desc:'Regional bank' },
+  { id:'SECH', name:'Secure Holdings',   icon:'t-blue', cat:'bank', market:'stocks', minLevel:5, fairValue:48,  div:0.0012, vol:0.011, float:6e8,  desc:'Holding company' },
+  { id:'PRCR', name:'Prime Credit',      icon:'t-blue', cat:'bank', market:'stocks', minLevel:5, fairValue:75,  div:0.0011, vol:0.012, float:4e8,  desc:'Lending platform' },
+  { id:'UNCP', name:'Unity Capital',     icon:'t-blue', cat:'bank', market:'stocks', minLevel:5, fairValue:210, div:0.0010, vol:0.013, float:3e8,  desc:'Private equity' },
+  { id:'STBK', name:'Sterling Bank',     icon:'t-blue', cat:'bank', market:'stocks', minLevel:5, fairValue:55,  div:0.0014, vol:0.011, float:5e8,  desc:'Community bank' },
+  { id:'VTFN', name:'Vertex Financial',  icon:'t-blue', cat:'bank', market:'stocks', minLevel:5, fairValue:380, div:0.0009, vol:0.015, float:2e8,  desc:'Wealth advisory' },
+
+  // ============ STOCKS — ENERGY (10) ============
+  { id:'FENR', name:'Fusion Energy',  icon:'t-commodity', cat:'energy', market:'stocks', minLevel:1, fairValue:85,  div:0.0008, vol:0.018, float:5e8,  desc:'Fusion R&D' },
+  { id:'SOLG', name:'SolarGrid',      icon:'t-commodity', cat:'energy', market:'stocks', minLevel:1, fairValue:42,  div:0.0010, vol:0.020, float:6e8,  desc:'Solar utility' },
+  { id:'TOIL', name:'Titan Oil',      icon:'t-commodity', cat:'energy', market:'stocks', minLevel:1, fairValue:115, div:0.0018, vol:0.020, float:7e8,  desc:'Integrated oil' },
+  { id:'GVLT', name:'GreenVolt',      icon:'t-commodity', cat:'energy', market:'stocks', minLevel:5, fairValue:38,  div:0.0009, vol:0.022, float:5e8,  desc:'EV charging' },
+  { id:'HYCR', name:'HydroCore',      icon:'t-commodity', cat:'energy', market:'stocks', minLevel:5, fairValue:68,  div:0.0014, vol:0.014, float:4e8,  desc:'Hydroelectric' },
+  { id:'QPWR', name:'Quantum Power',  icon:'t-commodity', cat:'energy', market:'stocks', minLevel:5, fairValue:125, div:0.0007, vol:0.025, float:3e8,  desc:'Battery tech' },
+  { id:'TENR', name:'Terra Energy',   icon:'t-commodity', cat:'energy', market:'stocks', minLevel:5, fairValue:55,  div:0.0013, vol:0.016, float:5e8,  desc:'Geothermal' },
+  { id:'INFL', name:'Infinite Fuel',  icon:'t-commodity', cat:'energy', market:'stocks', minLevel:5, fairValue:95,  div:0.0011, vol:0.019, float:4e8,  desc:'Hydrogen fuel' },
+  { id:'NVEL', name:'Nova Electric',  icon:'t-commodity', cat:'energy', market:'stocks', minLevel:5, fairValue:72,  div:0.0012, vol:0.015, float:6e8,  desc:'Grid operator' },
+  { id:'ECOG', name:'EcoGrid',        icon:'t-commodity', cat:'energy', market:'stocks', minLevel:5, fairValue:48,  div:0.0010, vol:0.018, float:5e8,  desc:'Smart grid' },
+
+  // ============ STOCKS — HEALTHCARE (10) ============
+  { id:'BNVA', name:'BioNova',         icon:'t-blue', cat:'health', market:'stocks', minLevel:1, fairValue:185, div:0.0008, vol:0.018, float:4e8,  desc:'Biotech research' },
+  { id:'LFCR', name:'LifeCore',        icon:'t-blue', cat:'health', market:'stocks', minLevel:1, fairValue:240, div:0.0011, vol:0.014, float:5e8,  desc:'Medical devices' },
+  { id:'TPHM', name:'Titan Pharma',    icon:'t-blue', cat:'health', market:'stocks', minLevel:1, fairValue:155, div:0.0014, vol:0.013, float:6e8,  desc:'Big pharma' },
+  { id:'MDTC', name:'MediTech',        icon:'t-blue', cat:'health', market:'stocks', minLevel:5, fairValue:88,  div:0.0009, vol:0.016, float:5e8,  desc:'Health IT' },
+  { id:'QHLT', name:'Quantum Health',  icon:'t-blue', cat:'health', market:'stocks', minLevel:5, fairValue:128, div:0.0010, vol:0.015, float:4e8,  desc:'Telehealth' },
+  { id:'CRGN', name:'CureGen',         icon:'t-blue', cat:'health', market:'stocks', minLevel:5, fairValue:325, div:0,      vol:0.025, float:2e8,  desc:'Gene therapy' },
+  { id:'VTLB', name:'Vital Labs',      icon:'t-blue', cat:'health', market:'stocks', minLevel:5, fairValue:72,  div:0.0010, vol:0.015, float:4e8,  desc:'Diagnostics' },
+  { id:'OMCR', name:'OmniCare',        icon:'t-blue', cat:'health', market:'stocks', minLevel:5, fairValue:55,  div:0.0012, vol:0.012, float:5e8,  desc:'Care management' },
+  { id:'NBIO', name:'Nexa Biotech',    icon:'t-blue', cat:'health', market:'stocks', minLevel:5, fairValue:215, div:0,      vol:0.022, float:3e8,  desc:'Biotech mid-cap' },
+  { id:'HSPH', name:'HealthSphere',    icon:'t-blue', cat:'health', market:'stocks', minLevel:5, fairValue:42,  div:0.0008, vol:0.016, float:5e8,  desc:'Health insurance' },
+
+  // ============ STOCKS — CONSUMER & RETAIL (10) ============
+  { id:'MGMT', name:'MegaMart',     icon:'t-blue', cat:'consumer', market:'stocks', minLevel:1, fairValue:140, div:0.0011, vol:0.011, float:6e8,  desc:'Discount retail' },
+  { id:'UBWR', name:'UrbanWear',    icon:'t-blue', cat:'consumer', market:'stocks', minLevel:1, fairValue:78,  div:0.0009, vol:0.014, float:5e8,  desc:'Apparel chain' },
+  { id:'FCRT', name:'FastCart',     icon:'t-blue', cat:'consumer', market:'stocks', minLevel:1, fairValue:118, div:0,      vol:0.016, float:4e8,  desc:'E-commerce' },
+  { id:'NVFD', name:'Nova Foods',   icon:'t-blue', cat:'consumer', market:'stocks', minLevel:5, fairValue:62,  div:0.0013, vol:0.010, float:5e8,  desc:'Packaged foods' },
+  { id:'ELTB', name:'Elite Brands', icon:'t-blue', cat:'consumer', market:'stocks', minLevel:5, fairValue:215, div:0.0012, vol:0.012, float:3e8,  desc:'Luxury holding' },
+  { id:'FRMT', name:'FreshMart',    icon:'t-blue', cat:'consumer', market:'stocks', minLevel:5, fairValue:48,  div:0.0011, vol:0.011, float:5e8,  desc:'Grocery chain' },
+  { id:'HNST', name:'HomeNest',     icon:'t-blue', cat:'consumer', market:'stocks', minLevel:5, fairValue:185, div:0.0010, vol:0.013, float:4e8,  desc:'Home improvement' },
+  { id:'PRTL', name:'Prime Retail', icon:'t-blue', cat:'consumer', market:'stocks', minLevel:5, fairValue:92,  div:0.0010, vol:0.012, float:5e8,  desc:'REIT retail' },
+  { id:'TRDF', name:'Trendify',     icon:'t-blue', cat:'consumer', market:'stocks', minLevel:5, fairValue:35,  div:0,      vol:0.020, float:6e8,  desc:'Fast-fashion online' },
+  { id:'HSTR', name:'HyperStore',   icon:'t-blue', cat:'consumer', market:'stocks', minLevel:5, fairValue:128, div:0.0009, vol:0.013, float:4e8,  desc:'Big-box electronics' },
+
+  // ============ STOCKS — GAMING & ENTERTAINMENT (10) ============
+  { id:'PXST', name:'Pixel Studios',       icon:'t-blue', cat:'gaming', market:'stocks', minLevel:1, fairValue:95,  div:0,      vol:0.020, float:4e8,  desc:'AAA game studio' },
+  { id:'TGMS', name:'Titan Games',         icon:'t-blue', cat:'gaming', market:'stocks', minLevel:1, fairValue:165, div:0.0005, vol:0.018, float:3e8,  desc:'Game publisher' },
+  { id:'STWV', name:'StreamWave',          icon:'t-blue', cat:'gaming', market:'stocks', minLevel:1, fairValue:285, div:0,      vol:0.020, float:4e8,  desc:'Streaming platform' },
+  { id:'VVRS', name:'VirtualVerse',        icon:'t-blue', cat:'gaming', market:'stocks', minLevel:5, fairValue:55,  div:0,      vol:0.025, float:5e8,  desc:'VR metaverse' },
+  { id:'NXEN', name:'Nexa Entertainment',  icon:'t-blue', cat:'gaming', market:'stocks', minLevel:5, fairValue:78,  div:0.0006, vol:0.017, float:4e8,  desc:'Film + TV' },
+  { id:'QGMG', name:'Quantum Gaming',      icon:'t-blue', cat:'gaming', market:'stocks', minLevel:5, fairValue:42,  div:0,      vol:0.022, float:5e8,  desc:'Mobile games' },
+  { id:'SKPY', name:'SkyPlay',             icon:'t-blue', cat:'gaming', market:'stocks', minLevel:5, fairValue:118, div:0,      vol:0.019, float:3e8,  desc:'Cloud gaming' },
+  { id:'AINT', name:'Arena Interactive',   icon:'t-blue', cat:'gaming', market:'stocks', minLevel:5, fairValue:62,  div:0,      vol:0.021, float:4e8,  desc:'Esports league' },
+  { id:'NVMD', name:'Nova Media',          icon:'t-blue', cat:'gaming', market:'stocks', minLevel:5, fairValue:98,  div:0.0007, vol:0.015, float:4e8,  desc:'Media conglomerate' },
+  { id:'DRFG', name:'DreamForge',          icon:'t-blue', cat:'gaming', market:'stocks', minLevel:5, fairValue:155, div:0,      vol:0.018, float:3e8,  desc:'Indie publisher' },
+
+  // ============ CRYPTO — LARGE CAP (10) ============
+  { id:'NOVA', name:'NovaCoin',     icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:42000, div:0, vol:0.026, float:2.1e7, desc:'Reserve crypto' },
+  { id:'TTNC', name:'TitanCoin',    icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:2800,  div:0, vol:0.028, float:1.2e8, desc:'Smart contracts' },
+  { id:'QTMC', name:'QuantumCoin',  icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:380,   div:0, vol:0.030, float:1.5e8, desc:'Privacy chain' },
+  { id:'APXC', name:'ApexChain',    icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:95,    div:0, vol:0.032, float:4e8,   desc:'L1 platform' },
+  { id:'SOLR', name:'SolarCoin',    icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:28,    div:0, vol:0.034, float:3.5e8, desc:'Energy chain' },
+  { id:'VTXC', name:'VertexCoin',   icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:18,    div:0, vol:0.031, float:8e8,   desc:'DeFi protocol' },
+  { id:'OMNT', name:'OmniToken',    icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:6.20,  div:0, vol:0.033, float:6e8,   desc:'Cross-chain' },
+  { id:'HYPC', name:'HyperCoin',    icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:1.25,  div:0, vol:0.030, float:2e10,  desc:'Payments coin' },
+  { id:'ZNTC', name:'ZenithCoin',   icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:14,    div:0, vol:0.029, float:5e8,   desc:'Oracle network' },
+  { id:'FSNC', name:'FusionCoin',   icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:75,    div:0, vol:0.028, float:7e7,   desc:'Silver-tier crypto' },
+
+  // ============ CRYPTO — MID CAP (10) ============
+  { id:'PXLC', name:'PixelCoin',    icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:8.50,  div:0, vol:0.038, float:1.2e9, desc:'Gaming token' },
+  { id:'STRT', name:'StreamToken',  icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:0.85,  div:0, vol:0.040, float:9e9,   desc:'Streaming pay' },
+  { id:'CYBT', name:'CyberToken',   icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:4.20,  div:0, vol:0.042, float:1e9,   desc:'Security audit' },
+  { id:'GRDC', name:'GridCoin',     icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:0.55,  div:0, vol:0.038, float:3.5e10,desc:'Compute grid' },
+  { id:'VOLC', name:'VoltCoin',     icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:0.62,  div:0, vol:0.040, float:5e10,  desc:'Energy DAO' },
+  { id:'ARNT', name:'ArenaToken',   icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:10,    div:0, vol:0.042, float:3e8,   desc:'Esports stakes' },
+  { id:'LGCC', name:'LogicCoin',    icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:4.20,  div:0, vol:0.045, float:1e9,   desc:'AI compute' },
+  { id:'TRRT', name:'TerraToken',   icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:8.80,  div:0, vol:0.044, float:5e8,   desc:'Real-asset tokens' },
+  { id:'CORC', name:'CoreCoin',     icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:2.40,  div:0, vol:0.040, float:1.5e9, desc:'Base layer' },
+  { id:'ALFC', name:'AlphaChain',   icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:6.50,  div:0, vol:0.041, float:8e8,   desc:'Hedge chain' },
+
+  // ============ CRYPTO — MEME COINS (5) — PREMIUM L50 ============
+  { id:'DGNV', name:'DogeNova',    icon:'t-penny', cat:'crypto_meme', market:'crypto', minLevel:50, fairValue:0.18, div:0, vol:0.060, float:1.5e11, desc:'Dog-themed meme' },
+  { id:'MNTT', name:'MoonTitan',   icon:'t-penny', cat:'crypto_meme', market:'crypto', minLevel:50, fairValue:0.04, div:0, vol:0.080, float:5e11,   desc:'Moon meme' },
+  { id:'PEPX', name:'PepeX',       icon:'t-penny', cat:'crypto_meme', market:'crypto', minLevel:50, fairValue:0.22, div:0, vol:0.075, float:1e11,   desc:'Frog meme' },
+  { id:'RKTC', name:'RocketCoin',  icon:'t-penny', cat:'crypto_meme', market:'crypto', minLevel:50, fairValue:0.012,div:0, vol:0.090, float:2e12,   desc:'Rocket meme' },
+  { id:'BNNT', name:'BananaToken', icon:'t-penny', cat:'crypto_meme', market:'crypto', minLevel:50, fairValue:0.06, div:0, vol:0.085, float:8e11,   desc:'Fruit meme' },
+
+  // ============ FOREX — USD PAIRS (5) — major ============
+  { id:'USDNOVA', name:'USD/NOVA',  icon:'t-forex', cat:'forex_major', market:'forex', minLevel:20, fairValue:1.00,  div:0, vol:0.005, float:1e12, desc:'USD vs NOVA reserve' },
+  { id:'USDTTN',  name:'USD/TITAN', icon:'t-forex', cat:'forex_major', market:'forex', minLevel:20, fairValue:1.18,  div:0, vol:0.006, float:8e11, desc:'USD vs Titan zone' },
+  { id:'USDSLR',  name:'USD/SOLAR', icon:'t-forex', cat:'forex_major', market:'forex', minLevel:20, fairValue:0.92,  div:0, vol:0.007, float:6e11, desc:'USD vs Solar bloc' },
+  { id:'USDAPX',  name:'USD/APEX',  icon:'t-forex', cat:'forex_major', market:'forex', minLevel:20, fairValue:1.45,  div:0, vol:0.008, float:5e11, desc:'USD vs Apex' },
+  { id:'USDZTH',  name:'USD/ZENITH',icon:'t-forex', cat:'forex_major', market:'forex', minLevel:20, fairValue:0.74,  div:0, vol:0.007, float:4e11, desc:'USD vs Zenith' },
+
+  // ============ FOREX — NOVA CROSSES (4) ============
+  { id:'NVATTN', name:'NOVA/TITAN',  icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:20, fairValue:1.18, div:0, vol:0.008, float:3e11, desc:'NOVA crossed Titan' },
+  { id:'NVASLR', name:'NOVA/SOLAR',  icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:20, fairValue:0.92, div:0, vol:0.009, float:3e11, desc:'NOVA crossed Solar' },
+  { id:'NVAAPX', name:'NOVA/APEX',   icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:20, fairValue:1.45, div:0, vol:0.010, float:2e11, desc:'NOVA crossed Apex' },
+  { id:'NVAZTH', name:'NOVA/ZENITH', icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:20, fairValue:0.74, div:0, vol:0.009, float:2e11, desc:'NOVA crossed Zenith' },
+
+  // ============ FOREX — TITAN CROSSES (3) ============
+  { id:'TTNSLR', name:'TITAN/SOLAR',  icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:20, fairValue:0.78, div:0, vol:0.011, float:2e11, desc:'Titan crossed Solar' },
+  { id:'TTNAPX', name:'TITAN/APEX',   icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:20, fairValue:1.23, div:0, vol:0.012, float:2e11, desc:'Titan crossed Apex' },
+  { id:'TTNZTH', name:'TITAN/ZENITH', icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:20, fairValue:0.63, div:0, vol:0.010, float:2e11, desc:'Titan crossed Zenith' },
+
+  // ============ FOREX — SOLAR CROSSES (2) ============
+  { id:'SLRAPX', name:'SOLAR/APEX',   icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:20, fairValue:1.58, div:0, vol:0.013, float:1e11, desc:'Solar crossed Apex' },
+  { id:'SLRZTH', name:'SOLAR/ZENITH', icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:20, fairValue:0.80, div:0, vol:0.012, float:1e11, desc:'Solar crossed Zenith' },
+
+  // ============ FOREX — APEX CROSS (1) — premium ============
+  { id:'APXZTH', name:'APEX/ZENITH',  icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:50, fairValue:0.51, div:0, vol:0.015, float:1e11, desc:'Apex crossed Zenith (exotic)' },
+];
+
+// ===== LEGACY ASSET BLOCK REMOVED in v5 — see git history (commit a813a7a~1) =====
+const _OLD_ASSETS_STRIPPED: never[] = [];
+void _OLD_ASSETS_STRIPPED;
+// The block below is intentionally typed-out to be erased; kept as comment for ref.
+/* eslint-disable */
+const _legacy_ref = () => ([
   // ====== PENNY / MEME (12) ======
   { id:'PUMP', name:'PumpCoin',    icon:'t-penny', cat:'penny', fairValue:0.50, div:0, vol:0.045, float:5e7,  desc:'Meme penny' },
   { id:'SHIB', name:'GameShibe',   icon:'t-penny', cat:'penny', fairValue:0.12, div:0, vol:0.05,  float:1e8,  desc:'Microcap' },
@@ -124,26 +297,50 @@ export const ASSETS: AssetDef[] = [
   { id:'INTL', name:'IntlBondY',   icon:'t-bond', cat:'bond', fairValue:95,  div:0.004, vol:0.005, float:2e9, desc:'Intl debt' },
   { id:'HYLD', name:'HighYield',   icon:'t-bond', cat:'bond', fairValue:75,  div:0.009, vol:0.010, float:1.5e9,desc:'High-yield ETF' },
   { id:'SHRT', name:'ShortBnd',    icon:'t-bond', cat:'bond', fairValue:99,  div:0.003, vol:0.002, float:5e9, desc:'Short-duration' },
-];
+]);
+void _legacy_ref;
+/* eslint-enable */
 
 // Category labels for UI grouping
 export const CATEGORY_LABELS: Record<string, string> = {
-  penny: '🪙 Penny', tech: '💻 Tech', bank: '🏦 Banking', index: '📊 Index',
-  crypto: '⚡ Crypto', forex: '💱 Forex', commodity: '🌾 Commodity',
-  options: '🎲 Options', hedge: '🦾 Hedge/IB', bond: '📜 Bonds',
+  // legacy (kept for backward-compat references)
+  penny: '🪙 Penny', index: '📊 Index', commodity: '🌾 Commodity',
+  options: '🎲 Options', hedge: '🦾 Hedge', bond: '📜 Bonds',
+  // v5 — stocks subcategories
+  tech: '💻 Technology', bank: '🏦 Banking & Finance', energy: '⚡ Energy',
+  health: '🧬 Healthcare', consumer: '🛒 Consumer & Retail', gaming: '🎮 Gaming & Media',
+  // v5 — crypto subcategories
+  crypto: '⚡ Crypto',
+  crypto_large: '💎 Large Cap', crypto_mid: '🪙 Mid Cap', crypto_meme: '🚀 Meme Coins',
+  // v5 — forex subcategories
+  forex: '💱 Forex',
+  forex_major: '💵 USD Pairs', forex_cross: '🔁 Cross Pairs',
 };
-export const CATEGORY_ORDER: string[] = ['penny','tech','bank','index','crypto','forex','commodity','options','hedge','bond'];
+export const CATEGORY_ORDER: string[] = [
+  // stocks first
+  'tech','bank','energy','health','consumer','gaming',
+  // crypto
+  'crypto_large','crypto_mid','crypto_meme',
+  // forex
+  'forex_major','forex_cross',
+  // legacy
+  'penny','index','crypto','forex','commodity','options','hedge','bond',
+];
+
+// v5: Market grouping for UI tabs.
+export const MARKET_LABELS = { stocks: '📈 Stocks', crypto: '⚡ Crypto', forex: '💱 Forex' } as const;
+export const MARKET_ORDER: Market[] = ['stocks', 'crypto', 'forex'];
 
 export const NEWS_EVENTS: NewsEventDef[] = [
   // ===== ORIGINAL 12 (preserved, tagged with cat) =====
   { type:'boom',  title:'FED CUTS RATES',        desc:'Dovish Fed rallies markets',           weight:.6,  fvDelta:0.08,  vol:1.5, dur:30, cat:'macro' },
   { type:'boom',  title:'EARNINGS BEAT',         desc:'Blowout quarter',                      weight:.6,  fvDelta:0.06,  vol:1.3, dur:25, cat:'earnings' },
   { type:'boom',  title:'TRADE DEAL',            desc:'Global tensions ease',                 weight:.4,  fvDelta:0.05,  vol:1.2, dur:20, cat:'economy' },
-  { type:'boom',  title:'AI BREAKTHROUGH',       desc:'Tech euphoria',                        weight:.5,  fvDelta:0.12,  vol:1.8, dur:35, filter:['APPL','MSFT','QQQ','NVDA','GOOG','META','AMD'], cat:'product' },
+  { type:'boom',  title:'AI BREAKTHROUGH',       desc:'Tech euphoria',                        weight:.5,  fvDelta:0.12,  vol:1.8, dur:35, sectorFilter:['tech'], cat:'product' },
   { type:'crash', title:'FLASH CRASH',           desc:'Algos panic-sell',                     weight:.5,  fvDelta:-0.10, vol:2.5, dur:20, cat:'sentiment' },
   { type:'crash', title:'RECESSION FEARS',       desc:'Yield curve inverts',                  weight:.4,  fvDelta:-0.07, vol:1.8, dur:30, cat:'economy' },
   { type:'crash', title:'GEOPOLITICAL SHOCK',    desc:'War headlines',                        weight:.3,  fvDelta:-0.09, vol:2.0, dur:25, cat:'macro' },
-  { type:'crash', title:'BUBBLE POPS',           desc:'Speculative froth wipes out',          weight:.25, fvDelta:-0.18, vol:3.0, dur:40, filter:['PUMP','SHIB','JUNK','CALL','MOON','APES','YOLO','KEKS','PEPE'], cat:'sentiment' },
+  { type:'crash', title:'BUBBLE POPS',           desc:'Speculative froth wipes out',          weight:.25, fvDelta:-0.18, vol:3.0, dur:40, sectorFilter:['crypto_meme'], cat:'sentiment' },
   { type:'news',  title:'ANALYST UPGRADE',       desc:'Buy coverage initiated',               weight:.8,  fvDelta:0.03,  vol:1.1, dur:15, cat:'analyst' },
   { type:'news',  title:'INSIDER SELLING',       desc:'Execs dump shares',                    weight:.5,  fvDelta:-0.03, vol:1.2, dur:15, cat:'other' },
   { type:'news',  title:'CEO STEPS DOWN',        desc:'Leadership shake-up',                  weight:.4,  fvDelta:-0.04, vol:1.3, dur:18, cat:'other' },
@@ -163,10 +360,10 @@ export const NEWS_EVENTS: NewsEventDef[] = [
   { type:'crash', title:'TECH SELLOFF',          desc:'Growth-stock rotation out',            weight:.35, fvDelta:-0.06, vol:1.5, dur:25, sectorFilter:['tech'], cat:'industry' },
   { type:'boom',  title:'BANK PROFITS SURGE',    desc:'Net interest margin expands',          weight:.35, fvDelta:0.05,  vol:1.2, dur:25, sectorFilter:['bank'], cat:'industry' },
   { type:'crash', title:'BANK CRISIS',           desc:'Regional banks under stress',          weight:.25, fvDelta:-0.09, vol:2.0, dur:30, sectorFilter:['bank'], cat:'industry' },
-  { type:'boom',  title:'CRYPTO RALLY',          desc:'Risk-on sweeps digital assets',        weight:.5,  fvDelta:0.10,  vol:2.0, dur:30, sectorFilter:['crypto'], cat:'industry' },
-  { type:'crash', title:'CRYPTO WINTER',         desc:'Liquidations cascade',                 weight:.4,  fvDelta:-0.12, vol:2.5, dur:35, sectorFilter:['crypto'], cat:'industry' },
-  { type:'boom',  title:'COMMODITIES SPIKE',     desc:'Supply tightness lifts hard assets',   weight:.35, fvDelta:0.06,  vol:1.5, dur:30, sectorFilter:['commodity'], cat:'industry' },
-  { type:'crash', title:'OIL GLUT',              desc:'Inventories overflow, energy weak',    weight:.3,  fvDelta:-0.08, vol:1.6, dur:25, sectorFilter:['commodity'], cat:'industry' },
+  { type:'boom',  title:'CRYPTO RALLY',          desc:'Risk-on sweeps digital assets',        weight:.5,  fvDelta:0.10,  vol:2.0, dur:30, sectorFilter:['crypto_large','crypto_mid','crypto_meme'], cat:'industry' },
+  { type:'crash', title:'CRYPTO WINTER',         desc:'Liquidations cascade',                 weight:.4,  fvDelta:-0.12, vol:2.5, dur:35, sectorFilter:['crypto_large','crypto_mid','crypto_meme'], cat:'industry' },
+  { type:'boom',  title:'ENERGY SECTOR SPIKE',   desc:'Supply tightness lifts energy assets', weight:.35, fvDelta:0.06,  vol:1.5, dur:30, sectorFilter:['energy'], cat:'industry' },
+  { type:'crash', title:'OIL GLUT',              desc:'Inventories overflow, energy weak',    weight:.3,  fvDelta:-0.08, vol:1.6, dur:25, sectorFilter:['energy'], cat:'industry' },
 
   // ===== NEW: ECONOMY =====
   { type:'boom',  title:'GDP EXPANSION',         desc:'Growth surprises to the upside',       weight:.4,  fvDelta:0.05,  vol:1.1, dur:35, cat:'economy' },
@@ -183,12 +380,21 @@ export const NEWS_EVENTS: NewsEventDef[] = [
   { type:'crash', title:'PRODUCT RECALL',        desc:'Mass recall hits revenue',             weight:.3,  fvDelta:-0.06, vol:1.4, dur:25, cat:'product' },
 
   // ===== NEW: SUPPLY CHAIN =====
-  { type:'crash', title:'SUPPLY DISRUPTION',     desc:'Shipping chokepoint snarls deliveries',weight:.35, fvDelta:-0.05, vol:1.5, dur:30, sectorFilter:['tech','commodity'], cat:'supply' },
+  { type:'crash', title:'SUPPLY DISRUPTION',     desc:'Shipping chokepoint snarls deliveries',weight:.35, fvDelta:-0.05, vol:1.5, dur:30, sectorFilter:['tech','energy','consumer'], cat:'supply' },
   { type:'boom',  title:'SUPPLY EASES',          desc:'Bottlenecks clear, costs drop',        weight:.3,  fvDelta:0.04,  vol:1.1, dur:25, cat:'supply' },
 
   // ===== NEW: SENTIMENT (market-wide) =====
   { type:'boom',  title:'RISK-ON SENTIMENT',     desc:'Animal spirits return',                weight:.4,  fvDelta:0.04,  vol:1.3, dur:30, cat:'sentiment' },
   { type:'crash', title:'RISK-OFF FEAR',         desc:'Investors flee to safety',             weight:.4,  fvDelta:-0.05, vol:1.5, dur:30, cat:'sentiment' },
+
+  // ===== v5: CROSS-MARKET EVENTS — affect multiple markets at once =====
+  { type:'boom',  title:'TECH-CRYPTO RALLY',     desc:'Tech stocks + crypto move in lockstep',weight:.35, fvDelta:0.07,  vol:1.6, dur:30, sectorFilter:['tech','crypto_large','crypto_mid'], cat:'sentiment' },
+  { type:'crash', title:'TECH-CRYPTO ROUT',      desc:'Risk assets crater together',          weight:.30, fvDelta:-0.08, vol:1.8, dur:30, sectorFilter:['tech','crypto_large','crypto_mid','crypto_meme'], cat:'sentiment' },
+  { type:'boom',  title:'BANK + FOREX STRENGTH', desc:'Currency strength supports financials',weight:.25, fvDelta:0.05,  vol:1.3, dur:25, sectorFilter:['bank','forex_major'], cat:'macro' },
+  { type:'crash', title:'BANKING + FX STRESS',   desc:'Credit squeeze hits banks + currencies',weight:.20,fvDelta:-0.07, vol:1.8, dur:30, sectorFilter:['bank','forex_major','forex_cross'], cat:'macro' },
+  { type:'crash', title:'ENERGY CRISIS',         desc:'Crude shock ripples to fx + utilities',weight:.25, fvDelta:-0.08, vol:1.8, dur:35, sectorFilter:['energy','forex_cross'], cat:'macro' },
+  { type:'boom',  title:'GLOBAL RECOVERY',       desc:'Every market lifts',                   weight:.20, fvDelta:0.06,  vol:1.4, dur:40, cat:'macro' },
+  { type:'crash', title:'GLOBAL ROUT',           desc:'All markets sell off',                 weight:.15, fvDelta:-0.08, vol:2.0, dur:35, cat:'macro' },
 ];
 
 export const STRATEGIES: StrategyId[] = [

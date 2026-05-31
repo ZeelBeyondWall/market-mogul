@@ -4,9 +4,18 @@ export type StrategyId =
   | 'value' | 'trend' | 'mm' | 'copycat' | 'revenge'
   | 'player';
 
+// v5: market is the top-level grouping. Categories are sub-divisions of a market
+// (e.g. tech/bank/energy under stocks; large/mid/meme under crypto).
+export type Market = 'stocks' | 'crypto' | 'forex';
+
 export type AssetCategory =
-  | 'penny' | 'tech' | 'bank' | 'index' | 'crypto'
-  | 'forex' | 'commodity' | 'options' | 'hedge' | 'bond';
+  // legacy + stocks subcategories
+  | 'penny' | 'tech' | 'bank' | 'index' | 'commodity' | 'options' | 'hedge' | 'bond'
+  | 'energy' | 'health' | 'consumer' | 'gaming'
+  // crypto subcategories
+  | 'crypto' | 'crypto_large' | 'crypto_mid' | 'crypto_meme'
+  // forex subcategories
+  | 'forex' | 'forex_major' | 'forex_cross';
 
 export interface AssetDef {
   id: string;
@@ -18,6 +27,8 @@ export interface AssetDef {
   float: number;
   desc: string;
   cat: AssetCategory;
+  market: Market;
+  minLevel: number;     // player/bot must be >= this to trade
 }
 
 export interface Order {
@@ -116,6 +127,10 @@ export interface Trader {
   // Perf cache — invalidated on any trade involving this trader.
   _netCache?: number;
   _netDirty?: boolean;
+
+  // v5: Progression. Bots + player both have it. Small int = cheap at 500K bots.
+  level: number;
+  xp: number;
 
   // ===== PLAYER-ONLY (Trader[0] only — never set on bots) =====
   // Bounded ring of last 500 closed trades.

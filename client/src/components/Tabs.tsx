@@ -7,10 +7,12 @@ import { NewsTab } from './NewsTab';
 import { StockDetailsTab } from './StockDetailsTab';
 import { StatsTab } from './StatsTab';
 import { MissionsTab } from './MissionsTab';
+import { MoversTab } from './MoversTab';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'positions', label: 'Positions' },
   { id: 'details',   label: 'Details' },
+  { id: 'movers',    label: 'Movers' },
   { id: 'book',      label: 'Book' },
   { id: 'stats',     label: 'Stats' },
   { id: 'missions',  label: 'Missions' },
@@ -32,6 +34,7 @@ export function Tabs() {
       </div>
       {active === 'positions' && <PositionsTab />}
       {active === 'details' && <StockDetailsTab />}
+      {active === 'movers' && <MoversTab />}
       {active === 'book' && <OrderBook />}
       {active === 'stats' && <StatsTab />}
       {active === 'missions' && <MissionsTab />}

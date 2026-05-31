@@ -31,6 +31,10 @@ interface SnapshotPayload {
   playerStreak?: number;
   dailyMissions?: MissionState[];
   weeklyMissions?: MissionState[];
+  playerLevel?: number;
+  playerXp?: number;
+  xpAtCurrent?: number;
+  xpToNext?: number;
 }
 
 interface TickPayload {
@@ -192,6 +196,10 @@ function applySnapshot(engine: Engine, snap: SnapshotPayload): void {
       streak: snap.playerStreak || 0,
       daily: snap.dailyMissions || [],
       weekly: snap.weeklyMissions || [],
+      level: snap.playerLevel || 1,
+      xp: snap.playerXp || 0,
+      xpAtCurrent: snap.xpAtCurrent || 0,
+      xpToNext: snap.xpToNext || 100,
     });
   }
   useGame.getState().notifyTick();

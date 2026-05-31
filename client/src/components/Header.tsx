@@ -9,11 +9,16 @@ export function Header() {
   const setSettingsOpen = useGame(s => s.setSettingsOpen);
   const rank = useGame(s => s.playerRank);
   const total = useGame(s => s.totalTraders);
+  const lvl = useGame(s => s.playerLevel);
+  const xp = useGame(s => s.playerXp);
+  const xpAt = useGame(s => s.xpAtCurrent);
+  const xpTo = useGame(s => s.xpToNext);
 
   const p = eng.player();
   const cash = p.cash;
   const port = eng.portfolioValue();
   const net = eng.netWorth();
+  const xpProgress = Math.max(0, Math.min(100, ((xp - xpAt) / Math.max(1, xpTo - xpAt)) * 100));
 
   return (
     <header>
@@ -23,6 +28,10 @@ export function Header() {
           <div className="t1">MARKET MOGUL</div>
           <div className="t2">TERMINAL v2.1</div>
         </div>
+      </div>
+      <div className="lvl-badge" title={`XP ${xp} / ${xpTo}`}>
+        <div className="lvl-num">L{lvl}</div>
+        <div className="lvl-bar"><div className="lvl-bar-fill" style={{ width: xpProgress + '%' }} /></div>
       </div>
       <div className="stats">
         <Stat label="💰 Cash">

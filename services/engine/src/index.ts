@@ -4,7 +4,7 @@ import { createServer } from 'http';
 import { spawn } from 'child_process';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Engine } from '../../../shared/engine/engine';
-import { ASSETS, NEWS_EVENTS as NEWS_EVENTS_REF, STRATEGIES } from '../../../shared/engine/constants';
+import { ASSETS, NEWS_EVENTS as NEWS_EVENTS_REF, STRATEGIES, xpToReach } from '../../../shared/engine/constants';
 import { traderNet } from '../../../shared/engine/strategies';
 import { placeOrder } from '../../../shared/engine/matching';
 import { applyEvent as applyEventRef } from '../../../shared/engine/market';
@@ -348,6 +348,11 @@ function sendSnapshot(ws: WebSocket) {
   snap.playerStreak = p.loginStreak || 0;
   snap.dailyMissions = p.dailyMissions || [];
   snap.weeklyMissions = p.weeklyMissions || [];
+  // v5: level/xp progression
+  snap.playerLevel = p.level || 1;
+  snap.playerXp = p.xp || 0;
+  snap.xpAtCurrent = xpToReach(snap.playerLevel);
+  snap.xpToNext = xpToReach(snap.playerLevel + 1);
   try { ws.send(JSON.stringify({ type: 'snapshot', payload: snap } satisfies S2C)); }
   catch (e) { console.error('snapshot send failed:', (e as Error).message); }
 }
@@ -396,10 +401,16 @@ function handleClientMessage(ws: WebSocket, msg: C2S) {
     }
     case 'order': {
       const p = msg.payload;
-      // ---- Validate ----
       if (!p || typeof p.aid !== 'string') return;
       const ast = engine.state.assets[p.aid];
       if (!ast) return;
+      // v5: level gate — block orders on locked assets.
+      const def = ASSETS.find(a => a.id === p.aid);
+      const playerLvl = engine.player().level || 1;
+      if (def && def.minLevel > playerLvl) {
+        ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: `Requires Level ${def.minLevel}` } } satisfies S2C));
+        return;
+      }
       if (!Number.isFinite(p.qty) || p.qty <= 0 || !Number.isInteger(p.qty) || p.qty > 1e8) {
         ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: 'Invalid qty' } } satisfies S2C));
         return;

@@ -35,6 +35,11 @@ export interface SnapshotPayload {
   playerStreak: number;
   dailyMissions: MissionState[];
   weeklyMissions: MissionState[];
+  // v5: progression
+  playerLevel: number;
+  playerXp: number;
+  xpToNext: number;        // total XP needed to reach next level (cumulative)
+  xpAtCurrent: number;     // XP needed to have reached current level (cumulative)
 }
 
 export interface PublicTrader {
@@ -137,5 +142,9 @@ export function buildSnapshot(
     playerStreak: 0,
     dailyMissions: [],
     weeklyMissions: [],
+    playerLevel: 1,
+    playerXp: 0,
+    xpToNext: 100,
+    xpAtCurrent: 0,
   };
 }
