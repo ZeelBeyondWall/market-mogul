@@ -133,17 +133,22 @@ export function executeTrade(
   }
 
   const ast = S.assets[assetId];
-  ast.lastPrice = px;
-  ast.hi = Math.max(ast.hi, px);
-  ast.lo = Math.min(ast.lo, px);
+  // v8.7: clamp the printed price into the fair-value band so a single trade
+  // can't detach lastPrice to 100x fv. Trades still move price freely WITHIN
+  // the band; tickMarket reinforces the same band + mean-reverts each tick.
+  const fvRef = ast.fv > 0 ? ast.fv : px;
+  const printPx = Math.max(fvRef * 0.25, Math.min(fvRef * 4, px));
+  ast.lastPrice = printPx;
+  ast.hi = Math.max(ast.hi, printPx);
+  ast.lo = Math.min(ast.lo, printPx);
   ast.volume += qty;
   // Capture every trade print into ALL TF current candles so wicks form between samples
   for (const tf in ast.series) {
     const s = ast.series[tf as keyof typeof ast.series];
     if (s.curCandle) {
-      s.curCandle.h = Math.max(s.curCandle.h, px);
-      s.curCandle.l = Math.min(s.curCandle.l, px);
-      s.curCandle.c = px;
+      s.curCandle.h = Math.max(s.curCandle.h, printPx);
+      s.curCandle.l = Math.min(s.curCandle.l, printPx);
+      s.curCandle.c = printPx;
     }
   }
 

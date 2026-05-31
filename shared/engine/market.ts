@@ -49,6 +49,19 @@ export function tickMarket(S: GameState, _dt: number, now: number): void {
       ast.volEventTicks--;
       if (ast.volEventTicks <= 0) ast.volMult = 1;
     }
+
+    // v8.7: PRICE STABILITY — circuit breaker + gentle mean reversion.
+    // Price is trade-driven, but with no anchor a feedback loop (bots quoting
+    // around lastPrice) let it detach to 100x+ fair value. Two guards:
+    //   1. Hard band: lastPrice clamped to [0.25x, 4x] of fair value.
+    //   2. Soft pull: nudge lastPrice ~0.08%/tick toward fair value so it
+    //      drifts home after shocks instead of sticking at the band edge.
+    const fv = ast.fv > 0 ? ast.fv : a.fairValue;
+    const loBand = fv * 0.25, hiBand = fv * 4;
+    if (ast.lastPrice < loBand) ast.lastPrice = loBand;
+    else if (ast.lastPrice > hiBand) ast.lastPrice = hiBand;
+    ast.lastPrice += (fv - ast.lastPrice) * 0.0008;
+
     ast.history.push(ast.lastPrice);
     if (ast.history.length > 240) ast.history.shift();
 
