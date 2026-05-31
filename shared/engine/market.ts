@@ -27,13 +27,20 @@ export function provideLiquidity(S: GameState, houseId: number, now: number): vo
     w = 0;
     for (let k = 0; k < book.asks.length; k++) if (book.asks[k].ownerId !== houseId) book.asks[w++] = book.asks[k];
     book.asks.length = w;
-    // Re-quote around fair value (price is band-clamped in tickMarket anyway).
-    const ref = ast.fv > 0 ? ast.fv : a.fairValue;
-    const dec = ref < 10 ? 4 : 2;
-    const bidPx = +(ref * (1 - HOUSE_SPREAD)).toFixed(dec);
-    const askPx = +(ref * (1 + HOUSE_SPREAD)).toFixed(dec);
-    // Realistic, price-scaled depth (whole shares). Caps the displayed qty.
-    const qty = Math.max(20, Math.min(9999, Math.round(HOUSE_DEPTH_USD / Math.max(0.01, ref))));
+    // Quote around the CURRENT price (not a fixed fair value) so the market
+    // does a natural random walk instead of ping-ponging between two fixed
+    // levels (which produced mechanical "boxy" candles). A tiny per-refresh
+    // jitter keeps it alive even with no trades; tickMarket's band + gentle
+    // fair-value pull keep it anchored.
+    const fv = ast.fv > 0 ? ast.fv : a.fairValue;
+    const last = ast.lastPrice > 0 ? ast.lastPrice : fv;
+    let mid = last * (1 + rand(-0.0010, 0.0010));        // ±0.1% drift
+    mid = Math.max(fv * 0.25, Math.min(fv * 4, mid));    // stay inside the band
+    const dec = mid < 10 ? 4 : 2;
+    const spread = HOUSE_SPREAD * (0.7 + Math.random() * 0.6); // 0.7x–1.3x jitter
+    const bidPx = +(mid * (1 - spread)).toFixed(dec);
+    const askPx = +(mid * (1 + spread)).toFixed(dec);
+    const qty = Math.max(20, Math.min(9999, Math.round(HOUSE_DEPTH_USD / Math.max(0.01, mid))));
     insertOrder(book, 'bids', { id: S.orderId++, ownerId: houseId, px: bidPx, qty, ts: now });
     insertOrder(book, 'asks', { id: S.orderId++, ownerId: houseId, px: askPx, qty, ts: now });
   }
@@ -93,6 +100,12 @@ export function tickMarket(S: GameState, _dt: number, now: number): void {
     //   2. Soft pull: nudge lastPrice ~0.08%/tick toward fair value so it
     //      drifts home after shocks instead of sticking at the band edge.
     const fv = ast.fv > 0 ? ast.fv : a.fairValue;
+    // v8.11: gentle organic random walk so the chart looks alive between trades
+    // (not just mechanical fills against the House). Scaled by the asset's own
+    // volatility + any active news volMult.
+    const drift = (Math.random() - 0.5) * 2 * (a.vol || 0.01) * (ast.volMult || 1) * 0.07;
+    ast.lastPrice *= (1 + drift);
+    // Circuit breaker band + gentle mean reversion toward fair value.
     const loBand = fv * 0.25, hiBand = fv * 4;
     if (ast.lastPrice < loBand) ast.lastPrice = loBand;
     else if (ast.lastPrice > hiBand) ast.lastPrice = hiBand;
