@@ -1,6 +1,6 @@
 import { Engine } from '../../../shared/engine/engine';
 import { makeBook } from '../../../shared/engine/orderbook';
-import type { Order } from '../../../shared/engine/types';
+import type { MissionState, NewsCategory, Order, PlayerStats } from '../../../shared/engine/types';
 import { useGame } from '../store/gameStore';
 import { Audio } from '../audio/audio';
 
@@ -22,10 +22,15 @@ interface SnapshotPayload {
   tf?: string;
   player: { cash: number; holdings: Record<string, any>; isPlayer: true; closing?: Record<string, boolean> };
   assets: Record<string, PublicAsset>;
-  events: { type: 'boom'|'crash'|'news'; title: string; desc: string; t: number }[];
+  events: { type: 'boom'|'crash'|'news'; title: string; desc: string; t: number; assetIds?: string[]; cat?: NewsCategory }[];
   leaderboard: { id: number; name: string; net: number; strat: string; rekt: boolean }[];
   totalTraders: number;
   playerRank: number;
+  playerStats?: PlayerStats;
+  playerBonus?: number;
+  playerStreak?: number;
+  dailyMissions?: MissionState[];
+  weeklyMissions?: MissionState[];
 }
 
 interface TickPayload {
@@ -52,7 +57,8 @@ export type C2SMsg =
   | { type: 'setSLTP'; payload: { aid: string; slPct?: number; tpPct?: number } }
   | { type: 'setActive'; payload: { aid: string } }
   | { type: 'setTF'; payload: { tf: string } }
-  | { type: 'cancelClose'; payload: { aid: string } };
+  | { type: 'cancelClose'; payload: { aid: string } }
+  | { type: 'claimMission'; payload: { missionId: string } };
 
 let ws: WebSocket | null = null;
 let reconnectTimer: number | null = null;
@@ -179,6 +185,15 @@ function applySnapshot(engine: Engine, snap: SnapshotPayload): void {
     }
   }
   useGame.getState().setLeaderboard(snap.leaderboard, snap.totalTraders, snap.playerRank);
+  if (snap.playerStats) {
+    useGame.getState().setPlayerExtras({
+      stats: snap.playerStats,
+      bonus: snap.playerBonus || 0,
+      streak: snap.playerStreak || 0,
+      daily: snap.dailyMissions || [],
+      weekly: snap.weeklyMissions || [],
+    });
+  }
   useGame.getState().notifyTick();
 }
 

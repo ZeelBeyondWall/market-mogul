@@ -8,6 +8,7 @@ import { ASSETS, NEWS_EVENTS as NEWS_EVENTS_REF, STRATEGIES } from '../../../sha
 import { traderNet } from '../../../shared/engine/strategies';
 import { placeOrder } from '../../../shared/engine/matching';
 import { applyEvent as applyEventRef } from '../../../shared/engine/market';
+import { claimMission } from '../../../shared/engine/missions';
 import { makeTrader } from '../../../shared/engine/traders';
 import { TF_LIST, TF_MS, type TFKey, type StrategyId } from '../../../shared/engine/types';
 import { buildSnapshot, type C2S, type S2C, type TickPayload } from './protocol';
@@ -337,6 +338,16 @@ function sendSnapshot(ws: WebSocket) {
   const { top, playerRank } = getLeaderboard();
   const snap = buildSnapshot(engine.state, cs.activeAsset, playerRank, cs.activeTF);
   snap.leaderboard = top;
+  // Player extras — stats + missions + bonus + streak.
+  const stats = engine.getPlayerStats();
+  stats.rank = playerRank;
+  stats.total = engine.state.traders.length;
+  snap.playerStats = stats;
+  const p = engine.player();
+  snap.playerBonus = p.bonus || 0;
+  snap.playerStreak = p.loginStreak || 0;
+  snap.dailyMissions = p.dailyMissions || [];
+  snap.weeklyMissions = p.weeklyMissions || [];
   try { ws.send(JSON.stringify({ type: 'snapshot', payload: snap } satisfies S2C)); }
   catch (e) { console.error('snapshot send failed:', (e as Error).message); }
 }
@@ -454,8 +465,14 @@ function handleClientMessage(ws: WebSocket, msg: C2S) {
       if (h) {
         if (msg.payload.slPct !== undefined) { h.slPct = Math.max(0, Math.min(1000, +msg.payload.slPct || 0)); h.sl = 0; }
         if (msg.payload.tpPct !== undefined) { h.tpPct = Math.max(0, Math.min(10000, +msg.payload.tpPct || 0)); h.tp = 0; }
-        broadcastTickNow(); // instant chart line update
+        broadcastTickNow();
       }
+      return;
+    }
+    case 'claimMission': {
+      if (typeof msg.payload?.missionId !== 'string') return;
+      const reward = claimMission(engine.player(), msg.payload.missionId);
+      if (reward > 0) sendSnapshot(ws);
       return;
     }
   }

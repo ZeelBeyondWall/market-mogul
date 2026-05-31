@@ -1,7 +1,28 @@
 import { ASSETS, NEWS_EVENTS } from './constants';
 import { rand } from './helpers';
-import type { GameState, NewsEvent, NewsEventDef } from './types';
+import type { AssetCategory, GameState, NewsEvent, NewsEventDef } from './types';
 import { TF_LIST, TF_MS } from './types';
+
+// Pre-computed category → asset-id list. Built once at module load — ASSETS is static.
+const SECTOR_INDEX: Record<AssetCategory, string[]> = (() => {
+  const out = {} as Record<AssetCategory, string[]>;
+  for (const a of ASSETS) {
+    (out[a.cat] = out[a.cat] || []).push(a.id);
+  }
+  return out;
+})();
+
+function resolveEventAssetIds(ev: NewsEventDef): string[] {
+  if (ev.filter && ev.filter.length) return ev.filter;
+  if (ev.sectorFilter && ev.sectorFilter.length) {
+    const ids = new Set<string>();
+    for (const sec of ev.sectorFilter) {
+      for (const id of (SECTOR_INDEX[sec] || [])) ids.add(id);
+    }
+    return [...ids];
+  }
+  return ASSETS.map(a => a.id); // market-wide
+}
 
 export function tickMarket(S: GameState, _dt: number, now: number): void {
   ASSETS.forEach(a => {
@@ -67,16 +88,21 @@ export function maybeFireEvent(_S: GameState, dt: number, state: { cooldown: num
 }
 
 export function applyEvent(S: GameState, ev: NewsEventDef): NewsEvent {
+  const affected = resolveEventAssetIds(ev);
+  const set = new Set(affected);
   ASSETS.forEach(a => {
-    if (ev.filter && !ev.filter.includes(a.id)) return;
+    if (!set.has(a.id)) return;
     const ast = S.assets[a.id];
     ast.fvDelta = ev.fvDelta / ev.dur;
     ast.fvEventTicks = ev.dur;
     ast.volMult = ev.vol;
     ast.volEventTicks = ev.dur * 1.5;
   });
-  const log: NewsEvent = { type: ev.type, title: ev.title, desc: ev.desc, t: Date.now() };
+  const log: NewsEvent = {
+    type: ev.type, title: ev.title, desc: ev.desc, t: Date.now(),
+    assetIds: affected, cat: ev.cat,
+  };
   S.events.unshift(log);
-  if (S.events.length > 30) S.events.pop();
+  if (S.events.length > 50) S.events.pop();
   return log;
 }

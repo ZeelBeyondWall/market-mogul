@@ -9,7 +9,9 @@ import { TF_LIST } from '../../../shared/engine/types';
 const SAVE_FILE = path.resolve(process.cwd(), 'state.json');
 const TMP_FILE = SAVE_FILE + '.tmp';
 const BAK_FILE = SAVE_FILE + '.bak';
-const FORMAT_VERSION = 2;
+// v3 — adds player-only extras: playerTrades, playerEntryTs, bonus, streak, missions.
+// Backward-compat load: v2 saves drop the new fields and load with defaults.
+const FORMAT_VERSION = 3;
 
 let saving = false; // prevent overlapping saves
 
@@ -35,9 +37,22 @@ async function doSave(S: GameState): Promise<void> {
         fairBias: t.fairBias, riskTol: t.riskTol, stopLoss: t.stopLoss, takeProfit: t.takeProfit,
         bornNet: t.bornNet, tradesSinceChange: t.tradesSinceChange, mutateCooldown: t.mutateCooldown,
         rekt: t.rekt,
+        // Player-only extras (no-op for bots — fields will be undefined).
+        playerTrades: t.isPlayer ? (t.playerTrades || []) : undefined,
+        playerEntryTs: t.isPlayer ? (t.playerEntryTs || {}) : undefined,
+        bonus: t.isPlayer ? (t.bonus || 0) : undefined,
+        loginStreak: t.isPlayer ? (t.loginStreak || 0) : undefined,
+        lastLoginDay: t.isPlayer ? t.lastLoginDay : undefined,
+        lastClaimedDay: t.isPlayer ? t.lastClaimedDay : undefined,
+        dailyMissions: t.isPlayer ? (t.dailyMissions || []) : undefined,
+        weeklyMissions: t.isPlayer ? (t.weeklyMissions || []) : undefined,
+        dailyMissionDay: t.isPlayer ? t.dailyMissionDay : undefined,
+        weeklyMissionWeek: t.isPlayer ? t.weeklyMissionWeek : undefined,
+        dayStartNet: t.isPlayer ? t.dayStartNet : undefined,
+        dayStartDay: t.isPlayer ? t.dayStartDay : undefined,
       })),
       assets: {} as Record<string, any>,
-      events: S.events.slice(0, 15),
+      events: S.events.slice(0, 30),
       active: S.active,
       saveTime: Date.now(),
     };
@@ -85,10 +100,12 @@ function loadFrom(target: GameState, file: string): boolean {
     const raw = fs.readFileSync(file, 'utf-8');
     if (!raw.trim()) return false;
     const d = JSON.parse(raw);
-    if (d.v !== FORMAT_VERSION) {
-      console.log(`🗑 incompatible save format in ${path.basename(file)} — ignoring`);
+    // Accept v2 (legacy) and v3 (current) — older versions discarded.
+    if (d.v !== FORMAT_VERSION && d.v !== 2) {
+      console.log(`🗑 incompatible save format v${d.v} in ${path.basename(file)} — ignoring`);
       return false;
     }
+    if (d.v === 2) console.log(`⚙ migrating v2 → v3 save (defaults filled for new player fields)`);
     d.traders.forEach((td: Partial<Trader>, i: number) => {
       if (!target.traders[i]) return;
       const t = target.traders[i];

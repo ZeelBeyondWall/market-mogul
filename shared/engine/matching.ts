@@ -1,6 +1,6 @@
 import { roundShares } from './helpers';
 import { insertOrder, removeOrder } from './orderbook';
-import type { GameState, Trader } from './types';
+import type { GameState, Trade, Trader } from './types';
 
 export function sellableQty(t: Trader, assetId: string, qty: number, px: number): number {
   const sh = t.holdings[assetId]?.shares || 0;
@@ -24,6 +24,7 @@ export function executeTrade(
   onPlayerBuy?: (qty: number) => void,
   onPlayerSellProfit?: () => void,
   onPlayerSellLoss?: () => void,
+  onPlayerTradeClosed?: (t: Trade) => void,
 ): void {
   const buyer = S.traders[buyerId];
   const seller = S.traders[sellerId];
@@ -51,8 +52,15 @@ export function executeTrade(
   buyer.cash -= cash;
   seller.cash += cash;
 
-  // BUYER side
+  // Capture pre-trade state for player closed-trade detection.
   const bh = buyer.holdings[assetId];
+  const sh = seller.holdings[assetId];
+  const bhSharesBefore = bh.shares;
+  const bhAvgBefore = bh.avgCost;
+  const shSharesBefore = sh.shares;
+  const shAvgBefore = sh.avgCost;
+
+  // BUYER side
   if (bh.shares < 0) {
     bh.shares += qty;
     if (bh.shares === 0) bh.avgCost = 0;
@@ -65,7 +73,6 @@ export function executeTrade(
   }
 
   // SELLER side
-  const sh = seller.holdings[assetId];
   if (sh.shares > 0) {
     sh.shares -= qty;
     if (sh.shares === 0) sh.avgCost = 0;
@@ -81,6 +88,40 @@ export function executeTrade(
     const absSh = -sh.shares;
     sh.avgCost = (sh.avgCost * absSh + px * qty) / (absSh + qty);
     sh.shares -= qty;
+  }
+
+  // PLAYER closed-trade detection. Fires whenever any portion of the player's
+  // existing position is exited (long sold, short covered, or sign-flipped).
+  if (buyer.isPlayer && bhSharesBefore < 0) {
+    const coveredQty = Math.min(qty, -bhSharesBefore);
+    const entry = buyer.playerEntryTs?.[assetId] ?? Date.now();
+    onPlayerTradeClosed?.({
+      assetId, side: 'short', qty: coveredQty,
+      entryPx: bhAvgBefore, exitPx: px,
+      entryTs: entry, exitTs: Date.now(),
+      pnl: (bhAvgBefore - px) * coveredQty,
+    });
+  }
+  if (seller.isPlayer && shSharesBefore > 0) {
+    const soldQty = Math.min(qty, shSharesBefore);
+    const entry = seller.playerEntryTs?.[assetId] ?? Date.now();
+    onPlayerTradeClosed?.({
+      assetId, side: 'long', qty: soldQty,
+      entryPx: shAvgBefore, exitPx: px,
+      entryTs: entry, exitTs: Date.now(),
+      pnl: (px - shAvgBefore) * soldQty,
+    });
+  }
+  // Track entry timestamps — set on 0 → nonzero, clear on → 0.
+  if (buyer.isPlayer) {
+    if (!buyer.playerEntryTs) buyer.playerEntryTs = {};
+    if (bhSharesBefore <= 0 && bh.shares > 0) buyer.playerEntryTs[assetId] = Date.now();
+    else if (bh.shares === 0) delete buyer.playerEntryTs[assetId];
+  }
+  if (seller.isPlayer) {
+    if (!seller.playerEntryTs) seller.playerEntryTs = {};
+    if (shSharesBefore >= 0 && sh.shares < 0) seller.playerEntryTs[assetId] = Date.now();
+    else if (sh.shares === 0) delete seller.playerEntryTs[assetId];
   }
 
   const ast = S.assets[assetId];
@@ -111,6 +152,7 @@ export interface OrderCallbacks {
   onPlayerSellProfit?: () => void;
   onPlayerSellLoss?: () => void;
   onTrade?: (buyerId: number, sellerId: number, assetId: string) => void;
+  onPlayerTradeClosed?: (t: Trade) => void;
 }
 
 export function placeOrder(
@@ -135,8 +177,9 @@ export function placeOrder(
   const onBuy = cb?.onPlayerBuy;
   const onProfit = cb?.onPlayerSellProfit;
   const onLoss = cb?.onPlayerSellLoss;
+  const onClosed = cb?.onPlayerTradeClosed;
   const trigger = (buyerId: number, sellerId: number, q: number, fp: number) => {
-    executeTrade(S, buyerId, sellerId, assetId, q, fp, onBuy, onProfit, onLoss);
+    executeTrade(S, buyerId, sellerId, assetId, q, fp, onBuy, onProfit, onLoss, onClosed);
     cb?.onTrade?.(buyerId, sellerId, assetId);
   };
 

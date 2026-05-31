@@ -2,10 +2,11 @@ import { ASSETS, BOT_COUNT } from './constants';
 import { rand, roundShares } from './helpers';
 import { applyEvent, maybeFireEvent, payDividends, tickMarket } from './market';
 import { cancelTraderOrders, cleanupBooks, placeOrder } from './matching';
+import { ensureMissionsCurrent, rolloverDailyLogin, tickMissionProgress, recordClosedTradeForMissions } from './missions';
 import { insertOrder, makeBook } from './orderbook';
 import { checkRekt, maybeMutate, tickBots, traderNet } from './strategies';
 import { makeTrader, resetStratPool } from './traders';
-import type { AssetState, CandleSeries, GameState, NewsEventDef, TFKey, Trader } from './types';
+import type { AssetState, CandleSeries, GameState, NewsEventDef, PlayerStats, TFKey, Trade, Trader } from './types';
 import { TF_LIST } from './types';
 
 function emptySeries(): Record<TFKey, CandleSeries> {
@@ -20,7 +21,11 @@ export interface EngineHooks {
   onPlayerSellLoss?: () => void;
   onEvent?: (ev: NewsEventDef) => void;
   onSLTPHit?: (assetId: string, kind: 'SL' | 'TP', price: number, refPrice: number) => void;
+  onPlayerTradeClosed?: (trade: Trade) => void;
+  onMissionClaim?: (missionId: string, reward: number) => void;
 }
+
+const MAX_PLAYER_TRADES = 500;
 
 export class Engine {
   state: GameState;
@@ -161,12 +166,63 @@ export class Engine {
       onPlayerSellProfit: () => this.hooks.onPlayerSellProfit?.(),
       onPlayerSellLoss: () => this.hooks.onPlayerSellLoss?.(),
       onTrade: (b: number, s: number) => {
-        // PERF: heavy work (mutate/rekt — each calls O(assets) traderNet) is deferred
-        // to the 2s sweep. Hotpath stays cheap: just increment trade counter.
         const buyer = this.state.traders[b]; const seller = this.state.traders[s];
         if (!buyer.isPlayer) buyer.tradesSinceChange++;
         if (!seller.isPlayer) seller.tradesSinceChange++;
       },
+      onPlayerTradeClosed: (trade: Trade) => {
+        const p = this.player();
+        if (!p.playerTrades) p.playerTrades = [];
+        p.playerTrades.push(trade);
+        if (p.playerTrades.length > MAX_PLAYER_TRADES) p.playerTrades.shift();
+        recordClosedTradeForMissions(p, trade, Date.now());
+        this.hooks.onPlayerTradeClosed?.(trade);
+      },
+    };
+  }
+
+  // ===== STATS =====
+  getPlayerStats(): PlayerStats {
+    const p = this.player();
+    const trades = p.playerTrades || [];
+    let wins = 0, losses = 0, realizedPL = 0, largestWin = 0, largestLoss = 0, sumHold = 0;
+    const perAsset: Record<string, number> = {};
+    for (const t of trades) {
+      realizedPL += t.pnl;
+      if (t.pnl > 0) wins++;
+      else if (t.pnl < 0) losses++;
+      if (t.pnl > largestWin) largestWin = t.pnl;
+      if (t.pnl < largestLoss) largestLoss = t.pnl;
+      // Guard: legacy/missing entryTs (=0) would inflate sumHold by the wall-clock epoch.
+      sumHold += t.entryTs > 0 ? Math.max(0, t.exitTs - t.entryTs) : 0;
+      perAsset[t.assetId] = (perAsset[t.assetId] || 0) + t.pnl;
+    }
+    let bestAsset: string | null = null, worstAsset: string | null = null;
+    let bestPL = -Infinity, worstPL = Infinity;
+    for (const aid of Object.keys(perAsset)) {
+      if (perAsset[aid] > bestPL) { bestPL = perAsset[aid]; bestAsset = aid; }
+      if (perAsset[aid] < worstPL) { worstPL = perAsset[aid]; worstAsset = aid; }
+    }
+    // Unrealized — sum across open positions.
+    let unrealized = 0;
+    for (const a of ASSETS) {
+      const h = p.holdings[a.id];
+      if (!h || h.shares === 0) continue;
+      const px = this.state.assets[a.id].lastPrice;
+      unrealized += h.shares > 0
+        ? h.shares * (px - h.avgCost)
+        : (-h.shares) * (h.avgCost - px);
+    }
+    const totalTrades = trades.length;
+    return {
+      totalTrades, wins, losses,
+      winRate: totalTrades > 0 ? (wins / totalTrades) * 100 : 0,
+      realizedPL, unrealizedPL: unrealized,
+      largestWin, largestLoss,
+      avgPL: totalTrades > 0 ? realizedPL / totalTrades : 0,
+      avgHoldMs: totalTrades > 0 ? sumHold / totalTrades : 0,
+      bestAsset, worstAsset,
+      rank: 0, total: 0, // filled by server with cached values
     };
   }
 
@@ -177,6 +233,11 @@ export class Engine {
   step(now: number): void {
     const dt = Math.min(0.1, (now - this.lastT) / 1000);
     this.lastT = now;
+    // Mission/login rollover runs once per tick. Cheap when nothing to do.
+    const wallNow = Date.now();
+    ensureMissionsCurrent(this.player(), wallNow);
+    rolloverDailyLogin(this.player(), wallNow);
+    tickMissionProgress(this.player(), wallNow, () => this.netWorth());
     this.tickAcc += dt;
     while (this.tickAcc >= 0.1) {
       tickMarket(this.state, 0.1, now);
@@ -237,7 +298,13 @@ export class Engine {
   }
 
   netWorth(): number {
+    // NOTE: bonus deliberately excluded — keeps leaderboard fair vs bots.
     return this.player().cash + this.portfolioValue();
+  }
+
+  // Player-only "wallet" including mission bonus, shown in header alongside net.
+  walletBonus(): number {
+    return this.player().bonus || 0;
   }
 
   playerRank(): number {

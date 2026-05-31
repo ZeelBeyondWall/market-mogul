@@ -1,5 +1,5 @@
 // WebSocket message types shared between client/server.
-import type { GameState, Holding, NewsEvent, Trader } from '../../../shared/engine/types';
+import type { GameState, Holding, MissionState, NewsEvent, PlayerStats, Trader } from '../../../shared/engine/types';
 
 // Server → Client
 export type S2C =
@@ -16,7 +16,8 @@ export type C2S =
   | { type: 'setSLTP'; payload: { aid: string; slPct?: number; tpPct?: number } }
   | { type: 'setActive'; payload: { aid: string } }
   | { type: 'setTF'; payload: { tf: string } }
-  | { type: 'cancelClose'; payload: { aid: string } };
+  | { type: 'cancelClose'; payload: { aid: string } }
+  | { type: 'claimMission'; payload: { missionId: string } };
 
 // Snapshot — sent on connect + periodically. Compact subset of GameState.
 export interface SnapshotPayload {
@@ -29,6 +30,11 @@ export interface SnapshotPayload {
   leaderboard: { id: number; name: string; net: number; strat: string; rekt: boolean }[];
   totalTraders: number;
   playerRank: number;
+  playerStats: PlayerStats;
+  playerBonus: number;
+  playerStreak: number;
+  dailyMissions: MissionState[];
+  weeklyMissions: MissionState[];
 }
 
 export interface PublicTrader {
@@ -108,16 +114,28 @@ export function buildSnapshot(
       volumeHist: isActive ? a.volumeHist.slice(-120) : [],
     };
   }
-  // Leaderboard left empty — caller (sendSnapshot) overwrites with cached top-N.
+  // Leaderboard + stats/missions left empty — caller (sendSnapshot) fills them.
   return {
     serverTime: Date.now(),
     active,
     tf,
     player: trimTraderForPublic(p),
     assets,
-    events: S.events.slice(0, 15),
+    events: S.events.slice(0, 30),
     leaderboard: [],
     totalTraders: S.traders.length,
     playerRank,
+    playerStats: {
+      totalTrades: 0, wins: 0, losses: 0, winRate: 0,
+      realizedPL: 0, unrealizedPL: 0,
+      largestWin: 0, largestLoss: 0,
+      avgPL: 0, avgHoldMs: 0,
+      bestAsset: null, worstAsset: null,
+      rank: playerRank, total: S.traders.length,
+    },
+    playerBonus: 0,
+    playerStreak: 0,
+    dailyMissions: [],
+    weeklyMissions: [],
   };
 }

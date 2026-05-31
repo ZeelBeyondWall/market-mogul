@@ -116,7 +116,32 @@ export interface Trader {
   // Perf cache — invalidated on any trade involving this trader.
   _netCache?: number;
   _netDirty?: boolean;
+
+  // ===== PLAYER-ONLY (Trader[0] only — never set on bots) =====
+  // Bounded ring of last 500 closed trades.
+  playerTrades?: Trade[];
+  // Entry timestamp per asset (set when position opens 0 → nonzero).
+  playerEntryTs?: Record<string, number>;
+  // Mission bonus — pays out from missions. NOT included in traderNet/leaderboard.
+  bonus?: number;
+  // Login streak tracking (UTC day-number based)
+  loginStreak?: number;
+  lastLoginDay?: number;     // utcDayNumber() value
+  lastClaimedDay?: number;   // last day daily-login bonus was claimed
+  // Mission state — regenerated on day/week rollover
+  dailyMissions?: MissionState[];
+  weeklyMissions?: MissionState[];
+  dailyMissionDay?: number;  // day-number the daily set was generated for
+  weeklyMissionWeek?: number;// iso week number the weekly set was generated for
+  // Portfolio snapshot at UTC day start — for portfolioPct mission goal
+  dayStartNet?: number;
+  dayStartDay?: number;
 }
+
+// Extended news taxonomy — sub-category drives icon/color in UI and bot reaction logic.
+export type NewsCategory =
+  | 'earnings' | 'analyst' | 'industry' | 'economy' | 'regulatory'
+  | 'product' | 'supply' | 'sentiment' | 'macro' | 'other';
 
 export interface NewsEventDef {
   type: 'boom' | 'crash' | 'news';
@@ -126,7 +151,9 @@ export interface NewsEventDef {
   fvDelta: number;
   vol: number;
   dur: number;
-  filter?: string[];
+  filter?: string[];                   // explicit asset-id list
+  sectorFilter?: AssetCategory[];      // resolved to asset ids at apply time
+  cat?: NewsCategory;                  // narrative classification
 }
 
 export interface NewsEvent {
@@ -134,6 +161,62 @@ export interface NewsEvent {
   title: string;
   desc: string;
   t: number;
+  // Asset ids actually affected at fire-time. Enables per-stock news filter.
+  assetIds?: string[];
+  cat?: NewsCategory;
+}
+
+// PLAYER-ONLY: never attach these to bot Trader instances at scale.
+export interface Trade {
+  assetId: string;
+  side: 'long' | 'short';      // direction CLOSED
+  qty: number;                  // shares closed
+  entryPx: number;              // avg cost at open
+  exitPx: number;
+  entryTs: number;
+  exitTs: number;
+  pnl: number;                  // realized cash p/l
+}
+
+export interface PlayerStats {
+  totalTrades: number;
+  wins: number;
+  losses: number;
+  winRate: number;             // 0-100
+  realizedPL: number;
+  unrealizedPL: number;
+  largestWin: number;
+  largestLoss: number;
+  avgPL: number;
+  avgHoldMs: number;
+  bestAsset: string | null;
+  worstAsset: string | null;
+  rank: number;
+  total: number;
+}
+
+export type MissionPeriod = 'daily' | 'weekly';
+export type MissionGoal =
+  | { kind: 'trades';        target: number }
+  | { kind: 'profitable';    target: number }
+  | { kind: 'distinct';      target: number }
+  | { kind: 'portfolioPct';  target: number }   // % growth from day start
+  | { kind: 'holdHours';     target: number };  // hold any position >= N hours
+
+export interface MissionDef {
+  id: string;
+  period: MissionPeriod;
+  title: string;
+  desc: string;
+  goal: MissionGoal;
+  reward: number;             // bonus units (NOT cash — see Trader.bonus)
+}
+
+export interface MissionState {
+  def: MissionDef;
+  progress: number;
+  completed: boolean;
+  claimed: boolean;
 }
 
 export interface GameState {

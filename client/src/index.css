@@ -523,3 +523,48 @@ body[data-theme="game"] #splash h1{
 }
 @keyframes titlePulse{0%,100%{filter:drop-shadow(0 4px 20px rgba(251,191,36,.4))}50%{filter:drop-shadow(0 4px 28px rgba(251,191,36,.7)) drop-shadow(0 0 40px rgba(244,63,94,.3))}}
 
+/* ===== v4: tabs horizontal scroll for 7 tabs ===== */
+.tabs-scroll{overflow-x:auto;scrollbar-width:thin}
+.tabs-scroll::-webkit-scrollbar{height:4px}
+.tabs-scroll::-webkit-scrollbar-thumb{background:#1f2a3a;border-radius:2px}
+.tabs-scroll .tab{flex-shrink:0;white-space:nowrap;padding:6px 10px;font-size:11px}
+
+/* ===== v4: Stock Details KV grid ===== */
+.kv-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;background:rgba(0,0,0,.15);padding:6px 8px;border-radius:4px}
+.kv-row{display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;border-bottom:1px dashed rgba(255,255,255,.04)}
+.kv-l{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+.kv-v{color:var(--text);font-weight:600;font-size:11px;font-variant-numeric:tabular-nums}
+
+/* ===== v4: Stats cards ===== */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px}
+.stat-card{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:4px;padding:8px;display:flex;flex-direction:column;gap:3px}
+.stat-card-label{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px}
+.stat-card-value{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
+.stat-card-value.up{color:var(--green)}
+.stat-card-value.dn{color:var(--red)}
+
+/* ===== v4: Missions ===== */
+.mission-summary{display:flex;gap:12px;background:linear-gradient(90deg,rgba(245,185,66,.08),rgba(34,197,94,.04));border:1px solid var(--border);border-radius:4px;padding:8px 12px;margin-bottom:8px}
+.mission-summary > div{flex:1}
+.mission-summary .ms-l{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+.mission-summary .ms-v{font-size:14px;font-weight:700;color:var(--gold)}
+.mission-group{margin-bottom:10px}
+.mission-group-title{font-size:10px;color:var(--accent);font-weight:700;letter-spacing:1px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:baseline}
+.mg-reset{font-size:9px;color:var(--dim);font-weight:400;letter-spacing:.5px;text-transform:none}
+.mission-row{display:flex;gap:8px;align-items:center;background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:4px;padding:8px;margin-bottom:5px;transition:.15s}
+.mission-row.done{border-color:var(--green);background:linear-gradient(90deg,rgba(34,197,94,.08),rgba(0,0,0,.2))}
+.mission-row.claimed{opacity:.5}
+.mr-info{flex:1;min-width:0}
+.mr-title{font-size:12px;font-weight:700;color:var(--text)}
+.mr-desc{font-size:10px;color:var(--dim);margin-bottom:4px}
+.mr-bar{height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden}
+.mr-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));transition:width .3s}
+.mr-prog{font-size:9px;color:var(--dim);margin-top:3px;font-variant-numeric:tabular-nums}
+.mr-action{display:flex;align-items:center}
+.mr-claim{background:var(--green);color:#000;border:none;padding:6px 12px;border-radius:3px;font-weight:700;font-size:10px;letter-spacing:1px;cursor:pointer;animation:claimPulse 1.5s ease-in-out infinite}
+.mr-claim:hover{background:var(--green2);transform:scale(1.05)}
+@keyframes claimPulse{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.6)}50%{box-shadow:0 0 0 6px rgba(34,197,94,0)}}
+.mr-tag{font-size:10px;padding:4px 8px;border-radius:3px;font-weight:600;letter-spacing:.5px}
+.mr-tag.pending{background:rgba(245,185,66,.15);color:var(--accent)}
+.mr-tag.claimed{background:rgba(255,255,255,.05);color:var(--dim)}
+

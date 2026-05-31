@@ -1,17 +1,19 @@
 import { create } from 'zustand';
 import { Engine } from '../../../shared/engine/engine';
 import { ASSETS } from '../../../shared/engine/constants';
-import type { TFKey } from '../../../shared/engine/types';
+import type { MissionState, PlayerStats, TFKey } from '../../../shared/engine/types';
 import { setMuted } from '../audio/audio';
 
 export type Theme = 'game' | 'pro';
 
 type ChartToggles = { chartLine: boolean; chartCandles: boolean; chartVol: boolean };
 
+export type TabId = 'positions' | 'book' | 'bots' | 'news' | 'details' | 'stats' | 'missions';
+
 export interface UIPrefs extends ChartToggles {
   muted: boolean;
   orderType: 'market' | 'limit';
-  activeTab: 'positions' | 'book' | 'bots' | 'news';
+  activeTab: TabId;
   botFilter: string;
   splashShown: boolean;
   theme: Theme;
@@ -33,10 +35,17 @@ interface GameStore extends UIPrefs {
   totalTraders: number;
   playerRank: number;
   settingsOpen: boolean;
+  // Player extras pushed via snapshots.
+  playerStats: PlayerStats | null;
+  playerBonus: number;
+  playerStreak: number;
+  dailyMissions: MissionState[];
+  weeklyMissions: MissionState[];
   setActive: (aid: string) => void;
   setOrderType: (t: 'market' | 'limit') => void;
-  setActiveTab: (t: UIPrefs['activeTab']) => void;
+  setActiveTab: (t: TabId) => void;
   setBotFilter: (f: string) => void;
+  setPlayerExtras: (s: { stats: PlayerStats; bonus: number; streak: number; daily: MissionState[]; weekly: MissionState[] }) => void;
   toggleChartLayer: (k: keyof ChartToggles) => void;
   toggleMute: () => void;
   hideSplash: () => void;
@@ -107,6 +116,11 @@ export const useGame = create<GameStore>((set, get) => {
     totalTraders: 0,
     playerRank: 1,
     settingsOpen: false,
+    playerStats: null,
+    playerBonus: 0,
+    playerStreak: 0,
+    dailyMissions: [],
+    weeklyMissions: [],
     ...initialPrefs,
     setActive: (aid) => {
       engine.state.active = aid;
@@ -124,6 +138,13 @@ export const useGame = create<GameStore>((set, get) => {
     notifyTick: () => set(s => ({ tick: s.tick + 1 })),
     setConnected: (v) => set({ connected: v }),
     setLeaderboard: (lb, total, rank) => set({ leaderboard: lb, totalTraders: total, playerRank: rank }),
+    setPlayerExtras: (s) => set({
+      playerStats: s.stats,
+      playerBonus: s.bonus,
+      playerStreak: s.streak,
+      dailyMissions: s.daily,
+      weeklyMissions: s.weekly,
+    }),
     setTheme: (t) => { applyTheme(t); set({ theme: t }); persist(); },
     setReduceMotion: (v) => { set({ reduceMotion: v }); persist(); },
     setShowParticles: (v) => { set({ showParticles: v }); persist(); },

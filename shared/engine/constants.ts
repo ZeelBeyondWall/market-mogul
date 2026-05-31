@@ -135,18 +135,60 @@ export const CATEGORY_LABELS: Record<string, string> = {
 export const CATEGORY_ORDER: string[] = ['penny','tech','bank','index','crypto','forex','commodity','options','hedge','bond'];
 
 export const NEWS_EVENTS: NewsEventDef[] = [
-  { type:'boom',  title:'FED CUTS RATES',     desc:'Dovish Fed rallies markets',  weight:.6, fvDelta:0.08,  vol:1.5, dur:30 },
-  { type:'boom',  title:'EARNINGS BEAT',      desc:'Blowout quarter',             weight:.6, fvDelta:0.06,  vol:1.3, dur:25 },
-  { type:'boom',  title:'TRADE DEAL',         desc:'Global tensions ease',        weight:.4, fvDelta:0.05,  vol:1.2, dur:20 },
-  { type:'boom',  title:'AI BREAKTHROUGH',    desc:'Tech euphoria',               weight:.5, fvDelta:0.12,  vol:1.8, dur:35, filter:['APPL','MSFT','QQQ'] },
-  { type:'crash', title:'FLASH CRASH',        desc:'Algos panic-sell',            weight:.5, fvDelta:-0.10, vol:2.5, dur:20 },
-  { type:'crash', title:'RECESSION FEARS',    desc:'Yield curve inverts',         weight:.4, fvDelta:-0.07, vol:1.8, dur:30 },
-  { type:'crash', title:'GEOPOLITICAL SHOCK', desc:'War headlines',               weight:.3, fvDelta:-0.09, vol:2.0, dur:25 },
-  { type:'crash', title:'BUBBLE POPS',        desc:'Speculative froth wipes out', weight:.25,fvDelta:-0.18, vol:3.0, dur:40, filter:['PUMP','SHIB','JUNK','CALL'] },
-  { type:'news',  title:'ANALYST UPGRADE',    desc:'Buy coverage initiated',      weight:.8, fvDelta:0.03,  vol:1.1, dur:15 },
-  { type:'news',  title:'INSIDER SELLING',    desc:'Execs dump shares',           weight:.5, fvDelta:-0.03, vol:1.2, dur:15 },
-  { type:'news',  title:'CEO STEPS DOWN',     desc:'Leadership shake-up',         weight:.4, fvDelta:-0.04, vol:1.3, dur:18 },
-  { type:'news',  title:'DIVIDEND HIKE',      desc:'Boards raise payouts',        weight:.6, fvDelta:0.04,  vol:1.0, dur:60 },
+  // ===== ORIGINAL 12 (preserved, tagged with cat) =====
+  { type:'boom',  title:'FED CUTS RATES',        desc:'Dovish Fed rallies markets',           weight:.6,  fvDelta:0.08,  vol:1.5, dur:30, cat:'macro' },
+  { type:'boom',  title:'EARNINGS BEAT',         desc:'Blowout quarter',                      weight:.6,  fvDelta:0.06,  vol:1.3, dur:25, cat:'earnings' },
+  { type:'boom',  title:'TRADE DEAL',            desc:'Global tensions ease',                 weight:.4,  fvDelta:0.05,  vol:1.2, dur:20, cat:'economy' },
+  { type:'boom',  title:'AI BREAKTHROUGH',       desc:'Tech euphoria',                        weight:.5,  fvDelta:0.12,  vol:1.8, dur:35, filter:['APPL','MSFT','QQQ','NVDA','GOOG','META','AMD'], cat:'product' },
+  { type:'crash', title:'FLASH CRASH',           desc:'Algos panic-sell',                     weight:.5,  fvDelta:-0.10, vol:2.5, dur:20, cat:'sentiment' },
+  { type:'crash', title:'RECESSION FEARS',       desc:'Yield curve inverts',                  weight:.4,  fvDelta:-0.07, vol:1.8, dur:30, cat:'economy' },
+  { type:'crash', title:'GEOPOLITICAL SHOCK',    desc:'War headlines',                        weight:.3,  fvDelta:-0.09, vol:2.0, dur:25, cat:'macro' },
+  { type:'crash', title:'BUBBLE POPS',           desc:'Speculative froth wipes out',          weight:.25, fvDelta:-0.18, vol:3.0, dur:40, filter:['PUMP','SHIB','JUNK','CALL','MOON','APES','YOLO','KEKS','PEPE'], cat:'sentiment' },
+  { type:'news',  title:'ANALYST UPGRADE',       desc:'Buy coverage initiated',               weight:.8,  fvDelta:0.03,  vol:1.1, dur:15, cat:'analyst' },
+  { type:'news',  title:'INSIDER SELLING',       desc:'Execs dump shares',                    weight:.5,  fvDelta:-0.03, vol:1.2, dur:15, cat:'other' },
+  { type:'news',  title:'CEO STEPS DOWN',        desc:'Leadership shake-up',                  weight:.4,  fvDelta:-0.04, vol:1.3, dur:18, cat:'other' },
+  { type:'news',  title:'DIVIDEND HIKE',         desc:'Boards raise payouts',                 weight:.6,  fvDelta:0.04,  vol:1.0, dur:60, cat:'earnings' },
+
+  // ===== NEW: EARNINGS =====
+  { type:'crash', title:'EARNINGS MISS',         desc:'Quarterly numbers disappoint',         weight:.55, fvDelta:-0.06, vol:1.4, dur:25, cat:'earnings' },
+  { type:'boom',  title:'GUIDANCE RAISED',       desc:'Forward outlook upgraded',             weight:.45, fvDelta:0.05,  vol:1.2, dur:30, cat:'earnings' },
+  { type:'crash', title:'GUIDANCE CUT',          desc:'Q-ahead outlook slashed',              weight:.45, fvDelta:-0.05, vol:1.4, dur:25, cat:'earnings' },
+
+  // ===== NEW: ANALYST =====
+  { type:'crash', title:'ANALYST DOWNGRADE',     desc:'Sell rating issued',                   weight:.7,  fvDelta:-0.03, vol:1.2, dur:15, cat:'analyst' },
+  { type:'news',  title:'PRICE TARGET RAISED',   desc:'Street raises PT consensus',           weight:.5,  fvDelta:0.025, vol:1.0, dur:20, cat:'analyst' },
+
+  // ===== NEW: INDUSTRY (sector-targeted) =====
+  { type:'boom',  title:'TECH SECTOR BOOM',      desc:'Software & chips lead rally',          weight:.4,  fvDelta:0.07,  vol:1.4, dur:30, sectorFilter:['tech'], cat:'industry' },
+  { type:'crash', title:'TECH SELLOFF',          desc:'Growth-stock rotation out',            weight:.35, fvDelta:-0.06, vol:1.5, dur:25, sectorFilter:['tech'], cat:'industry' },
+  { type:'boom',  title:'BANK PROFITS SURGE',    desc:'Net interest margin expands',          weight:.35, fvDelta:0.05,  vol:1.2, dur:25, sectorFilter:['bank'], cat:'industry' },
+  { type:'crash', title:'BANK CRISIS',           desc:'Regional banks under stress',          weight:.25, fvDelta:-0.09, vol:2.0, dur:30, sectorFilter:['bank'], cat:'industry' },
+  { type:'boom',  title:'CRYPTO RALLY',          desc:'Risk-on sweeps digital assets',        weight:.5,  fvDelta:0.10,  vol:2.0, dur:30, sectorFilter:['crypto'], cat:'industry' },
+  { type:'crash', title:'CRYPTO WINTER',         desc:'Liquidations cascade',                 weight:.4,  fvDelta:-0.12, vol:2.5, dur:35, sectorFilter:['crypto'], cat:'industry' },
+  { type:'boom',  title:'COMMODITIES SPIKE',     desc:'Supply tightness lifts hard assets',   weight:.35, fvDelta:0.06,  vol:1.5, dur:30, sectorFilter:['commodity'], cat:'industry' },
+  { type:'crash', title:'OIL GLUT',              desc:'Inventories overflow, energy weak',    weight:.3,  fvDelta:-0.08, vol:1.6, dur:25, sectorFilter:['commodity'], cat:'industry' },
+
+  // ===== NEW: ECONOMY =====
+  { type:'boom',  title:'GDP EXPANSION',         desc:'Growth surprises to the upside',       weight:.4,  fvDelta:0.05,  vol:1.1, dur:35, cat:'economy' },
+  { type:'crash', title:'CONSUMER WEAKNESS',     desc:'Retail spending contracts',            weight:.35, fvDelta:-0.05, vol:1.3, dur:30, cat:'economy' },
+  { type:'boom',  title:'JOBS BLOWOUT',          desc:'NFP smashes expectations',             weight:.4,  fvDelta:0.04,  vol:1.2, dur:25, cat:'economy' },
+
+  // ===== NEW: REGULATORY =====
+  { type:'crash', title:'REGULATORY CRACKDOWN',  desc:'Sweeping rules announced',             weight:.3,  fvDelta:-0.07, vol:1.6, dur:30, sectorFilter:['tech','crypto'], cat:'regulatory' },
+  { type:'boom',  title:'DEREGULATION WIN',      desc:'Rules eased, capital flows',           weight:.3,  fvDelta:0.05,  vol:1.2, dur:25, sectorFilter:['bank','tech'], cat:'regulatory' },
+  { type:'crash', title:'ANTITRUST PROBE',       desc:'DOJ targets big-tech monopolies',      weight:.25, fvDelta:-0.06, vol:1.4, dur:28, sectorFilter:['tech'], cat:'regulatory' },
+
+  // ===== NEW: PRODUCT =====
+  { type:'boom',  title:'PRODUCT LAUNCH HIT',    desc:'New release smashes pre-orders',       weight:.45, fvDelta:0.06,  vol:1.3, dur:25, sectorFilter:['tech'], cat:'product' },
+  { type:'crash', title:'PRODUCT RECALL',        desc:'Mass recall hits revenue',             weight:.3,  fvDelta:-0.06, vol:1.4, dur:25, cat:'product' },
+
+  // ===== NEW: SUPPLY CHAIN =====
+  { type:'crash', title:'SUPPLY DISRUPTION',     desc:'Shipping chokepoint snarls deliveries',weight:.35, fvDelta:-0.05, vol:1.5, dur:30, sectorFilter:['tech','commodity'], cat:'supply' },
+  { type:'boom',  title:'SUPPLY EASES',          desc:'Bottlenecks clear, costs drop',        weight:.3,  fvDelta:0.04,  vol:1.1, dur:25, cat:'supply' },
+
+  // ===== NEW: SENTIMENT (market-wide) =====
+  { type:'boom',  title:'RISK-ON SENTIMENT',     desc:'Animal spirits return',                weight:.4,  fvDelta:0.04,  vol:1.3, dur:30, cat:'sentiment' },
+  { type:'crash', title:'RISK-OFF FEAR',         desc:'Investors flee to safety',             weight:.4,  fvDelta:-0.05, vol:1.5, dur:30, cat:'sentiment' },
 ];
 
 export const STRATEGIES: StrategyId[] = [
