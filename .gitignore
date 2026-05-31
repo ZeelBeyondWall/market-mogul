@@ -7,3 +7,7 @@ node_modules/
 .env.local
 dist/
 .vercel
+*.tsbuildinfo
+vite.config.d.ts
+vite.config.js
+
