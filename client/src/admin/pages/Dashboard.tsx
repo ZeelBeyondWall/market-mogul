@@ -25,6 +25,7 @@ export default function Dashboard() {
   const [health, setHealth] = useState<HealthResp | null>(null);
   const [confirm, setConfirm] = useState<ConfirmKind>(null);
   const [acting, setActing] = useState(false);
+  const [spawnCount, setSpawnCount] = useState(1000); // v8.4: editable bot spawn count
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -61,11 +62,12 @@ export default function Dashboard() {
   }
 
   async function spawnBots() {
+    const n = Math.max(1, Math.min(1_000_000, Math.floor(spawnCount) || 0));
     setActing(true);
-    const r = await safe(() => apiPost('/admin/spawn', { n: 1000 }));
+    const r = await safe(() => apiPost<{ added: number; total: number }>('/admin/spawn', { n }));
     setActing(false);
     setConfirm(null);
-    if (r) toast('Spawned 1,000 bots', 'ok');
+    if (r) toast(`Spawned ${r.added.toLocaleString()} bots · total ${r.total.toLocaleString()}`, 'ok');
   }
 
   function openAnalytics() {
@@ -104,9 +106,25 @@ export default function Dashboard() {
           <button className="a-btn primary" disabled={acting} onClick={() => setConfirm('event')}>
             Fire Random Event
           </button>
-          <button className="a-btn primary" disabled={acting} onClick={() => setConfirm('spawn')}>
-            Spawn 1K Bots
-          </button>
+          {/* v8.4: editable bot count + quick presets */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <input
+              type="number"
+              className="a-input"
+              style={{ width: 110 }}
+              min={1}
+              max={1000000}
+              value={spawnCount}
+              onChange={e => setSpawnCount(+e.target.value || 0)}
+              title="How many bots to spawn (1 – 1,000,000)"
+            />
+            <button className="a-btn sm ghost" onClick={() => setSpawnCount(1000)}>1K</button>
+            <button className="a-btn sm ghost" onClick={() => setSpawnCount(10000)}>10K</button>
+            <button className="a-btn sm ghost" onClick={() => setSpawnCount(100000)}>100K</button>
+            <button className="a-btn primary" disabled={acting || spawnCount < 1} onClick={() => setConfirm('spawn')}>
+              Spawn Bots
+            </button>
+          </div>
         </div>
       </div>
 
@@ -263,9 +281,9 @@ export default function Dashboard() {
       />
       <ConfirmModal
         open={confirm === 'spawn'}
-        title="Spawn 1,000 bots?"
-        body={<div>Adds 1,000 new bot traders to the engine. Memory + CPU usage will increase. Cannot be undone (use Purge Rekt or Reset to clean up).</div>}
-        confirmLabel="Spawn 1,000"
+        title={`Spawn ${spawnCount.toLocaleString()} bots?`}
+        body={<div>Adds <b>{spawnCount.toLocaleString()}</b> new bot traders to the engine. Memory + CPU usage will increase. Cannot be undone (use Purge Rekt or Reset to clean up).</div>}
+        confirmLabel={`Spawn ${spawnCount.toLocaleString()}`}
         onConfirm={spawnBots}
         onCancel={() => setConfirm(null)}
       />
