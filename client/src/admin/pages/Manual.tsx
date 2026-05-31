@@ -329,7 +329,7 @@ export default function Manual() {
 
       <div className="a-card glass" style={{ padding: 0 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', minHeight: 600 }}>
-          <div style={{ borderRight: '1px solid var(--a-border)', overflowY: 'auto', maxHeight: 720, padding: '10px 6px' }}>
+          <div style={{ borderRight: '1px solid var(--a-border)', overflowY: 'auto', maxHeight: 'calc(100vh - 200px)', padding: '10px 6px' }}>
             {filtered.map(s => (
               <div
                 key={s.id}
@@ -344,7 +344,7 @@ export default function Manual() {
               <div className="a-empty" style={{ padding: 18 }}>No matches for "{q}"</div>
             )}
           </div>
-          <div style={{ padding: '20px 28px', overflowY: 'auto', maxHeight: 720 }}>
+          <div style={{ padding: '20px 28px', overflowY: 'auto', maxHeight: 'calc(100vh - 200px)' }}>
             <div style={{ fontSize: 11, color: 'var(--a-text-mute)', textTransform: 'uppercase', letterSpacing: 1.4, fontWeight: 600 }}>
               {active.icon} Section
             </div>

@@ -46,6 +46,9 @@ interface GameStore extends UIPrefs {
   playerXp: number;
   xpAtCurrent: number;
   xpToNext: number;
+  banner: string;
+  maintenanceMode: boolean;
+  tradingHalted: boolean;
   dailyMissions: MissionState[];
   weeklyMissions: MissionState[];
   setActive: (aid: string) => void;
@@ -55,6 +58,7 @@ interface GameStore extends UIPrefs {
   toggleWatchlist: (aid: string) => void;
   setBotFilter: (f: string) => void;
   setPlayerExtras: (s: { stats: PlayerStats; bonus: number; streak: number; daily: MissionState[]; weekly: MissionState[]; level: number; xp: number; xpAtCurrent: number; xpToNext: number }) => void;
+  setServerFlags: (s: { banner: string; maintenanceMode: boolean; tradingHalted: boolean }) => void;
   toggleChartLayer: (k: keyof ChartToggles) => void;
   toggleMute: () => void;
   hideSplash: () => void;
@@ -136,6 +140,9 @@ export const useGame = create<GameStore>((set, get) => {
     playerXp: 0,
     xpAtCurrent: 0,
     xpToNext: 100,
+    banner: '',
+    maintenanceMode: false,
+    tradingHalted: false,
     dailyMissions: [],
     weeklyMissions: [],
     ...initialPrefs,
@@ -181,6 +188,7 @@ export const useGame = create<GameStore>((set, get) => {
       xpAtCurrent: s.xpAtCurrent,
       xpToNext: s.xpToNext,
     }),
+    setServerFlags: (s) => set({ banner: s.banner, maintenanceMode: s.maintenanceMode, tradingHalted: s.tradingHalted }),
     setTheme: (t) => { applyTheme(t); set({ theme: t }); persist(); },
     setReduceMotion: (v) => { set({ reduceMotion: v }); persist(); },
     setShowParticles: (v) => { set({ showParticles: v }); persist(); },

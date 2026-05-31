@@ -2,14 +2,16 @@ import { roundShares } from './helpers';
 import { insertOrder, removeOrder } from './orderbook';
 import type { GameState, Trade, Trader } from './types';
 
+// v7.3: player + bots both enforce 50% margin collateral for shorts.
+// Previously player was trusted blindly — letting them short unlimited shares
+// regardless of cash. Now the same rule applies to everyone.
 export function sellableQty(t: Trader, assetId: string, qty: number, px: number): number {
   const sh = t.holdings[assetId]?.shares || 0;
   const longPart = Math.max(0, sh);
-  if (t.isPlayer) return qty;
   const uncovered = Math.max(0, qty - longPart);
-  if (uncovered === 0) return qty;
+  if (uncovered === 0) return qty;                // entirely covered by long position
   const needed = uncovered * px * 0.5;
-  if (t.cash >= needed) return qty;
+  if (t.cash >= needed) return qty;               // enough collateral
   const allowedShort = roundShares((t.cash * 2) / Math.max(0.01, px));
   return longPart + Math.max(0, allowedShort);
 }
@@ -30,7 +32,8 @@ export function executeTrade(
   const seller = S.traders[sellerId];
 
   const sh0 = seller.holdings[assetId];
-  if (!seller.isPlayer) {
+  // v7.3: margin check applies to EVERYONE including player (was bypassed before).
+  {
     const uncovered = Math.max(0, qty - Math.max(0, sh0.shares));
     if (uncovered > 0) {
       const needed = uncovered * px * 0.5;

@@ -15,6 +15,7 @@ import { EventBanner } from './components/EventBanner';
 import { Settings } from './components/Settings';
 import { ParticleSpawner } from './components/Particles';
 import { Mascot } from './components/Mascot';
+import { AdminBanner } from './components/AdminBanner';
 
 export function App() {
   useGameLoop();
@@ -33,6 +34,7 @@ export function App() {
       <Splash />
       {splashShown && (
         <div id="app">
+          <AdminBanner />
           <Header />
           <main>
             <div className="col"><AssetList /></div>

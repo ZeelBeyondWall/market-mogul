@@ -35,6 +35,9 @@ interface SnapshotPayload {
   playerXp?: number;
   xpAtCurrent?: number;
   xpToNext?: number;
+  banner?: string;
+  maintenanceMode?: boolean;
+  tradingHalted?: boolean;
 }
 
 interface TickPayload {
@@ -202,6 +205,11 @@ function applySnapshot(engine: Engine, snap: SnapshotPayload): void {
       xpToNext: snap.xpToNext || 100,
     });
   }
+  useGame.getState().setServerFlags({
+    banner: snap.banner || '',
+    maintenanceMode: !!snap.maintenanceMode,
+    tradingHalted: !!snap.tradingHalted,
+  });
   useGame.getState().notifyTick();
 }
 

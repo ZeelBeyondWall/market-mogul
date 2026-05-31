@@ -42,6 +42,9 @@ export interface SnapshotPayload {
   xpAtCurrent: number;
   // v6: admin emergency broadcast banner. Empty string = no banner.
   banner?: string;
+  // v7.3: admin flags surfaced to client for status display.
+  maintenanceMode?: boolean;
+  tradingHalted?: boolean;
 }
 
 export interface PublicTrader {

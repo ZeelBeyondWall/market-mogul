@@ -95,11 +95,13 @@ const PORT = Number(process.env.PORT) || 8788;
 const engine = new Engine();
 const loaded = diskLoad(engine.state);
 if (loaded) {
-  engine.seedBooks(); // top up any empty books
+  engine.seedBooks();
   console.log('💾 state loaded');
 } else {
   console.log('🆕 fresh state');
 }
+// v7.3: always sync player name from env (overrides stale 'YOU' in old saves).
+engine.player().name = process.env.MM_PLAYER_NAME || 'Zeel';
 
 // ---- HTTP + WS ----
 const app = express();
@@ -391,6 +393,8 @@ function sendSnapshot(ws: WebSocket) {
   snap.xpAtCurrent = xpToReach(snap.playerLevel);
   snap.xpToNext = xpToReach(snap.playerLevel + 1);
   snap.banner = ENGINE_FLAGS.broadcastBanner || '';
+  snap.maintenanceMode = !!ENGINE_FLAGS.maintenanceMode;
+  snap.tradingHalted = !!ENGINE_FLAGS.tradingHalted;
   try { ws.send(JSON.stringify({ type: 'snapshot', payload: snap } satisfies S2C)); }
   catch (e) { console.error('snapshot send failed:', (e as Error).message); }
 }

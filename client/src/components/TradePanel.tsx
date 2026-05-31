@@ -74,9 +74,14 @@ export function TradePanel() {
   const slRef = useRef<HTMLInputElement>(null);
   const tpRef = useRef<HTMLInputElement>(null);
 
+  // FIX v7.3: re-sync limit to current asset's price on asset switch too.
+  // Previously stale $180 from NEXA would carry over to e.g. an $80 stock,
+  // and SELL Limit would rest in the book at $180 — confusing entries.
   useEffect(() => {
-    if (orderType === 'limit' && !limitPx) setLimitPx(ast.lastPrice.toFixed(ast.lastPrice < 10 ? 4 : 2));
-  }, [orderType]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (orderType === 'limit') {
+      setLimitPx(ast.lastPrice.toFixed(ast.lastPrice < 10 ? 4 : 2));
+    }
+  }, [orderType, aid]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Position state — drives button labels + warnings.
   const isLong  = hold.shares > 0;

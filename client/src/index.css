@@ -24,7 +24,14 @@ body{
   background-image:radial-gradient(ellipse at top,#0d1421 0%,#05080d 60%);
 }
 #root{height:100%}
-#app{display:grid;grid-template-rows:52px 1fr 28px;height:100vh}
+#app{display:grid;grid-template-rows:auto 52px 1fr 28px;height:100vh}
+
+/* v7.3: admin banner stack — sits above header when admin pushes status */
+.admin-banners{display:flex;flex-direction:column}
+.admin-banner{padding:6px 14px;text-align:center;font-weight:700;font-size:11px;letter-spacing:.6px}
+.admin-banner-maint{background:linear-gradient(90deg,#3b1d00,#7a3a0a);color:#fbbf24;border-bottom:1px solid #d97706}
+.admin-banner-halt{background:linear-gradient(90deg,#3b0a0d,#7a1418);color:#fecaca;border-bottom:1px solid var(--red)}
+.admin-banner-info{background:linear-gradient(90deg,#0a1a2e,#1a3151);color:#bfdbfe;border-bottom:1px solid var(--blue)}
 
 header{
   display:flex;align-items:center;

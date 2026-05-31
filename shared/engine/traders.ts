@@ -122,9 +122,11 @@ export function makeTrader(i: number, isPlayer: boolean, forcedStrat?: StrategyI
   // v5: progression. Player starts L1, bots roll random level + seeded XP.
   const level = isPlayer ? 1 : randomBotLevel();
   const xp = isPlayer ? 0 : xpToReach(level);
+  // v7.3: player name configurable via MM_PLAYER_NAME env var. Default 'Zeel'.
+  const playerName = (typeof globalThis !== 'undefined' && (globalThis as any)?.process?.env?.MM_PLAYER_NAME) || 'Zeel';
   return {
     id: i,
-    name: isPlayer ? 'YOU' : (BOT_NAMES[i - 1] || genName()),
+    name: isPlayer ? playerName : (BOT_NAMES[i - 1] || genName()),
     cash,
     holdings,
     strat,
