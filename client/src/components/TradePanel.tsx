@@ -66,13 +66,11 @@ export function TradePanel() {
   useGame(s => s.tick);
   const orderType = useGame(s => s.orderType);
   const setOrderType = useGame(s => s.setOrderType);
-  const beginnerMode = useGame(s => s.beginnerMode);
   const aid = eng.state.active;
   const ast = eng.state.assets[aid];
   const hold = eng.player().holdings[aid];
   const [qty, setQty] = useState(1);
   const [limitPx, setLimitPx] = useState('');
-  const [showAdvanced, setShowAdvanced] = useState(!beginnerMode);
   const slRef = useRef<HTMLInputElement>(null);
   const tpRef = useRef<HTMLInputElement>(null);
 
@@ -141,7 +139,6 @@ export function TradePanel() {
 
   const buyLabel    = isShort ? 'CLOSE SHORT' : isLong ? 'BUY MORE' : 'BUY';
   const sellLabel   = isLong ? 'CLOSE LONG' : isShort ? 'ADD TO SHORT' : 'OPEN SHORT';
-  const sellIsRisky = isFlat || isShort;
 
   // v7.4: helpful reason text when button is disabled.
   const buyReason = buyMax === 0
@@ -151,82 +148,70 @@ export function TradePanel() {
     ? (isLong ? 'No long to close' : `Need $${(ast.lastPrice * 0.5 - eng.player().cash).toFixed(0)} more cash for margin`)
     : null;
 
+  // v8.2: HORIZONTAL trade bar docked under the chart (TradingView-style).
   return (
-    <div className="trade">
-      {beginnerMode && isFlat && (
-        <div className="trade-hint">
-          💡 <b>BUY</b> = bet price goes UP. <b>OPEN SHORT</b> = bet it goes DOWN (advanced).
+    <div className="tradebar">
+      {/* LEFT: inputs */}
+      <div className="tb-inputs">
+        <div className="tb-ordertype">
+          <button className={!isLimit ? 'on' : ''} onClick={() => setOrderType('market')}>MKT</button>
+          <button className={isLimit ? 'on' : ''} onClick={() => setOrderType('limit')}>LMT</button>
         </div>
-      )}
-      <div className="order-type">
-        <button className={!isLimit ? 'on' : ''} onClick={() => setOrderType('market')}>Market</button>
-        <button className={isLimit ? 'on' : ''} onClick={() => setOrderType('limit')}>Limit</button>
-      </div>
-      {isLimit && (
-        <div className="trade-row">
-          <label>Limit $</label>
-          <input type="number" className="limit-price" value={limitPx} step="0.01" onChange={e => setLimitPx(e.target.value)} />
+        {isLimit && (
+          <div className="tb-field">
+            <label>LIMIT $</label>
+            <input type="number" value={limitPx} step="0.01" onChange={e => setLimitPx(e.target.value)} />
+          </div>
+        )}
+        <div className="tb-field">
+          <label>QTY</label>
+          <input type="number" value={qty} min={1} step={1} onChange={e => setQty(+e.target.value || 0)} />
         </div>
-      )}
-      <div className="trade-row">
-        <label>Qty</label>
-        <input type="number" className="qty" value={qty} min={1} step={1} onChange={e => setQty(+e.target.value || 0)} />
+        <div className="tb-field sl">
+          <label>SL %</label>
+          <input type="number" ref={slRef} step="0.01" min="0" placeholder="—" />
+        </div>
+        <div className="tb-field tp">
+          <label>TP %</label>
+          <input type="number" ref={tpRef} step="0.01" min="0" placeholder="—" />
+        </div>
       </div>
 
-      {/* v7.2: SL/TP moved under "Advanced" toggle in beginner mode */}
-      {beginnerMode ? (
-        <button className="trade-advanced-toggle" onClick={() => setShowAdvanced(v => !v)}>
-          {showAdvanced ? '▾ Hide' : '▸ Show'} Stop Loss / Take Profit
-        </button>
-      ) : null}
-      {(showAdvanced || !beginnerMode) && (
-        <div className="trade-row sltp-row">
-          <label title="Auto-close if loss reaches this %">SL %</label>
-          <input type="number" className="limit-price" ref={slRef} step="0.01" min="0" placeholder="e.g. 2" />
-          <label title="Auto-close if gain reaches this %">TP %</label>
-          <input type="number" className="limit-price" ref={tpRef} step="0.01" min="0" placeholder="e.g. 5" />
-        </div>
-      )}
-
-      {/* BUY side */}
-      <div className="dbl-btn buy">
+      {/* CENTER: action buttons */}
+      <div className="tb-actions">
         <button
-          className="a"
+          className="tb-btn buy"
           disabled={bq <= 0 || bCost < 0}
           onClick={() => submit('buy', false)}
-          title={buyReason || (isShort ? 'Buy back shares to flatten short' : isLong ? 'Add to long position' : 'Open long — profit if price rises')}
+          title={buyReason || ''}
         >
-          <span>{buyLabel} {fmt(bCost < 0 ? 0 : bCost)}</span>
-          <small>{buyReason || `${fmtNum(bq)} sh`}</small>
+          <span className="tb-btn-label">{buyLabel}</span>
+          <span className="tb-btn-sub">{buyReason || `${fmt(bCost < 0 ? 0 : bCost)} · ${fmtNum(bq)}sh`}</span>
         </button>
-        <button className="b" disabled={buyMax <= 0} onClick={() => submit('buy', true)}>
-          <span>MAX {fmt(bMaxCost < 0 ? 0 : bMaxCost)}</span>
-          <small>{fmtNum(buyMax)} sh</small>
+        <button className="tb-btn buy-max" disabled={buyMax <= 0} onClick={() => submit('buy', true)} title="Max you can afford">
+          <span className="tb-btn-label">MAX</span>
+          <span className="tb-btn-sub">{fmtNum(buyMax)}sh</span>
         </button>
-      </div>
-
-      {/* SELL / SHORT side — visual matches BUY (normal action); modal on first short remains as safety */}
-      <div className="dbl-btn sell">
         <button
-          className="a"
+          className="tb-btn sell"
           disabled={sq <= 0 || sRev < 0}
           onClick={() => submit('short', false)}
-          title={sellReason || (isLong ? 'Sell shares to close your long' : isFlat ? 'Open a short — confirm dialog explains' : 'Add to existing short')}
+          title={sellReason || ''}
         >
-          <span>{sellLabel} {fmt(sRev < 0 ? 0 : sRev)}</span>
-          <small>{sellReason || (fmtNum(sq) + ' sh')}</small>
+          <span className="tb-btn-label">{sellLabel}</span>
+          <span className="tb-btn-sub">{sellReason || `${fmt(sRev < 0 ? 0 : sRev)} · ${fmtNum(sq)}sh`}</span>
         </button>
-        <button className="b" disabled={shortMax <= 0} onClick={() => submit('short', true)}>
-          <span>MAX {fmt(sMaxRev < 0 ? 0 : sMaxRev)}</span>
-          <small>{fmtNum(shortMax)} sh</small>
+        <button className="tb-btn sell-max" disabled={shortMax <= 0} onClick={() => submit('short', true)} title="Max with margin">
+          <span className="tb-btn-label">MAX</span>
+          <span className="tb-btn-sub">{fmtNum(shortMax)}sh</span>
         </button>
       </div>
 
-      <div className="position-info">
-        <div><span className="lbl">Position</span><span className={'v ' + posClass}>{(hold.shares > 0 ? '+' : '') + fmtNum(hold.shares)}</span></div>
-        <div><span className="lbl">Avg Cost</span><span className="v">{hold.avgCost > 0 ? fmt(hold.avgCost, hold.avgCost < 10 ? 3 : 2) : '—'}</span></div>
-        <div><span className="lbl">P/L</span><span className={'v ' + (plLong >= 0 ? 'up' : 'dn')}>{(plLong >= 0 ? '+' : '') + fmt(plLong)}</span></div>
-        <div><span className="lbl">Value</span><span className="v">{fmt(Math.abs(hold.shares) * ast.lastPrice)}</span></div>
+      {/* RIGHT: position summary */}
+      <div className="tb-pos">
+        <div className="tb-pos-item"><span className="l">POS</span><span className={'v ' + posClass}>{(hold.shares > 0 ? '+' : '') + fmtNum(hold.shares)}</span></div>
+        <div className="tb-pos-item"><span className="l">AVG</span><span className="v">{hold.avgCost > 0 ? fmt(hold.avgCost, hold.avgCost < 10 ? 3 : 2) : '—'}</span></div>
+        <div className="tb-pos-item"><span className="l">P/L</span><span className={'v ' + (plLong >= 0 ? 'up' : 'dn')}>{(plLong >= 0 ? '+' : '') + fmt(plLong)}</span></div>
       </div>
     </div>
   );

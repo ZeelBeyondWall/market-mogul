@@ -13,8 +13,6 @@ import { Splash } from './components/Splash';
 import { ModalRoot } from './components/Modal';
 import { EventBanner } from './components/EventBanner';
 import { Settings } from './components/Settings';
-import { ParticleSpawner } from './components/Particles';
-import { Mascot } from './components/Mascot';
 import { AdminBanner } from './components/AdminBanner';
 import { MarketBar } from './components/MarketBar';
 import { OrderToast } from './components/OrderToast';
@@ -54,8 +52,6 @@ export function App() {
       )}
       <EventBanner />
       <Settings />
-      <ParticleSpawner />
-      {splashShown && <Mascot />}
       <ModalRoot />
       <OrderToast />
       <KillButton />
