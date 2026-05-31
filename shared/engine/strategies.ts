@@ -265,7 +265,9 @@ export function botDecide(t: Trader, S: GameState): void {
 // Full rotation = (totalBots / BOTS_PER_TICK) ticks * 100ms.
 // 10K → 200ms full pass. 100K → 2s. 500K → 10s.
 // Engine CPU stays bounded by BOTS_PER_TICK regardless of population size.
-const BOTS_PER_TICK = Number(process.env.MM_BOTS_PER_TICK) || 5000;
+// NOTE: cast via globalThis — this file is shared with the Vite client bundle
+// where `process` does not exist as a typed global.
+const BOTS_PER_TICK = Number((globalThis as any)?.process?.env?.MM_BOTS_PER_TICK) || 5000;
 let scanCursor = 1;
 
 export function tickBots(S: GameState, dt: number): void {
