@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import fs from 'fs';
+import path from 'path';
 import { createServer } from 'http';
 import { spawn } from 'child_process';
 import { WebSocketServer, WebSocket } from 'ws';
@@ -138,14 +140,38 @@ app.use('/admin', (req, res, next) => {
 
 app.get('/health', (_, res) => res.json({ ok: true, time: Date.now() }));
 
+// v9: public feedback / bug-report endpoint (no auth — players submit). Appends
+// to feedback.jsonl. Rate-limited per-IP to stop spam. Admins read via
+// /admin/feedback (gated).
+const feedbackLast: Map<string, number> = new Map();
+app.post('/feedback', express.json(), (req, res) => {
+  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const last = feedbackLast.get(ip) || 0;
+  if (now - last < 5000) { res.status(429).json({ ok: false, reason: 'Please wait a few seconds between submissions' }); return; }
+  // Bound the rate-limit map — purge entries older than 10 min so it can't leak.
+  if (feedbackLast.size > 5000) {
+    const cutoff = now - 600_000;
+    for (const [k, v] of feedbackLast) if (v < cutoff) feedbackLast.delete(k);
+  }
+  const body = req.body || {};
+  const type = String(body.type || 'feedback').slice(0, 20);
+  const message = String(body.message || '').slice(0, 2000).trim();
+  if (message.length < 3) { res.status(400).json({ ok: false, reason: 'Message too short' }); return; }
+  feedbackLast.set(ip, now);
+  const entry = { ts: now, ip, type, message, name: String(body.name || '').slice(0, 60), level: body.level };
+  try {
+    fs.appendFileSync(path.resolve(process.cwd(), 'feedback.jsonl'), JSON.stringify(entry) + '\n');
+  } catch (e) { console.error('feedback write failed:', (e as Error).message); }
+  res.json({ ok: true });
+});
+
 // Reset: wipe disk save + kill server so start.bat must be re-run.
 // Wipe state.json + reinitialize engine in-place (no process kill).
 // Existing WS clients get a fresh snapshot on next interval and just re-render.
 app.post('/reset', (_, res) => {
   console.log('🔄 /reset — wiping disk + reinitializing engine');
   try {
-    const fs = require('fs');
-    const path = require('path');
     const f = path.resolve(process.cwd(), 'state.json');
     if (fs.existsSync(f)) fs.unlinkSync(f);
   } catch { /* ignore */ }
@@ -270,8 +296,6 @@ app.post('/admin/purge-rekt', (_, res) => {
 app.post('/admin/reset', (_, res) => {
   console.log('🔄 admin /reset');
   try {
-    const fs = require('fs');
-    const path = require('path');
     const f = path.resolve(process.cwd(), 'state.json');
     if (fs.existsSync(f)) fs.unlinkSync(f);
   } catch { /* ignore */ }
@@ -318,7 +342,7 @@ function broadcast(msg: S2C) {
 // LEADERBOARD_TTL_MS — avoids O(N log N) sort per client per snapshot.
 const LEADERBOARD_TTL_MS = 1500;
 const TOP_N = 200;
-interface LbEntry { id: number; name: string; net: number; strat: string; rekt: boolean; level: number }
+interface LbEntry { id: number; name: string; net: number; strat: string; rekt: boolean; level: number; isPlayer: boolean }
 let lbCache: { top: LbEntry[]; playerRank: number; ts: number } | null = null;
 
 function computeLeaderboard(): { top: LbEntry[]; playerRank: number } {
@@ -334,13 +358,13 @@ function computeLeaderboard(): { top: LbEntry[]; playerRank: number } {
     const net = traderNet(t, engine.state);
     if (t.id === 0) playerNet = net;
     if (top.length < TOP_N) {
-      top.push({ id: t.id, name: t.name, net, strat: t.strat as string, rekt: !!t.rekt, level: t.level || 1 });
+      top.push({ id: t.id, name: t.name, net, strat: t.strat as string, rekt: !!t.rekt, level: t.level || 1, isPlayer: !!t.isPlayer });
       if (top.length === TOP_N) {
         top.sort((a, b) => a.net - b.net);
         minNet = top[0].net;
       }
     } else if (net > minNet) {
-      top[0] = { id: t.id, name: t.name, net, strat: t.strat as string, rekt: !!t.rekt, level: t.level || 1 };
+      top[0] = { id: t.id, name: t.name, net, strat: t.strat as string, rekt: !!t.rekt, level: t.level || 1, isPlayer: !!t.isPlayer };
       // Re-bubble new entry to its sorted slot (still ascending by net).
       let j = 0;
       while (j + 1 < TOP_N && top[j + 1].net < top[j].net) {
@@ -360,7 +384,7 @@ function computeLeaderboard(): { top: LbEntry[]; playerRank: number } {
   // Ensure player present in returned top list.
   if (!top.some(b => b.id === 0)) {
     const p = traders[0];
-    top.push({ id: 0, name: p.name, net: playerNet, strat: p.strat as string, rekt: !!p.rekt, level: p.level || 1 });
+    top.push({ id: 0, name: p.name, net: playerNet, strat: p.strat as string, rekt: !!p.rekt, level: p.level || 1, isPlayer: true });
   }
   return { top, playerRank };
 }
@@ -373,7 +397,32 @@ function getLeaderboard(): { top: LbEntry[]; playerRank: number } {
   return lbCache;
 }
 
+// v9: holders-per-asset count, cached once per ~1.5s (shared across all clients).
+// Avoids an O(traders) scan per client per snapshot (50M+ ops at 100 clients ×
+// 500k bots). One pass over traders × held-assets refreshes the whole map.
+let holdersCache: Record<string, number> = {};
+let holdersCacheTs = 0;
+const HOLDERS_TTL_MS = 1500;
+function refreshHoldersCache() {
+  const now = Date.now();
+  if (now - holdersCacheTs < HOLDERS_TTL_MS) return;
+  holdersCacheTs = now;
+  const next: Record<string, number> = {};
+  const traders = engine.state.traders;
+  for (let i = 0; i < traders.length; i++) {
+    const t = traders[i];
+    if (t.isHouse) continue;
+    const h = t.holdings;
+    // Only iterate the trader's OWN holding keys (sparse for bots), not all assets.
+    for (const aid in h) {
+      if ((h[aid]?.shares || 0) !== 0) next[aid] = (next[aid] || 0) + 1;
+    }
+  }
+  holdersCache = next;
+}
+
 function sendSnapshot(ws: WebSocket) {
+  refreshHoldersCache(); // cheap after first call within TTL window
   const cs = getCS(ws);
   const { top, playerRank } = getLeaderboard();
   const snap = buildSnapshot(engine.state, cs.activeAsset, playerRank, cs.activeTF);
@@ -388,6 +437,11 @@ function sendSnapshot(ws: WebSocket) {
   snap.playerStreak = p.loginStreak || 0;
   snap.dailyMissions = p.dailyMissions || [];
   snap.weeklyMissions = p.weeklyMissions || [];
+  // v9: last 50 closed trades for Trade History view.
+  snap.recentTrades = (p.playerTrades || []).slice(-50).reverse();
+  // v9: holders of the active asset — read from the per-tick cache (computed
+  // ONCE per snapshot cycle in refreshHoldersCache, not per client).
+  snap.activeHolders = holdersCache[cs.activeAsset] || 0;
   // v5: level/xp progression
   snap.playerLevel = p.level || 1;
   snap.playerXp = p.xp || 0;

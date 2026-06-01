@@ -9,15 +9,16 @@ import { StatsTab } from './StatsTab';
 import { MissionsTab } from './MissionsTab';
 import { MoversTab } from './MoversTab';
 import { HelpTab } from './HelpTab';
+import { TradeHistoryTab } from './TradeHistoryTab';
 
-// v8.3: icon + label tabs in a wrapping 4-col grid — all visible, no scroll.
-// Help removed here (reachable from the top MarketBar Help button).
+// v8.3: icon + label tabs in a wrapping grid — all visible, no scroll.
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'positions', label: 'Positions', icon: '📊' },
   { id: 'details',   label: 'Details',   icon: 'ℹ️' },
   { id: 'movers',    label: 'Movers',    icon: '🔥' },
   { id: 'book',      label: 'Book',      icon: '📖' },
   { id: 'stats',     label: 'Stats',     icon: '📈' },
+  { id: 'history',   label: 'History',   icon: '🧾' },
   { id: 'missions',  label: 'Missions',  icon: '🎯' },
   { id: 'bots',      label: 'Traders',   icon: '👥' },
   { id: 'news',      label: 'News',      icon: '📰' },
@@ -46,6 +47,7 @@ export function Tabs() {
         {active === 'movers' && <MoversTab />}
         {active === 'book' && <OrderBook />}
         {active === 'stats' && <StatsTab />}
+        {active === 'history' && <TradeHistoryTab />}
         {active === 'missions' && <MissionsTab />}
         {active === 'bots' && <BotsTab />}
         {active === 'news' && <NewsTab />}

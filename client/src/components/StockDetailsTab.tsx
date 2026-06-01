@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { CATEGORY_LABELS } from '../../../shared/engine/constants';
 import { fmt, fmtNum, fmtPct } from '../../../shared/engine/helpers';
 import { useGame, getAssetDef } from '../store/gameStore';
+import { Audio } from '../audio/audio';
 
 function fmtBig(n: number): string {
   if (!isFinite(n) || n === 0) return '—';
@@ -15,6 +17,11 @@ function fmtBig(n: number): string {
 export function StockDetailsTab() {
   const eng = useGame(s => s.engine);
   useGame(s => s.tick);
+  const holders = useGame(s => s.activeHolders); // v9: live holders count for active asset
+  const priceAlerts = useGame(s => s.priceAlerts);
+  const addPriceAlert = useGame(s => s.addPriceAlert);
+  const removePriceAlert = useGame(s => s.removePriceAlert);
+  const [alertPx, setAlertPx] = useState('');
   const aid = eng.state.active;
   const a = getAssetDef(aid);
   const ast = eng.state.assets[aid];
@@ -80,6 +87,33 @@ export function StockDetailsTab() {
           <KV label="Dividend"     value={a.div > 0 ? (a.div * 100).toFixed(3) + '% / yr' : 'None'} />
           <KV label="Fair Value"   value={fmt(a.fairValue, dec)} />
           <KV label="Sector"       value={CATEGORY_LABELS[a.cat] || a.cat} />
+          <KV label="Holders"      value={fmtNum(holders)} />
+          <KV label="Unlock Lvl"   value={'L' + a.minLevel} />
+        </div>
+
+        {/* v9: price alerts for this asset */}
+        <div className="pa-box">
+          <div className="pa-title">🔔 Price Alerts</div>
+          <div className="pa-add">
+            <input
+              type="number" className="pa-input" placeholder={fmt(ast.lastPrice, dec)} value={alertPx}
+              onChange={e => setAlertPx(e.target.value)} step="0.01"
+            />
+            <button className="pa-btn" onClick={() => {
+              const px = +alertPx; if (!px || px <= 0) return;
+              addPriceAlert(aid, px, px >= ast.lastPrice ? 'above' : 'below');
+              setAlertPx(''); Audio.click();
+            }}>+ Add</button>
+          </div>
+          {priceAlerts.filter(al => al.aid === aid).map(al => (
+            <div key={al.id} className="pa-row">
+              <span>{al.dir === 'above' ? '↗' : '↘'} {al.dir} <b>{fmt(al.price, dec)}</b></span>
+              <button className="pa-del" onClick={() => { removePriceAlert(al.id); Audio.click(); }}>✕</button>
+            </div>
+          ))}
+          {priceAlerts.filter(al => al.aid === aid).length === 0 && (
+            <div className="pa-empty">No alerts. Add a target price above.</div>
+          )}
         </div>
 
         <div>

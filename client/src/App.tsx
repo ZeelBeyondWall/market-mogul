@@ -16,10 +16,13 @@ import { Settings } from './components/Settings';
 import { AdminBanner } from './components/AdminBanner';
 import { MarketBar } from './components/MarketBar';
 import { OrderToast } from './components/OrderToast';
+import { FeedbackModal } from './components/FeedbackModal';
+import { BottomNav } from './components/BottomNav';
 
 export function App() {
   useGameLoop();
   const splashShown = useGame(s => s.splashShown);
+  const mobileView = useGame(s => s.mobileView);
 
   // resume audio on any user interaction after first gesture
   useEffect(() => {
@@ -33,27 +36,29 @@ export function App() {
       <SvgDefs />
       <Splash />
       {splashShown && (
-        <div id="app">
+        <div id="app" data-mv={mobileView}>
           <AdminBanner />
           <Header />
           <MarketBar />
           <main>
-            <div className="col"><AssetList /></div>
-            <div className="col">
+            <div className="col col-market"><AssetList /></div>
+            <div className="col col-trade">
               <div className="chart-wrap">
                 <Chart />
                 <TradePanel />
               </div>
             </div>
-            <div className="col"><Tabs /></div>
+            <div className="col col-panel"><Tabs /></div>
           </main>
           <Ticker />
+          <BottomNav />
         </div>
       )}
       <EventBanner />
       <Settings />
       <ModalRoot />
       <OrderToast />
+      <FeedbackModal />
       <KillButton />
     </>
   );

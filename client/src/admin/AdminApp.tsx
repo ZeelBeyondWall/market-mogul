@@ -13,8 +13,9 @@ import Emergency from './pages/Emergency';
 import Analytics from './pages/Analytics';
 import AuditLog from './pages/AuditLog';
 import Manual from './pages/Manual';
+import Feedback from './pages/Feedback';
 
-type PageId = 'dashboard' | 'users' | 'economy' | 'gm' | 'analytics' | 'audit' | 'emergency' | 'manual';
+type PageId = 'dashboard' | 'users' | 'economy' | 'gm' | 'analytics' | 'audit' | 'emergency' | 'manual' | 'feedback';
 
 interface NavItem { id: PageId; label: string; icon: string; section: string; danger?: boolean }
 
@@ -24,6 +25,7 @@ const NAV: NavItem[] = [
   { id: 'users',     label: 'Users',        icon: '👥', section: 'Operations' },
   { id: 'economy',   label: 'Economy',      icon: '$',  section: 'Operations' },
   { id: 'gm',        label: 'Game Master',  icon: '⚙',  section: 'Operations' },
+  { id: 'feedback',  label: 'Feedback',     icon: '💬', section: 'Operations' },
   { id: 'audit',     label: 'Audit Log',    icon: '◰',  section: 'System' },
   { id: 'manual',    label: 'Manual',       icon: '📖', section: 'System' },
   { id: 'emergency', label: 'Emergency',    icon: '🚨', section: 'System', danger: true },
@@ -35,6 +37,7 @@ const PAGE_TITLES: Record<PageId, { title: string; sub: string }> = {
   users:     { title: 'User Management',   sub: 'Search, inspect, and moderate every account' },
   economy:   { title: 'Economy Control',   sub: 'Liquidity, tuning + global market parameters' },
   gm:        { title: 'Game Master',       sub: 'Balancing tools + simulation controls' },
+  feedback:  { title: 'Player Feedback',   sub: 'Bug reports + ideas from players' },
   audit:     { title: 'Audit Log',         sub: 'Every administrative action is recorded' },
   manual:    { title: 'Admin Manual',      sub: 'Operations runbook + reference' },
   emergency: { title: 'Emergency Center',  sub: 'Critical controls — handle with care' },
@@ -100,6 +103,7 @@ export function AdminApp() {
       case 'analytics': return <Analytics />;
       case 'audit':     return <AuditLog />;
       case 'manual':    return <Manual />;
+      case 'feedback':  return <Feedback />;
     }
   })();
 

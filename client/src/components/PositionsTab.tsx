@@ -35,9 +35,51 @@ export function PositionsTab() {
     Audio.click();
   };
 
+  // v9: asset allocation — value share per held asset (cash included as a slice).
+  const cash = eng.player().cash;
+  const palette = ['#6ea8ff', '#22c55e', '#f5b942', '#a76cf5', '#4dd0e1', '#ef4444', '#ff9f40', '#34d399'];
+  const totalVal = rows.reduce((s, r) => s + r.val, 0) + Math.max(0, cash);
+  const slices = [
+    ...rows.map((r, i) => ({ id: r.a.id, val: r.val, color: palette[i % palette.length] })),
+    { id: 'CASH', val: Math.max(0, cash), color: '#3a4a63' },
+  ].filter(s => s.val > 0);
+
+  // Build conic-gradient stops for the donut (guarded against totalVal=0).
+  let stops = '#1a2438 0% 100%';
+  if (totalVal > 0 && slices.length > 0) {
+    let acc = 0;
+    stops = slices.map(s => {
+      const start = (acc / totalVal) * 100;
+      acc += s.val;
+      const end = (acc / totalVal) * 100;
+      return `${s.color} ${start.toFixed(2)}% ${end.toFixed(2)}%`;
+    }).join(', ');
+  }
+
   return (
     <div className="section">
       <h3>Open Positions <span className="badge">{rows.length}</span></h3>
+
+      {totalVal > 0 && (rows.length > 0) && (
+        <div className="alloc">
+          <div className="alloc-donut" style={{ background: `conic-gradient(${stops})` }}>
+            <div className="alloc-hole">
+              <span className="alloc-hole-l">Total</span>
+              <span className="alloc-hole-v">{fmt(totalVal)}</span>
+            </div>
+          </div>
+          <div className="alloc-legend">
+            {slices.map(s => (
+              <div key={s.id} className="alloc-leg-item">
+                <span className="alloc-dot" style={{ background: s.color }} />
+                <span className="alloc-leg-id">{s.id}</span>
+                <span className="alloc-leg-pct">{((s.val / totalVal) * 100).toFixed(1)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {rows.length === 0 ? (
         <div className="empty">No open positions. Click BUY or SELL.</div>
       ) : (

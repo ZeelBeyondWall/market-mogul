@@ -1,6 +1,8 @@
 // Admin API surface — registered against the main Express app from index.ts.
 // All mutating endpoints flow through audit() so every action is logged.
 import express, { type Request, type Response, type Express } from 'express';
+import fs from 'fs';
+import path from 'path';
 import { ASSETS, marketUnlockLevel, xpToReach } from '../../../../shared/engine/constants';
 import { placeOrder } from '../../../../shared/engine/matching';
 import { traderNet } from '../../../../shared/engine/strategies';
@@ -378,5 +380,19 @@ export function registerAdminApi(app: Express, deps: AdminDeps): void {
     const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 200));
     const entries = await loadRecent(limit);
     res.json({ ok: true, entries });
+  });
+
+  // v9: read player feedback / bug reports (newest first).
+  app.get('/admin/feedback', (req, res) => {
+    const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 200));
+    try {
+      const f = path.resolve(process.cwd(), 'feedback.jsonl');
+      if (!fs.existsSync(f)) { res.json({ ok: true, entries: [] }); return; }
+      const lines = String(fs.readFileSync(f, 'utf-8')).trim().split('\n').slice(-limit);
+      const entries = lines.map((l: string) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean).reverse();
+      res.json({ ok: true, entries });
+    } catch (e) {
+      res.status(500).json({ ok: false, reason: (e as Error).message });
+    }
   });
 }

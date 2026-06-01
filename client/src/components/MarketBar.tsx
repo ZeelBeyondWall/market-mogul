@@ -2,6 +2,7 @@ import { MARKET_LABELS, MARKET_ORDER, marketUnlockLevel } from '../../../shared/
 import type { Market } from '../../../shared/engine/types';
 import { useGame } from '../store/gameStore';
 import { Audio } from '../audio/audio';
+import { NotificationCenter } from './NotificationCenter';
 
 // v8: Top-level market navigation. Big pill tabs across full width above main.
 // Each pill shows: emoji + name + lock badge if player can't access yet.
@@ -11,6 +12,7 @@ export function MarketBar() {
   const playerLevel = useGame(s => s.playerLevel);
   const setSettingsOpen = useGame(s => s.setSettingsOpen);
   const setActiveTab = useGame(s => s.setActiveTab);
+  const setFeedbackOpen = useGame(s => s.setFeedbackOpen);
 
   return (
     <div className="mbar">
@@ -33,6 +35,10 @@ export function MarketBar() {
         })}
       </div>
       <div className="mbar-actions">
+        <NotificationCenter />
+        <button className="mbar-action" onClick={() => { setFeedbackOpen(true); Audio.click(); }} title="Send feedback / report bug">
+          💬 Feedback
+        </button>
         <button className="mbar-action" onClick={() => { setActiveTab('help'); Audio.click(); }} title="How to play">
           ❓ Help
         </button>

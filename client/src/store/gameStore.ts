@@ -1,14 +1,21 @@
 import { create } from 'zustand';
 import { Engine } from '../../../shared/engine/engine';
 import { ASSETS } from '../../../shared/engine/constants';
-import type { Market, MissionState, PlayerStats, TFKey } from '../../../shared/engine/types';
+import type { Market, MissionState, PlayerStats, TFKey, Trade } from '../../../shared/engine/types';
 import { setMuted } from '../audio/audio';
 
 export type Theme = 'game' | 'pro';
 
 type ChartToggles = { chartLine: boolean; chartCandles: boolean; chartVol: boolean };
 
-export type TabId = 'positions' | 'book' | 'bots' | 'news' | 'details' | 'stats' | 'missions' | 'movers' | 'help';
+export type TabId = 'positions' | 'book' | 'bots' | 'news' | 'details' | 'stats' | 'missions' | 'movers' | 'help' | 'history';
+
+// v9: notification center entries.
+export type NotifKind = 'fill' | 'cancel' | 'sl' | 'tp' | 'level' | 'mission' | 'news' | 'alert' | 'info';
+export interface NotifItem { id: number; ts: number; kind: NotifKind; title: string; body?: string; }
+
+// v9: user price alerts (client-side, persisted).
+export interface PriceAlert { id: number; aid: string; price: number; dir: 'above' | 'below'; }
 
 export interface UIPrefs extends ChartToggles {
   muted: boolean;
@@ -24,10 +31,11 @@ export interface UIPrefs extends ChartToggles {
   activeTF: TFKey;
   watchlist: string[]; // user-pinned asset ids
   beginnerMode: boolean; // hides advanced UI when true (v7.2)
+  priceAlerts: PriceAlert[]; // v9: persisted price alerts
 }
 
 export interface LeaderboardEntry {
-  id: number; name: string; net: number; strat: string; rekt: boolean; level: number;
+  id: number; name: string; net: number; strat: string; rekt: boolean; level: number; isPlayer: boolean;
 }
 
 interface GameStore extends UIPrefs {
@@ -53,6 +61,16 @@ interface GameStore extends UIPrefs {
   weeklyMissions: MissionState[];
   // v8.1: transient toast for order results (success / failure)
   toast: { msg: string; kind: 'ok' | 'err' | 'info'; ts: number } | null;
+  // v9: persistent notification center
+  notifications: NotifItem[];
+  notifUnread: number;
+  notifOpen: boolean;
+  // v9: trade history + holders
+  recentTrades: Trade[];
+  activeHolders: number;
+  feedbackOpen: boolean;
+  // v9 mobile: which single pane is visible on phones (desktop shows all 3).
+  mobileView: 'market' | 'trade' | 'panel';
   setActive: (aid: string) => void;
   setOrderType: (t: 'market' | 'limit') => void;
   setActiveTab: (t: TabId) => void;
@@ -62,6 +80,14 @@ interface GameStore extends UIPrefs {
   setPlayerExtras: (s: { stats: PlayerStats; bonus: number; streak: number; daily: MissionState[]; weekly: MissionState[]; level: number; xp: number; xpAtCurrent: number; xpToNext: number }) => void;
   setServerFlags: (s: { banner: string; maintenanceMode: boolean; tradingHalted: boolean }) => void;
   pushToast: (msg: string, kind?: 'ok' | 'err' | 'info') => void;
+  pushNotif: (kind: NotifKind, title: string, body?: string) => void;
+  setNotifOpen: (v: boolean) => void;
+  clearNotifs: () => void;
+  setTradeData: (trades: Trade[], holders: number) => void;
+  setFeedbackOpen: (v: boolean) => void;
+  addPriceAlert: (aid: string, price: number, dir: 'above' | 'below') => void;
+  removePriceAlert: (id: number) => void;
+  setMobileView: (v: 'market' | 'trade' | 'panel') => void;
   toggleChartLayer: (k: keyof ChartToggles) => void;
   toggleMute: () => void;
   hideSplash: () => void;
@@ -80,7 +106,7 @@ interface GameStore extends UIPrefs {
 const STORAGE = 'mm_ui_prefs_v3';
 const UI_KEYS: (keyof UIPrefs)[] = [
   'muted','chartLine','chartCandles','chartVol','orderType','activeTab','activeMarket','botFilter','splashShown',
-  'theme','reduceMotion','showParticles','autoConfirm','activeTF','watchlist','beginnerMode',
+  'theme','reduceMotion','showParticles','autoConfirm','activeTF','watchlist','beginnerMode','priceAlerts',
 ];
 function defaultPrefs(): UIPrefs {
   return {
@@ -91,6 +117,7 @@ function defaultPrefs(): UIPrefs {
     activeTF: '5s',
     watchlist: [],
     beginnerMode: true, // v7.2: default ON for new users
+    priceAlerts: [],
   };
 }
 function loadPrefs(): UIPrefs {
@@ -149,6 +176,13 @@ export const useGame = create<GameStore>((set, get) => {
     dailyMissions: [],
     weeklyMissions: [],
     toast: null,
+    notifications: [],
+    notifUnread: 0,
+    notifOpen: false,
+    recentTrades: [],
+    activeHolders: 0,
+    feedbackOpen: false,
+    mobileView: 'trade',
     ...initialPrefs,
     setActive: (aid) => {
       engine.state.active = aid;
@@ -198,6 +232,28 @@ export const useGame = create<GameStore>((set, get) => {
       const t = { msg, kind, ts: typeof performance !== 'undefined' ? performance.now() : 0 };
       set({ toast: t });
     },
+    pushNotif: (kind, title, body) => {
+      const now = Date.now();
+      const item: NotifItem = { id: now + Math.floor(performance.now() % 1000), ts: now, kind, title, body };
+      set(s => {
+        const notifications = [item, ...s.notifications].slice(0, 50);
+        return { notifications, notifUnread: s.notifOpen ? 0 : s.notifUnread + 1 };
+      });
+      // Also surface a transient toast so it's not missed.
+      const tk = (kind === 'sl') ? 'err' : (kind === 'fill' || kind === 'tp' || kind === 'level' || kind === 'mission') ? 'ok' : 'info';
+      set({ toast: { msg: title, kind: tk as any, ts: typeof performance !== 'undefined' ? performance.now() : 0 } });
+    },
+    setNotifOpen: (v) => set(s => ({ notifOpen: v, notifUnread: v ? 0 : s.notifUnread })),
+    clearNotifs: () => set({ notifications: [], notifUnread: 0 }),
+    setTradeData: (trades, holders) => set({ recentTrades: trades, activeHolders: holders }),
+    setFeedbackOpen: (v) => set({ feedbackOpen: v }),
+    addPriceAlert: (aid, price, dir) => {
+      const id = Date.now() + Math.floor(performance.now() % 1000);
+      set(s => ({ priceAlerts: [...s.priceAlerts, { id, aid, price, dir }] }));
+      persist();
+    },
+    removePriceAlert: (id) => { set(s => ({ priceAlerts: s.priceAlerts.filter(a => a.id !== id) })); persist(); },
+    setMobileView: (v) => set({ mobileView: v }),
     setTheme: (t) => { applyTheme(t); set({ theme: t }); persist(); },
     setReduceMotion: (v) => { set({ reduceMotion: v }); persist(); },
     setShowParticles: (v) => { set({ showParticles: v }); persist(); },

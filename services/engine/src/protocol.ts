@@ -1,5 +1,5 @@
 // WebSocket message types shared between client/server.
-import type { GameState, Holding, MissionState, NewsEvent, PlayerStats, Trader } from '../../../shared/engine/types';
+import type { GameState, Holding, MissionState, NewsEvent, PlayerStats, Trade, Trader } from '../../../shared/engine/types';
 
 // Server → Client
 export type S2C =
@@ -27,7 +27,7 @@ export interface SnapshotPayload {
   player: PublicTrader;
   assets: Record<string, PublicAsset>;
   events: NewsEvent[];
-  leaderboard: { id: number; name: string; net: number; strat: string; rekt: boolean; level: number }[];
+  leaderboard: { id: number; name: string; net: number; strat: string; rekt: boolean; level: number; isPlayer: boolean }[];
   totalTraders: number;
   playerRank: number;
   playerStats: PlayerStats;
@@ -35,6 +35,10 @@ export interface SnapshotPayload {
   playerStreak: number;
   dailyMissions: MissionState[];
   weeklyMissions: MissionState[];
+  // v9: last N closed trades for the Trade History view (player only).
+  recentTrades: Trade[];
+  // v9: holders count for the active asset.
+  activeHolders: number;
   // v5: progression
   playerLevel: number;
   playerXp: number;
@@ -147,6 +151,8 @@ export function buildSnapshot(
     playerStreak: 0,
     dailyMissions: [],
     weeklyMissions: [],
+    recentTrades: [],
+    activeHolders: 0,
     playerLevel: 1,
     playerXp: 0,
     xpToNext: 100,

@@ -1,6 +1,6 @@
 import { Engine } from '../../../shared/engine/engine';
 import { makeBook } from '../../../shared/engine/orderbook';
-import type { MissionState, NewsCategory, Order, PlayerStats } from '../../../shared/engine/types';
+import type { MissionState, NewsCategory, Order, PlayerStats, Trade } from '../../../shared/engine/types';
 import { useGame } from '../store/gameStore';
 import { Audio } from '../audio/audio';
 
@@ -23,7 +23,7 @@ interface SnapshotPayload {
   player: { cash: number; holdings: Record<string, any>; isPlayer: true; closing?: Record<string, boolean> };
   assets: Record<string, PublicAsset>;
   events: { type: 'boom'|'crash'|'news'; title: string; desc: string; t: number; assetIds?: string[]; cat?: NewsCategory }[];
-  leaderboard: { id: number; name: string; net: number; strat: string; rekt: boolean; level: number }[];
+  leaderboard: { id: number; name: string; net: number; strat: string; rekt: boolean; level: number; isPlayer: boolean }[];
   totalTraders: number;
   playerRank: number;
   playerStats?: PlayerStats;
@@ -38,6 +38,8 @@ interface SnapshotPayload {
   banner?: string;
   maintenanceMode?: boolean;
   tradingHalted?: boolean;
+  recentTrades?: Trade[];
+  activeHolders?: number;
 }
 
 interface TickPayload {
@@ -57,6 +59,10 @@ interface TickPayload {
   topBidsActive?: { px: number; qty: number; ownerName: string }[];
   topAsksActive?: { px: number; qty: number; ownerName: string }[];
 }
+
+// v9: trackers to fire level-up / mission-complete notifications exactly once.
+let prevLevel = 0;
+const seenCompletedMissions = new Set<string>();
 
 export type C2SMsg =
   | { type: 'order'; payload: { aid: string; side: 'buy'|'sell'; qty: number; orderType: 'market'|'limit'; limitPx?: number; slPct?: number; tpPct?: number } }
@@ -131,6 +137,8 @@ export function connect(engine: Engine): void {
         const { kind } = msg.payload;
         if (kind === 'boom') Audio.boom(); else if (kind === 'crash') Audio.crash();
         engine.hooks.onEvent?.({ type: kind, title: msg.payload.title, desc: msg.payload.desc } as any);
+        // v9: market news → notification center.
+        useGame.getState().pushNotif('news', '📰 ' + msg.payload.title, msg.payload.desc);
         break;
       }
       case 'sltp_hit': {
@@ -139,19 +147,19 @@ export function connect(engine: Engine): void {
                      desc: `${msg.payload.aid} closed @ ${msg.payload.px.toFixed(msg.payload.px < 10 ? 3 : 2)}`, t: Date.now() };
         engine.state.events.unshift(ev);
         if (engine.state.events.length > 30) engine.state.events.pop();
+        // v9: SL/TP trigger → notification center.
+        useGame.getState().pushNotif(msg.payload.kind === 'SL' ? 'sl' : 'tp', ev.title, ev.desc);
         break;
       }
       case 'order_result': {
         if (!msg.payload.ok && msg.payload.reason) {
           engine.state.events.unshift({ type: 'news', title: '✗ ' + msg.payload.reason, desc: '', t: Date.now() });
-          // v8.1: surface the rejection as an obvious toast — was silently failing.
           useGame.getState().pushToast(msg.payload.reason, 'err');
         } else if (msg.payload.ok) {
           if (msg.payload.filled > 0) {
             Audio.buy();
-            useGame.getState().pushToast(`✓ Filled ${msg.payload.filled} sh @ $${(msg.payload.cost / msg.payload.filled).toFixed(2)}`, 'ok');
+            useGame.getState().pushNotif('fill', `✓ Filled ${msg.payload.filled} sh @ $${(msg.payload.cost / msg.payload.filled).toFixed(2)}`);
           } else {
-            // Order accepted but no immediate fill (rested as limit on book).
             useGame.getState().pushToast('Order placed — resting on book', 'info');
           }
         }
@@ -200,7 +208,27 @@ function applySnapshot(engine: Engine, snap: SnapshotPayload): void {
     }
   }
   useGame.getState().setLeaderboard(snap.leaderboard, snap.totalTraders, snap.playerRank);
+  useGame.getState().setTradeData(snap.recentTrades || [], snap.activeHolders || 0);
   if (snap.playerStats) {
+    // v9: detect level-up (fire once).
+    const lvl = snap.playerLevel || 1;
+    if (prevLevel === 0) prevLevel = lvl; // first snapshot — seed, no notif
+    else if (lvl > prevLevel) {
+      useGame.getState().pushNotif('level', `⭐ Level Up! You reached Level ${lvl}`, 'New markets/features may have unlocked.');
+      prevLevel = lvl;
+    }
+    // v9: detect mission completion (fire once per mission id).
+    const allMissions = [...(snap.dailyMissions || []), ...(snap.weeklyMissions || [])];
+    for (const m of allMissions) {
+      const id = m?.def?.id;
+      if (!id) continue;
+      if (m.completed && !seenCompletedMissions.has(id)) {
+        seenCompletedMissions.add(id);
+        useGame.getState().pushNotif('mission', `🎯 Mission Complete: ${m.def.title}`, `Reward $${m.def.reward} — claim it in Missions.`);
+      }
+      // Reset tracking when a fresh (incomplete) mission with same id reappears after reset.
+      if (!m.completed && seenCompletedMissions.has(id)) seenCompletedMissions.delete(id);
+    }
     useGame.getState().setPlayerExtras({
       stats: snap.playerStats,
       bonus: snap.playerBonus || 0,
@@ -247,6 +275,22 @@ function applyTick(engine: Engine, tick: TickPayload): void {
   for (const aid of Object.keys(tick.prices)) {
     const ast = engine.state.assets[aid];
     if (ast) ast.lastPrice = tick.prices[aid];
+  }
+  // v9: check user price alerts against new prices; fire + remove on cross.
+  // Collect hits first, then remove — never mutate the array while iterating.
+  const alerts = useGame.getState().priceAlerts;
+  if (alerts.length) {
+    const fired: { id: number; aid: string; dir: string; price: number; px: number }[] = [];
+    for (const al of alerts) {
+      const px = tick.prices[al.aid];
+      if (px == null) continue;
+      const hit = al.dir === 'above' ? px >= al.price : px <= al.price;
+      if (hit) fired.push({ id: al.id, aid: al.aid, dir: al.dir, price: al.price, px });
+    }
+    for (const f of fired) {
+      useGame.getState().pushNotif('alert', `🔔 ${f.aid} ${f.dir === 'above' ? '≥' : '≤'} $${f.price}`, `Now $${f.px.toFixed(f.px < 10 ? 3 : 2)}`);
+      useGame.getState().removePriceAlert(f.id);
+    }
   }
   // Server is authority on the ACTIVE asset's candle series — replace cleanly.
   if (tick.activeId && tick.activeId === engine.state.active) {
