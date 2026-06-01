@@ -351,6 +351,48 @@ export class Engine {
     return this.player().cash + this.portfolioValue();
   }
 
+  // v9.1: SHORT positions credit cash + carry a negative holding internally.
+  // For DISPLAY we treat a short like a margin bet: net the sale proceeds out of
+  // shown cash (so it never jumps up) and show the position's live P&L instead.
+  // These are display-only; netWorth() above stays the single source of truth.
+  //   displayCash       = cash - Σ short proceeds (|shares| × avgCost)
+  //   displayPortfolio  = Σ long(shares×price) + Σ short P&L ((avgCost-price)×|shares|)
+  //   displayCash + displayPortfolio === netWorth  (proven invariant)
+  private shortProceeds(): number {
+    let p = 0;
+    const h = this.player().holdings;
+    ASSETS.forEach(a => {
+      const pos = h[a.id];
+      if (pos && pos.shares < 0) p += (-pos.shares) * pos.avgCost;
+    });
+    return p;
+  }
+
+  displayCash(): number {
+    return this.player().cash - this.shortProceeds();
+  }
+
+  displayPortfolioValue(): number {
+    let v = 0;
+    const h = this.player().holdings;
+    ASSETS.forEach(a => {
+      const pos = h[a.id];
+      if (!pos || pos.shares === 0) return;
+      const px = this.state.assets[a.id].lastPrice;
+      if (pos.shares > 0) v += pos.shares * px;                         // long: market value
+      else v += (-pos.shares) * (pos.avgCost - px);                     // short: live P&L
+    });
+    return v;
+  }
+
+  // Value to show for a single position row (long = market value, short = P&L).
+  positionDisplayValue(aid: string): number {
+    const pos = this.player().holdings[aid];
+    if (!pos || pos.shares === 0) return 0;
+    const px = this.state.assets[aid].lastPrice;
+    return pos.shares > 0 ? pos.shares * px : (-pos.shares) * (pos.avgCost - px);
+  }
+
   // Player-only "wallet" including mission bonus, shown in header alongside net.
   walletBonus(): number {
     return this.player().bonus || 0;

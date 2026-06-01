@@ -14,8 +14,10 @@ export function Header() {
   const xpTo = useGame(s => s.xpToNext);
 
   const p = eng.player();
-  const cash = p.cash;
-  const port = eng.portfolioValue();
+  // v9.1: display short proceeds as a margin bet — cash never jumps up, P&L
+  // lives in the position. (displayCash + displayPortfolio === netWorth.)
+  const cash = eng.displayCash();
+  const port = eng.displayPortfolioValue();
   const net = eng.netWorth();
   const bonus = p.bonus || 0;
   const xpProgress = Math.max(0, Math.min(100, ((xp - xpAt) / Math.max(1, xpTo - xpAt)) * 100));
