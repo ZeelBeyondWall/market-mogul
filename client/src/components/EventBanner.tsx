@@ -20,8 +20,11 @@ export function EventBanner() {
     return () => { eng.hooks.onEvent = prev; };
   }, [eng]);
 
+  // v9.3: only mount when active — a permanently-rendered box was peeking at the
+  // top of the screen (translateY hid only most of it).
+  if (!shown) return null;
   return (
-    <div id="eventBanner" className={(shown ? 'show ' : '') + data.kind}>
+    <div id="eventBanner" className={'show ' + data.kind}>
       <div className="title">{data.title}</div>
       <div className="desc">{data.desc}</div>
     </div>
