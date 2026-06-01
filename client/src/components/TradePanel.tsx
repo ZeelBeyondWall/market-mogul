@@ -18,7 +18,9 @@ function modeMaxQty(eng: any, aid: string, mode: Mode, shortAllowed: boolean): n
   const ast = eng.state.assets[aid];
   if (mode === 'buy') {
     if (hold.shares < 0) return Math.abs(hold.shares); // covering short — max = position size
-    let cash = eng.player().cash, qty = 0;
+    // v9.2: new longs limited by DISPLAY cash (short proceeds are earmarked to
+    // buy back, not free to spend) so buying power matches the shown cash.
+    let cash = Math.max(0, eng.displayCash()), qty = 0;
     for (const o of book.asks) {
       const aff = Math.floor(cash / o.px);
       const fq = Math.min(o.qty, aff);
@@ -31,9 +33,9 @@ function modeMaxQty(eng: any, aid: string, mode: Mode, shortAllowed: boolean): n
   const longPart = Math.max(0, hold.shares);
   if (longPart > 0) return longPart;     // close/reduce long — max = what you own
   if (!shortAllowed) return 0;           // STOCKS flat → nothing to sell
-  // CRYPTO/FOREX: open short with 50% margin (matches server sellableQty)
+  // v9.2: opening a short stakes qty×price (like a buy), so cap by display cash.
   const px = ast.lastPrice || 0.01;
-  const limit = Math.floor((eng.player().cash * 2) / px);
+  const limit = Math.floor(Math.max(0, eng.displayCash()) / px);
   let qty = 0;
   for (const o of book.bids) {
     const fq = Math.min(o.qty, limit - qty);

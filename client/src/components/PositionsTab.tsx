@@ -15,7 +15,8 @@ export function PositionsTab() {
     const ast = eng.state.assets[a.id];
     const isLong = h.shares > 0;
     const qty = Math.abs(h.shares);
-    const val = qty * ast.lastPrice;
+    // v9.2: short value shown like a long (stake + P&L) for a buy-style display.
+    const val = eng.positionDisplayValue(a.id);
     const pl = isLong ? h.shares * (ast.lastPrice - h.avgCost) : qty * (h.avgCost - ast.lastPrice);
     const plPct = h.avgCost > 0 ? (pl / (h.avgCost * qty)) * 100 : 0;
     return [{ a, h, ast, isLong, qty, val, pl, plPct }];

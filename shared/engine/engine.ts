@@ -351,14 +351,18 @@ export class Engine {
     return this.player().cash + this.portfolioValue();
   }
 
-  // v9.1: SHORT positions credit cash + carry a negative holding internally.
-  // For DISPLAY we treat a short like a margin bet: net the sale proceeds out of
-  // shown cash (so it never jumps up) and show the position's live P&L instead.
-  // These are display-only; netWorth() above stays the single source of truth.
-  //   displayCash       = cash - Σ short proceeds (|shares| × avgCost)
-  //   displayPortfolio  = Σ long(shares×price) + Σ short P&L ((avgCost-price)×|shares|)
-  //   displayCash + displayPortfolio === netWorth  (proven invariant)
-  private shortProceeds(): number {
+  // v9.2: SHORT shown exactly like a BUY — you "stake" qty×entry to open the
+  // bearish bet (cash goes DOWN by the stake), and the position carries a market
+  // value that rises when price falls. P&L = value − stake.
+  //
+  // Engine truth at open (short Q@P): trueCash += Q×P (sale proceeds), shares=-Q.
+  // Display transform (proven to keep netWorth() identical):
+  //   stake          = Σ short |shares|×avgCost          (what you "paid")
+  //   displayCash     = trueCash − 2×stake               (= oldCash − stake)
+  //   short value     = |shares|×(2·avgCost − price)      (= stake + P&L)
+  //   displayPortfolio = Σ long(shares×price) + Σ short value
+  //   displayCash + displayPortfolio === netWorth()       (invariant)
+  private shortStake(): number {
     let p = 0;
     const h = this.player().holdings;
     ASSETS.forEach(a => {
@@ -369,7 +373,7 @@ export class Engine {
   }
 
   displayCash(): number {
-    return this.player().cash - this.shortProceeds();
+    return this.player().cash - 2 * this.shortStake();
   }
 
   displayPortfolioValue(): number {
@@ -379,18 +383,18 @@ export class Engine {
       const pos = h[a.id];
       if (!pos || pos.shares === 0) return;
       const px = this.state.assets[a.id].lastPrice;
-      if (pos.shares > 0) v += pos.shares * px;                         // long: market value
-      else v += (-pos.shares) * (pos.avgCost - px);                     // short: live P&L
+      if (pos.shares > 0) v += pos.shares * px;                          // long: market value
+      else v += (-pos.shares) * (2 * pos.avgCost - px);                  // short: stake + P&L
     });
     return v;
   }
 
-  // Value to show for a single position row (long = market value, short = P&L).
+  // Value to show for a single position row (long = market value, short = stake+P&L).
   positionDisplayValue(aid: string): number {
     const pos = this.player().holdings[aid];
     if (!pos || pos.shares === 0) return 0;
     const px = this.state.assets[aid].lastPrice;
-    return pos.shares > 0 ? pos.shares * px : (-pos.shares) * (pos.avgCost - px);
+    return pos.shares > 0 ? pos.shares * px : (-pos.shares) * (2 * pos.avgCost - px);
   }
 
   // Player-only "wallet" including mission bonus, shown in header alongside net.
