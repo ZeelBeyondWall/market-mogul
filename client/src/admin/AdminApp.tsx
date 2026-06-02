@@ -50,6 +50,7 @@ export function AdminApp() {
   const [health, setHealth] = useState<HealthResp | null>(null);
   const [economy, setEconomy] = useState<EconomyResp | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => { try { localStorage.setItem('mm_admin_page', page); } catch {} }, [page]);
 
@@ -93,6 +94,11 @@ export function AdminApp() {
     return n;
   })();
 
+  const handlePageChange = (id: PageId) => {
+    setPage(id);
+    setMobileNavOpen(false);
+  };
+
   const pageEl = (() => {
     switch (page) {
       case 'dashboard': return <Dashboard />;
@@ -107,6 +113,27 @@ export function AdminApp() {
     }
   })();
 
+  const navContent = (
+    <nav className="a-nav">
+      {['Overview', 'Operations', 'System'].map(section => (
+        <div key={section}>
+          <div className="a-nav-section">{section}</div>
+          {NAV.filter(n => n.section === section).map(n => (
+            <div
+              key={n.id}
+              className={'a-nav-item' + (page === n.id ? ' active' : '') + (n.danger ? ' danger' : '')}
+              onClick={() => handlePageChange(n.id)}
+            >
+              <span className="a-nav-icon">{n.icon}</span>
+              <span>{n.label}</span>
+              {n.id === 'emergency' && flagsActive > 0 && <span className="a-nav-badge" style={{ background: 'var(--a-red)', color: '#fff' }}>{flagsActive}</span>}
+            </div>
+          ))}
+        </div>
+      ))}
+    </nav>
+  );
+
   return (
     <div className="admin-shell">
       <aside className="a-sidebar">
@@ -117,34 +144,27 @@ export function AdminApp() {
             <div className="a-brand-sub">Admin Center</div>
           </div>
         </div>
-        <nav className="a-nav">
-          {['Overview', 'Operations', 'System'].map(section => (
-            <div key={section}>
-              <div className="a-nav-section">{section}</div>
-              {NAV.filter(n => n.section === section).map(n => (
-                <div
-                  key={n.id}
-                  className={'a-nav-item' + (page === n.id ? ' active' : '') + (n.danger ? ' danger' : '')}
-                  onClick={() => setPage(n.id)}
-                >
-                  <span className="a-nav-icon">{n.icon}</span>
-                  <span>{n.label}</span>
-                  {n.id === 'emergency' && flagsActive > 0 && <span className="a-nav-badge" style={{ background: 'var(--a-red)', color: '#fff' }}>{flagsActive}</span>}
-                </div>
-              ))}
-            </div>
-          ))}
-        </nav>
+        {navContent}
         <div className="a-sidebar-footer">
           <div className="a-uptime">
             <span className={'a-status-dot' + (health ? '' : ' danger')} />
             <span>{health ? `Engine online · ${fmtDuration(health.uptimeSec)}` : 'Engine offline'}</span>
           </div>
-          {health && <div style={{ marginTop: 4 }}>{health.tradersCount.toLocaleString()} traders · {health.clientCount} clients</div>}
+          {health && <div style={{ marginTop: 5 }}>{health.tradersCount.toLocaleString()} traders · {health.clientCount} clients</div>}
         </div>
       </aside>
 
       <header className="a-topbar">
+        {/* Mobile hamburger */}
+        <button
+          className="a-icon-btn a-mobile-menu-btn"
+          onClick={() => setMobileNavOpen(!mobileNavOpen)}
+          title="Menu"
+          style={{ display: 'none' }}
+        >
+          ☰
+        </button>
+
         <h1>{PAGE_TITLES[page].title}</h1>
         <div className="a-topbar-spacer" />
         <div className="a-topbar-search">
@@ -163,9 +183,25 @@ export function AdminApp() {
         <a href="/" className="a-btn ghost">← Game</a>
       </header>
 
+      {/* Mobile nav overlay */}
+      {mobileNavOpen && (
+        <div className="a-mobile-nav-overlay" onClick={() => setMobileNavOpen(false)}>
+          <div className="a-mobile-nav" onClick={e => e.stopPropagation()}>
+            <div className="a-sidebar-brand" style={{ borderBottom: '1px solid var(--a-border)' }}>
+              <div className="a-brand-mark">M</div>
+              <div>
+                <div className="a-brand-name">MARKETVERSEX</div>
+                <div className="a-brand-sub">Admin Center</div>
+              </div>
+            </div>
+            {navContent}
+          </div>
+        </div>
+      )}
+
       <main className="a-main">
         {economy?.flags?.broadcastBanner && (
-          <div className="a-banner" style={{ marginBottom: 16, borderRadius: 'var(--a-radius)' }}>
+          <div className="a-banner" style={{ marginBottom: 18, borderRadius: 'var(--a-radius)' }}>
             📢 {economy.flags.broadcastBanner}
           </div>
         )}
@@ -194,7 +230,7 @@ function AuthModal({ onClose }: { onClose: () => void }) {
               <input className="a-input" value={act} onChange={e => setAct(e.target.value)} placeholder="admin" />
             </div>
           </div>
-          <div className="a-form-row" style={{ marginTop: 10 }}>
+          <div className="a-form-row" style={{ marginTop: 12 }}>
             <div style={{ flex: 1 }}>
               <label className="a-label">Admin token (MM_ADMIN_TOKEN env)</label>
               <input className="a-input" type="password" value={tok} onChange={e => setTok(e.target.value)} placeholder="Leave blank in dev" />

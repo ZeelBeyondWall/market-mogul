@@ -2259,8 +2259,8 @@ main > .col:nth-child(3) {
   /* show only the active pane (data-mv on #app) */
   #app .col{display:none}
   #app[data-mv="market"] .col-market{display:block;overflow-y:auto}
-  #app[data-mv="trade"]  .col-trade{display:flex;overflow:hidden}
-  #app[data-mv="panel"]  .col-panel{display:flex;flex-direction:column;overflow:hidden}
+  #app[data-mv="trade"]  .col-trade{display:flex;flex-direction:column;overflow-y:auto}
+  #app[data-mv="panel"]  .col-panel{display:flex;flex-direction:column;overflow-y:auto}
   .col-trade{flex-direction:column}
 
   /* chart fills, trade bar stacks */
