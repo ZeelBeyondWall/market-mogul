@@ -32,7 +32,7 @@ export function executeTrade(
   onPlayerSellProfit?: () => void,
   onPlayerSellLoss?: () => void,
   onPlayerTradeClosed?: (t: Trade) => void,
-): void {
+): number {
   const buyer = S.traders[buyerId];
   const seller = S.traders[sellerId];
 
@@ -59,12 +59,12 @@ export function executeTrade(
       }
     }
   }
-  if (qty <= 0) return;
+  if (qty <= 0) return 0;
   if (!buyer.isPlayer && !buyerHouse) {
     const aff = roundShares(buyer.cash / px);
     if (aff < qty) qty = aff;
   }
-  if (qty <= 0) return;
+  if (qty <= 0) return 0;
 
   const cash = px * qty;
   // House cash is never mutated (it accumulates nothing → no pollution).
@@ -178,6 +178,8 @@ export function executeTrade(
 
   if (buyer.isPlayer && onPlayerBuy) onPlayerBuy(qty);
   else if (seller.isPlayer && onPlayerSellProfit) onPlayerSellProfit();
+
+  return qty;
 }
 
 export interface OrderCallbacks {
@@ -211,9 +213,10 @@ export function placeOrder(
   const onProfit = cb?.onPlayerSellProfit;
   const onLoss = cb?.onPlayerSellLoss;
   const onClosed = cb?.onPlayerTradeClosed;
-  const trigger = (buyerId: number, sellerId: number, q: number, fp: number) => {
-    executeTrade(S, buyerId, sellerId, assetId, q, fp, onBuy, onProfit, onLoss, onClosed);
+  const trigger = (buyerId: number, sellerId: number, q: number, fp: number): number => {
+    const actual = executeTrade(S, buyerId, sellerId, assetId, q, fp, onBuy, onProfit, onLoss, onClosed);
     cb?.onTrade?.(buyerId, sellerId, assetId);
+    return actual;
   };
 
   if (type === 'market') {
@@ -229,29 +232,29 @@ export function placeOrder(
         if (t.cash < cost) {
           const affordQty = roundShares(t.cash / fillPx);
           if (affordQty <= 0) break;
-          trigger(traderId, top.ownerId, affordQty, fillPx);
-          top.qty -= affordQty;
-          totalCost += fillPx * affordQty;
-          totalQty += affordQty;
-          if (top.qty <= 0) opp.shift();
+          const actual = trigger(traderId, top.ownerId, affordQty, fillPx);
+          top.qty -= actual;
+          totalCost += fillPx * actual;
+          totalQty += actual;
+          if (top.qty <= 0 || actual < affordQty) opp.shift();
           break;
         }
-        trigger(traderId, top.ownerId, fillQty, fillPx);
-        top.qty -= fillQty;
-        totalCost += cost;
-        totalQty += fillQty;
-        remaining -= fillQty;
-        if (top.qty <= 0) opp.shift();
+        const actual = trigger(traderId, top.ownerId, fillQty, fillPx);
+        top.qty -= actual;
+        totalCost += fillPx * actual;
+        totalQty += actual;
+        remaining -= actual;
+        if (top.qty <= 0 || actual < fillQty) opp.shift();
       } else {
         const allowed = sellableQty(t, assetId, fillQty, fillPx);
         if (allowed <= 0) break;
         const sellQ = Math.min(fillQty, allowed);
-        trigger(top.ownerId, traderId, sellQ, fillPx);
-        top.qty -= sellQ;
-        totalCost += fillPx * sellQ;
-        totalQty += sellQ;
-        remaining -= sellQ;
-        if (top.qty <= 0) opp.shift();
+        const actual = trigger(top.ownerId, traderId, sellQ, fillPx);
+        top.qty -= actual;
+        totalCost += fillPx * actual;
+        totalQty += actual;
+        remaining -= actual;
+        if (top.qty <= 0 || actual < sellQ) opp.shift();
       }
     }
     // v9.4: GUARANTEED liquidity. If the book ran dry (truncation, timing, or a
@@ -268,15 +271,15 @@ export function placeOrder(
           let q = remaining;
           if (t.cash < fillPx * q) q = roundShares(t.cash / fillPx);
           if (q > 0) {
-            trigger(traderId, S.houseId, q, fillPx);
-            totalCost += fillPx * q; totalQty += q; remaining -= q;
+            const actual = trigger(traderId, S.houseId, q, fillPx);
+            totalCost += fillPx * actual; totalQty += actual; remaining -= actual;
           }
         } else {
           const fillPx = +(mid * (1 - spread)).toFixed(dec);
           const q = Math.min(remaining, sellableQty(t, assetId, remaining, fillPx));
           if (q > 0) {
-            trigger(S.houseId, traderId, q, fillPx);
-            totalCost += fillPx * q; totalQty += q; remaining -= q;
+            const actual = trigger(S.houseId, traderId, q, fillPx);
+            totalCost += fillPx * actual; totalQty += actual; remaining -= actual;
           }
         }
       }
@@ -297,31 +300,30 @@ export function placeOrder(
       if (t.cash < fillPx * fillQty) {
         const aff = roundShares(t.cash / fillPx);
         if (aff <= 0) break;
-        trigger(traderId, top.ownerId, aff, fillPx);
-        top.qty -= aff;
-        totalCost += fillPx * aff;
-        totalQty += aff;
-        if (top.qty <= 0) opp.shift();
+        const actual = trigger(traderId, top.ownerId, aff, fillPx);
+        top.qty -= actual;
+        totalCost += fillPx * actual;
+        totalQty += actual;
+        if (top.qty <= 0 || actual < aff) opp.shift();
         break;
       }
-      trigger(traderId, top.ownerId, fillQty, fillPx);
+      const actual = trigger(traderId, top.ownerId, fillQty, fillPx);
+      top.qty -= actual;
+      totalCost += fillPx * actual;
+      totalQty += actual;
+      remaining -= actual;
+      if (top.qty <= 0 || actual < fillQty) opp.shift();
     } else {
       const allowed = sellableQty(t, assetId, fillQty, fillPx);
       if (allowed <= 0) break;
       const sellQ = Math.min(fillQty, allowed);
-      trigger(top.ownerId, traderId, sellQ, fillPx);
-      top.qty -= sellQ;
-      totalCost += fillPx * sellQ;
-      totalQty += sellQ;
-      if (top.qty <= 0) opp.shift();
-      remaining -= sellQ;
-      continue;
+      const actual = trigger(top.ownerId, traderId, sellQ, fillPx);
+      top.qty -= actual;
+      totalCost += fillPx * actual;
+      totalQty += actual;
+      remaining -= actual;
+      if (top.qty <= 0 || actual < sellQ) opp.shift();
     }
-    top.qty -= fillQty;
-    totalCost += fillPx * fillQty;
-    totalQty += fillQty;
-    remaining -= fillQty;
-    if (top.qty <= 0) opp.shift();
   }
   // Unfilled remainder rests on the book — for BOTH players and bots.
   if (remaining > 0) {
