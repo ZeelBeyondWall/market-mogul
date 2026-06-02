@@ -49,7 +49,13 @@ function MoverRow({ r, setActive, playerLevel, showVol = false }: any) {
   return (
     <div
       className={'mover-row' + (locked ? ' locked' : '')}
-      onClick={() => { if (!locked) { setActive(r.a.id); Audio.click(); } }}
+      onClick={() => {
+        if (!locked) {
+          setActive(r.a.id);
+          useGame.getState().setMobileView('trade');
+          Audio.click();
+        }
+      }}
     >
       <div className="mv-sym">
         <svg><use href={`#${r.a.icon}`}/></svg>

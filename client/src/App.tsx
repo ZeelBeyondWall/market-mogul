@@ -47,6 +47,11 @@ export function App() {
                 <Chart />
                 <TradePanel />
               </div>
+              {mobileView === 'trade' && (
+                <div className="mobile-tabs-wrap">
+                  <Tabs />
+                </div>
+              )}
             </div>
             <div className="col col-panel">
               <Tabs />

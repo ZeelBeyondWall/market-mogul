@@ -18,6 +18,7 @@ export function Settings() {
   const setAutoConfirm = useGame(s => s.setAutoConfirm);
   const beginnerMode = useGame(s => s.beginnerMode);
   const setBeginnerMode = useGame(s => s.setBeginnerMode);
+  const setFeedbackOpen = useGame(s => s.setFeedbackOpen);
 
   if (!open) return null;
 
@@ -65,6 +66,12 @@ export function Settings() {
 
         <Section title="Trading">
           <Toggle label="Auto-confirm large orders" value={autoConfirm} onChange={v => { setAutoConfirm(v); Audio.click(); }} />
+        </Section>
+
+        <Section title="Feedback">
+          <button className="settings-danger" style={{ background: 'linear-gradient(180deg, var(--blue) 0%, #0369a1 100%)', color: '#fff', border: 'none' }} onClick={() => { setOpen(false); setFeedbackOpen(true); Audio.click(); }}>
+            💬 Report Bug / Send Feedback
+          </button>
         </Section>
 
         <Section title="Danger">

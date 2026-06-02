@@ -119,7 +119,12 @@ function AssetRow({ a, eng, nw, active, playerLevel, setActive, watched, toggleW
   return (
     <div
       className={'asset-v8' + (active === a.id ? ' active' : '') + (locked ? ' locked' : '')}
-      onClick={() => { if (locked) { Audio.click(); return; } setActive(a.id); Audio.click(); }}
+      onClick={() => {
+        if (locked) { Audio.click(); return; }
+        setActive(a.id);
+        useGame.getState().setMobileView('trade');
+        Audio.click();
+      }}
       title={locked ? `Requires Level ${a.minLevel}` : ''}
     >
       <div className="av-top">

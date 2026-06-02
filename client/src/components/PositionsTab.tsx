@@ -90,7 +90,9 @@ export function PositionsTab() {
             return (
               <div key={r.a.id} className="pos-row" onClick={(e) => {
                 if ((e.target as HTMLElement).tagName === 'BUTTON' || (e.target as HTMLElement).tagName === 'INPUT') return;
-                setActive(r.a.id); Audio.click();
+                setActive(r.a.id);
+                useGame.getState().setMobileView('trade');
+                Audio.click();
               }}>
                 <svg><use href={`#${r.a.icon}`}/></svg>
                 <div className="info">
