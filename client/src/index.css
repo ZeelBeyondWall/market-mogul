@@ -2268,14 +2268,14 @@ main > .col:nth-child(3) {
   /* show only the active pane (data-mv on #app) */
   #app .col{display:none}
   #app[data-mv="market"] .col-market{display:block;overflow-y:auto}
-  #app[data-mv="trade"]  .col-trade{display:flex;flex-direction:column;overflow-y:auto}
+  #app[data-mv="trade"]  .col-trade{display:flex;flex-direction:column;height:100%;overflow:hidden}
   #app[data-mv="panel"]  .col-panel{display:flex;flex-direction:column;overflow-y:auto}
   .col-trade{flex-direction:column}
 
   /* chart fills, trade bar stacks */
-  .chart-wrap{padding:8px;gap:8px;height:auto !important}
-  .chart-box{height:250px !important}
-  .tradebar{flex-direction:column;gap:8px;padding:10px}
+  .chart-wrap{padding:8px;gap:8px;height:100% !important;display:flex !important;flex-direction:column !important}
+  .chart-box{flex:1 !important;height:auto !important;min-height:180px !important}
+  .tradebar{flex-direction:column;gap:6px;padding:8px}
   .tb-inputs{justify-content:space-between}
   .tb-actions{min-width:0 !important;width:100%}
   .tb-pos{border-left:none;border-top:1px solid #1a2438;padding-left:0;padding-top:8px;width:100%;justify-content:space-between}
@@ -2283,7 +2283,7 @@ main > .col:nth-child(3) {
   .tb-field input{width:64px}
 
   /* header compacts */
-  .hdr-v8{height:auto !important;padding:6px 10px !important;gap:6px !important}
+  .hdr-v8{display:flex !important;flex-wrap:wrap !important;height:auto !important;padding:6px 10px !important;gap:6px !important}
   .hdr-brand{order:1;display:flex;align-items:center;gap:6px}
   .hdr-name{font-size:11px !important}
   .hdr-sub{font-size:8px !important}
@@ -2293,8 +2293,8 @@ main > .col:nth-child(3) {
   .hdr-lvl-xp{font-size:7px !important}
   .hdr-lvl-bar{width:45px !important;height:4px !important}
   .hdr-stats{order:3;width:100%;display:grid !important;grid-template-columns:repeat(4,1fr) !important;gap:4px !important;margin-top:2px}
-  .hs{flex:1;min-width:0 !important;padding:4px 6px !important;text-align:center}
-  .hs-l{font-size:7px !important;letter-spacing:0.2px !important}
+  .hs{flex:1;min-width:0 !important;padding:4px 2px !important;text-align:center}
+  .hs-l{font-size:7px !important;letter-spacing:0.1px !important}
   .hs-v{font-size:10.5px !important}
   .hs-sub{font-size:8px !important}
 
