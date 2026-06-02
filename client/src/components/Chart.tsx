@@ -40,6 +40,9 @@ export function Chart() {
   const isDraggingY = useRef(false);
   const dragStartY = useRef(0);
   const dragStartScale = useRef(1);
+  const [hiddenIndicators, setHiddenIndicators] = useState<IndicatorId[]>([]);
+  const [showIndModal, setShowIndModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const a = ASSETS.find(x => x.id === eng.state.active)!;
   const ast = eng.state.assets[a.id];
@@ -47,7 +50,15 @@ export function Chart() {
   const tfMs = TF_MS[activeTF];
 
   // Reset zoom/pan/yScale when active asset or TF changes
-  useEffect(() => { setZoomLevel(1); setPanOffset(0); setYScale(1); setContextMenu(null); }, [a.id, activeTF]);
+  useEffect(() => { 
+    setZoomLevel(1); 
+    setPanOffset(0); 
+    setYScale(1); 
+    setContextMenu(null); 
+    setHiddenIndicators([]);
+    setShowIndModal(false);
+    setSearchQuery('');
+  }, [a.id, activeTF]);
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
@@ -164,7 +175,8 @@ export function Chart() {
     cctx.fillStyle = bg; cctx.fillRect(0, 0, w, h);
 
     // Layout zones
-    const hasSubPanel = activeIndicators.includes('rsi') || activeIndicators.includes('macd');
+    const activeSub = activeIndicators.filter(id => !hiddenIndicators.includes(id));
+    const hasSubPanel = activeSub.includes('rsi') || activeSub.includes('macd');
     const volH = chartVol ? Math.min(50, h * 0.12) : 0;
     const subH = hasSubPanel ? Math.min(80, h * 0.2) : 0;
     const cyh = h - volH - subH;
@@ -235,7 +247,7 @@ export function Chart() {
     cctx.clip();
 
     // === Bollinger Bands fill ===
-    if (indicators && activeIndicators.includes('bb')) {
+    if (indicators && activeIndicators.includes('bb') && !hiddenIndicators.includes('bb')) {
       const bb = indicators;
       cctx.beginPath();
       let started = false;
@@ -320,7 +332,7 @@ export function Chart() {
     }
 
     // === SMA overlay ===
-    if (indicators && activeIndicators.includes('sma')) {
+    if (indicators && activeIndicators.includes('sma') && !hiddenIndicators.includes('sma')) {
       cctx.strokeStyle = '#f5a623'; cctx.lineWidth = 1.2;
       cctx.beginPath();
       for (let i = 0; i < lineHist.length; i++) {
@@ -333,7 +345,7 @@ export function Chart() {
     }
 
     // === EMA overlay ===
-    if (indicators && activeIndicators.includes('ema')) {
+    if (indicators && activeIndicators.includes('ema') && !hiddenIndicators.includes('ema')) {
       // EMA 12
       cctx.strokeStyle = '#00d4ff'; cctx.lineWidth = 1;
       cctx.beginPath();
@@ -435,7 +447,7 @@ export function Chart() {
     }
 
     // === RSI sub-panel ===
-    if (indicators && activeIndicators.includes('rsi') && subH > 10) {
+    if (indicators && activeIndicators.includes('rsi') && !hiddenIndicators.includes('rsi') && subH > 10) {
       const rsiY0 = h - subH + 2;
       const rsiH = (activeIndicators.includes('macd') ? subH / 2 : subH) - 4;
       // Background
@@ -463,7 +475,7 @@ export function Chart() {
     }
 
     // === MACD sub-panel ===
-    if (indicators && activeIndicators.includes('macd') && subH > 10) {
+    if (indicators && activeIndicators.includes('macd') && !hiddenIndicators.includes('macd') && subH > 10) {
       const hasRsi = activeIndicators.includes('rsi');
       const macdY0 = hasRsi ? (h - subH / 2 + 2) : (h - subH + 2);
       const macdH = (hasRsi ? subH / 2 : subH) - 4;
@@ -585,18 +597,93 @@ export function Chart() {
             <button className={chartCandles ? 'on' : ''} onClick={() => { toggleChartLayer('chartCandles'); Audio.click(); }}>CANDLES</button>
             <button className={chartVol ? 'on' : ''} onClick={() => { toggleChartLayer('chartVol'); Audio.click(); }}>VOL</button>
           </span>
-          <span className="chart-toggles indicator-toggles">
-            {INDICATOR_OPTIONS.map(opt => (
-              <button
-                key={opt.id}
-                className={activeIndicators.includes(opt.id) ? 'on ind' : 'ind'}
-                onClick={() => { toggleIndicator(opt.id); Audio.click(); }}
-              >{opt.label}</button>
-            ))}
-          </span>
+          <button className="indicator-search-trigger" onClick={() => { setShowIndModal(true); Audio.click(); }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12, marginRight: 5, verticalAlign: 'middle' }}><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+            Indicators
+          </button>
         </div>
       </div>
       <div className="chart-box">
+        {activeIndicators.length > 0 && (
+          <div className="chart-legend">
+            {activeIndicators.map(id => {
+              const label = INDICATOR_OPTIONS.find(o => o.id === id)?.label || id.toUpperCase();
+              const isHidden = hiddenIndicators.includes(id);
+              return (
+                <div key={id} className="legend-item">
+                  <span className="legend-label">{label}</span>
+                  <button
+                    className="legend-btn"
+                    title={isHidden ? "Show" : "Hide"}
+                    onClick={() => {
+                      setHiddenIndicators(prev =>
+                        prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+                      );
+                      Audio.click();
+                    }}
+                  >
+                    {isHidden ? (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="legend-icon"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="legend-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    )}
+                  </button>
+                  <button
+                    className="legend-btn close-btn"
+                    title="Remove"
+                    onClick={() => {
+                      toggleIndicator(id);
+                      setHiddenIndicators(prev => prev.filter(x => x !== id));
+                      Audio.click();
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {showIndModal && (
+          <div className="chart-modal-overlay" onClick={() => setShowIndModal(false)}>
+            <div className="chart-modal" onClick={e => e.stopPropagation()}>
+              <div className="chart-modal-header">
+                <h3>Indicators & Metrics</h3>
+                <button className="chart-modal-close" onClick={() => setShowIndModal(false)}>×</button>
+              </div>
+              <div className="chart-modal-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input 
+                  type="text" 
+                  placeholder="Search indicators (e.g. SMA, RSI...)" 
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="chart-modal-list">
+                {INDICATOR_OPTIONS
+                  .filter(opt => opt.label.toLowerCase().includes(searchQuery.toLowerCase()))
+                  .map(opt => {
+                    const isActive = activeIndicators.includes(opt.id);
+                    return (
+                      <div 
+                        key={opt.id} 
+                        className={`chart-modal-item ${isActive ? 'active' : ''}`}
+                        onClick={() => {
+                          toggleIndicator(opt.id);
+                          Audio.click();
+                        }}
+                      >
+                        <span>{opt.label}</span>
+                        {isActive && <span className="active-check">✓</span>}
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          </div>
+        )}
         {(() => {
           let cursorStyle = 'crosshair';
           const isHoveringY = mousePos ? mousePos.x > (canvasRef.current?.getBoundingClientRect().width ?? 0) - 64 : false;
@@ -732,6 +819,186 @@ export function Chart() {
                 }
                 .chart-ctx-item:hover > .chart-ctx-submenu {
                   display: block;
+                }
+                .indicator-search-trigger {
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 4px;
+                  background: rgba(0, 240, 255, 0.05);
+                  border: 1px solid rgba(0, 240, 255, 0.15);
+                  border-radius: 4px;
+                  color: #c8d0e0;
+                  padding: 5px 10px;
+                  font-size: 10.5px;
+                  cursor: pointer;
+                  transition: all 0.2s ease;
+                  outline: none;
+                }
+                .indicator-search-trigger:hover {
+                  background: rgba(0, 240, 255, 0.12);
+                  border-color: rgba(0, 240, 255, 0.3);
+                  color: #fff;
+                  box-shadow: 0 0 8px rgba(0, 240, 255, 0.2);
+                }
+                .chart-modal-overlay {
+                  position: absolute;
+                  top: 0; left: 0; right: 0; bottom: 0;
+                  background: rgba(2, 4, 10, 0.75);
+                  backdrop-filter: blur(4px);
+                  z-index: 1001;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  animation: chartFadeIn 0.15s ease-out;
+                }
+                @keyframes chartFadeIn {
+                  from { opacity: 0; }
+                  to { opacity: 1; }
+                }
+                .chart-modal {
+                  background: rgba(13, 20, 38, 0.98);
+                  border: 1px solid rgba(0, 240, 255, 0.25);
+                  border-radius: 8px;
+                  width: 90%;
+                  max-width: 400px;
+                  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(0, 240, 255, 0.08);
+                  animation: chartSlideUp 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+                  overflow: hidden;
+                }
+                @keyframes chartSlideUp {
+                  from { transform: scale(0.9) translateY(20px); opacity: 0; }
+                  to { transform: scale(1) translateY(0); opacity: 1; }
+                }
+                .chart-modal-header {
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  padding: 14px 18px;
+                  border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+                }
+                .chart-modal-header h3 {
+                  margin: 0;
+                  font-size: 14px;
+                  color: #fff;
+                  font-weight: 700;
+                  letter-spacing: 0.5px;
+                }
+                .chart-modal-close {
+                  background: none;
+                  border: none;
+                  color: #718096;
+                  font-size: 20px;
+                  cursor: pointer;
+                  padding: 0;
+                  line-height: 1;
+                }
+                .chart-modal-close:hover {
+                  color: #fff;
+                }
+                .chart-modal-search {
+                  position: relative;
+                  padding: 12px 18px;
+                  border-bottom: 1px solid rgba(0, 240, 255, 0.08);
+                }
+                .chart-modal-search .search-icon {
+                  position: absolute;
+                  left: 28px;
+                  top: 50%;
+                  transform: translateY(-50%);
+                  width: 14px;
+                  height: 14px;
+                  color: #718096;
+                }
+                .chart-modal-search input {
+                  width: 100%;
+                  background: rgba(0, 0, 0, 0.3);
+                  border: 1px solid rgba(0, 240, 255, 0.12);
+                  border-radius: 4px;
+                  padding: 8px 12px 8px 32px;
+                  color: #fff;
+                  font-size: 12px;
+                  outline: none;
+                  transition: all 0.2s ease;
+                }
+                .chart-modal-search input:focus {
+                  border-color: rgba(0, 240, 255, 0.4);
+                  box-shadow: 0 0 8px rgba(0, 240, 255, 0.15);
+                }
+                .chart-modal-list {
+                  max-height: 250px;
+                  overflow-y: auto;
+                  padding: 8px 0;
+                }
+                .chart-modal-item {
+                  padding: 10px 20px;
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  color: #c8d0e0;
+                  font-size: 12px;
+                  cursor: pointer;
+                  transition: all 0.15s ease;
+                }
+                .chart-modal-item:hover {
+                  background: rgba(0, 240, 255, 0.08);
+                  color: #fff;
+                }
+                .chart-modal-item.active {
+                  color: #f5a623;
+                  font-weight: bold;
+                }
+                .chart-legend {
+                  position: absolute;
+                  top: 15px;
+                  left: 15px;
+                  z-index: 100;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 6px;
+                  pointer-events: none;
+                }
+                .legend-item {
+                  background: rgba(13, 20, 38, 0.85);
+                  backdrop-filter: blur(4px);
+                  border: 1px solid rgba(255, 255, 255, 0.08);
+                  border-radius: 4px;
+                  padding: 4px 8px;
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                  pointer-events: auto;
+                }
+                .legend-label {
+                  font-family: var(--font-mono), monospace;
+                  font-size: 10px;
+                  font-weight: bold;
+                  color: #c8d0e0;
+                }
+                .legend-btn {
+                  background: none;
+                  border: none;
+                  color: #718096;
+                  cursor: pointer;
+                  padding: 0;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  transition: color 0.15s ease;
+                  outline: none;
+                }
+                .legend-btn:hover {
+                  color: #fff;
+                }
+                .legend-btn.close-btn {
+                  font-size: 14px;
+                  line-height: 1;
+                }
+                .legend-btn.close-btn:hover {
+                  color: #dd4f60;
+                }
+                .legend-icon {
+                  width: 12px;
+                  height: 12px;
                 }
               `}</style>
             </>
