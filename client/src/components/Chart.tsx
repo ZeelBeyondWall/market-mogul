@@ -45,11 +45,11 @@ export function Chart() {
     if (w < 10 || h < 10) return;
     cctx.clearRect(0, 0, w, h);
     const bg = cctx.createLinearGradient(0, 0, 0, h);
-    bg.addColorStop(0, '#0d1421'); bg.addColorStop(1, '#03060b');
+    bg.addColorStop(0, '#0a0f1d'); bg.addColorStop(1, '#020306');
     cctx.fillStyle = bg; cctx.fillRect(0, 0, w, h);
     const volH = chartVol ? Math.min(50, h * 0.15) : 0;
     const cyh = h - volH;
-    cctx.strokeStyle = 'rgba(245,185,66,.06)'; cctx.lineWidth = 1; cctx.beginPath();
+    cctx.strokeStyle = 'rgba(255, 255, 255, 0.025)'; cctx.lineWidth = 1; cctx.beginPath();
     for (let i = 1; i < 5; i++) { const y = Math.floor(cyh * i / 5) + 0.5; cctx.moveTo(0, y); cctx.lineTo(w, y); }
     for (let i = 1; i < 8; i++) { const x = Math.floor(w * i / 8) + 0.5; cctx.moveTo(x, 0); cctx.lineTo(x, cyh); }
     cctx.stroke();
@@ -109,13 +109,13 @@ export function Chart() {
         const y = padT + ch - (p - pMin) / range * ch;
         if (i === 0) cctx.moveTo(x, y); else cctx.lineTo(x, y);
       });
-      cctx.strokeStyle = up ? 'rgba(34,197,94,.5)' : 'rgba(239,68,68,.5)';
-      cctx.lineWidth = 1.2;
+      cctx.strokeStyle = up ? '#10b981' : '#f43f5e';
+      cctx.lineWidth = 1.5;
       cctx.stroke();
       cctx.lineTo(padL + cw, padT + ch); cctx.lineTo(padL, padT + ch); cctx.closePath();
       const fg = cctx.createLinearGradient(0, padT, 0, padT + ch);
-      if (up) { fg.addColorStop(0, 'rgba(34,197,94,.10)'); fg.addColorStop(1, 'rgba(34,197,94,0)'); }
-      else { fg.addColorStop(0, 'rgba(239,68,68,.10)'); fg.addColorStop(1, 'rgba(239,68,68,0)'); }
+      if (up) { fg.addColorStop(0, 'rgba(16, 185, 129, 0.08)'); fg.addColorStop(1, 'rgba(16, 185, 129, 0)'); }
+      else { fg.addColorStop(0, 'rgba(244, 63, 94, 0.08)'); fg.addColorStop(1, 'rgba(244, 63, 94, 0)'); }
       cctx.fillStyle = fg; cctx.fill();
     }
 
@@ -131,10 +131,10 @@ export function Chart() {
         const yH = padT + ch - (c.h - pMin) / range * ch;
         const yL = padT + ch - (c.l - pMin) / range * ch;
         const green = c.c >= c.o;
-        cctx.strokeStyle = green ? '#22c55e' : '#ef4444';
-        cctx.fillStyle = green ? 'rgba(34,197,94,.75)' : 'rgba(239,68,68,.75)';
+        cctx.strokeStyle = green ? '#10b981' : '#f43f5e';
+        cctx.fillStyle = green ? 'rgba(16, 185, 129, 0.75)' : 'rgba(244, 63, 94, 0.75)';
         cctx.lineWidth = 1;
-        cctx.shadowColor = green ? '#22c55e' : '#ef4444';
+        cctx.shadowColor = green ? '#10b981' : '#f43f5e';
         cctx.shadowBlur = 3;
         cctx.beginPath(); cctx.moveTo(x, yH); cctx.lineTo(x, yL); cctx.stroke();
         cctx.shadowBlur = 0;
@@ -146,20 +146,20 @@ export function Chart() {
 
     cctx.restore();
 
-    cctx.fillStyle = '#5a6a82'; cctx.font = '10px monospace'; cctx.textAlign = 'left';
+    cctx.fillStyle = '#94a3b8'; cctx.font = '10px "JetBrains Mono", monospace'; cctx.textAlign = 'left';
     for (let i = 0; i <= 5; i++) {
       const v = pMin + range * (1 - i / 5);
       const y = padT + ch * i / 5;
       cctx.fillText(fmt(v, v < 10 ? 3 : 2), w - padR + 6, y + 4);
     }
     const yNow = padT + ch - (ast.lastPrice - pMin) / range * ch;
-    cctx.strokeStyle = up ? '#22c55e' : '#ef4444';
+    cctx.strokeStyle = up ? '#10b981' : '#f43f5e';
     cctx.setLineDash([4, 4]); cctx.lineWidth = 1;
     cctx.beginPath(); cctx.moveTo(0, yNow); cctx.lineTo(w - padR, yNow); cctx.stroke();
     cctx.setLineDash([]);
-    cctx.fillStyle = up ? '#22c55e' : '#ef4444';
+    cctx.fillStyle = up ? '#10b981' : '#f43f5e';
     cctx.fillRect(w - padR + 2, yNow - 9, padR - 6, 18);
-    cctx.fillStyle = '#000'; cctx.font = 'bold 11px monospace';
+    cctx.fillStyle = '#000'; cctx.font = 'bold 11px "JetBrains Mono", monospace';
     cctx.fillText(fmt(ast.lastPrice, ast.lastPrice < 10 ? 3 : 2), w - padR + 6, yNow + 4);
 
     // SL/TP/Entry lines
@@ -175,7 +175,7 @@ export function Chart() {
         cctx.setLineDash([]);
         const lw = 42;
         cctx.fillStyle = color; cctx.fillRect(padL, y - 7, lw, 13);
-        cctx.fillStyle = '#000'; cctx.font = 'bold 9px monospace'; cctx.textAlign = 'center';
+        cctx.fillStyle = '#000'; cctx.font = 'bold 9px "JetBrains Mono", monospace'; cctx.textAlign = 'center';
         cctx.fillText(label, padL + lw / 2, y + 3); cctx.textAlign = 'left';
       };
       draw(playerHold.avgCost, '#fbbf24', playerHold.shares > 0 ? 'LONG' : 'SHORT');
@@ -187,19 +187,19 @@ export function Chart() {
       const tpAbs = playerHold.tpPct && playerHold.tpPct > 0
         ? (isLong ? playerHold.avgCost * (1 + playerHold.tpPct / 100) : playerHold.avgCost * (1 - playerHold.tpPct / 100))
         : (playerHold.tp || 0);
-      draw(slAbs, '#ef4444', 'SL');
-      draw(tpAbs, '#22c55e', 'TP');
+      draw(slAbs, '#f43f5e', 'SL');
+      draw(tpAbs, '#10b981', 'TP');
     }
 
     const bb = bestBid(ast.book), ba = bestAsk(ast.book);
     if (bb > 0 && bb >= pMin && bb <= pMax) {
       const yb = padT + ch - (bb - pMin) / range * ch;
-      cctx.strokeStyle = 'rgba(34,197,94,.4)'; cctx.lineWidth = 1;
+      cctx.strokeStyle = 'rgba(16, 185, 129, 0.2)'; cctx.lineWidth = 1;
       cctx.beginPath(); cctx.moveTo(padL, yb); cctx.lineTo(w - padR, yb); cctx.stroke();
     }
     if (isFinite(ba) && ba >= pMin && ba <= pMax) {
       const ya = padT + ch - (ba - pMin) / range * ch;
-      cctx.strokeStyle = 'rgba(239,68,68,.4)'; cctx.lineWidth = 1;
+      cctx.strokeStyle = 'rgba(244, 63, 94, 0.2)'; cctx.lineWidth = 1;
       cctx.beginPath(); cctx.moveTo(padL, ya); cctx.lineTo(w - padR, ya); cctx.stroke();
     }
 
@@ -210,13 +210,13 @@ export function Chart() {
       const maxV = Math.max(1, ...vols.slice(-120));
       const showN = Math.min(120, vols.length);
       const bw = cw / showN;
-      cctx.fillStyle = 'rgba(56,189,248,.4)';
+      cctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
       for (let i = 0; i < showN; i++) {
         const v = vols[vols.length - showN + i] || 0;
         const bh2 = (v / maxV) * vh;
         cctx.fillRect(padL + i * bw, vy0 + (vh - bh2), Math.max(1, bw - 1), bh2);
       }
-      cctx.fillStyle = '#5a6a82'; cctx.font = '9px monospace';
+      cctx.fillStyle = '#94a3b8'; cctx.font = '9px "JetBrains Mono", monospace';
       cctx.fillText('VOL', padL + 2, vy0 + 9);
     }
   });
