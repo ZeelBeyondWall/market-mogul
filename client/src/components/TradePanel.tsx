@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useGame } from '../store/gameStore';
 import { roundShares, fmt, fmtNum } from '../../../shared/engine/helpers';
 import { send } from '../net/wsClient';
+import { TRADE_FEE_RATE } from '../../../shared/engine/matching';
 
 type Mode = 'buy' | 'short';
 
@@ -63,7 +64,7 @@ function modeCost(eng: any, aid: string, mode: Mode, qty: number): number {
 
 export function TradePanel() {
   const eng = useGame(s => s.engine);
-  useGame(s => s.tick);
+  useGame(s => s.dataTick);
   const orderType = useGame(s => s.orderType);
   const setOrderType = useGame(s => s.setOrderType);
   const aid = eng.state.active;
@@ -226,6 +227,7 @@ export function TradePanel() {
         <div className="tb-pos-item"><span className="l">POS</span><span className={'v ' + posClass}>{(hold.shares > 0 ? '+' : '') + fmtNum(hold.shares)}</span></div>
         <div className="tb-pos-item"><span className="l">AVG</span><span className="v">{hold.avgCost > 0 ? fmt(hold.avgCost, hold.avgCost < 10 ? 3 : 2) : '—'}</span></div>
         <div className="tb-pos-item"><span className="l">P/L</span><span className={'v ' + (plLong >= 0 ? 'up' : 'dn')}>{(plLong >= 0 ? '+' : '') + fmt(plLong)}</span></div>
+        <div className="tb-pos-item"><span className="l">FEE</span><span className="v fee">{fmt(Math.max(bCost, sRev) * TRADE_FEE_RATE)}</span></div>
       </div>
     </div>
   );

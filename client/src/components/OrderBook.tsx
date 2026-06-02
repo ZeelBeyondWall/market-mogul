@@ -4,7 +4,7 @@ import { useGame } from '../store/gameStore';
 
 export function OrderBook() {
   const eng = useGame(s => s.engine);
-  useGame(s => s.tick);
+  useGame(s => s.dataTick);
   const aid = eng.state.active;
   const ast = eng.state.assets[aid];
   const asks = ast.book.asks.slice(0, 10).slice().reverse();

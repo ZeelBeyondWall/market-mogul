@@ -5,7 +5,7 @@ import { Audio } from '../audio/audio';
 
 export function MoversTab() {
   const eng = useGame(s => s.engine);
-  useGame(s => s.tick);
+  useGame(s => s.dataTick);
   const market = useGame(s => s.activeMarket);
   const setActive = useGame(s => s.setActive);
   const playerLevel = useGame(s => s.playerLevel);

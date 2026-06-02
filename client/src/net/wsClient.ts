@@ -246,7 +246,7 @@ function applySnapshot(engine: Engine, snap: SnapshotPayload): void {
     maintenanceMode: !!snap.maintenanceMode,
     tradingHalted: !!snap.tradingHalted,
   });
-  useGame.getState().notifyTick();
+  useGame.getState().notifyDataTick();
 }
 
 function applyTick(engine: Engine, tick: TickPayload): void {
@@ -312,5 +312,5 @@ function applyTick(engine: Engine, tick: TickPayload): void {
     }
   }
   // Other assets just get lastPrice update — full history when user switches active asset.
-  useGame.getState().notifyTick();
+  useGame.getState().notifyDataTick();
 }

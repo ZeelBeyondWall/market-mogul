@@ -16,7 +16,7 @@ function fmtBig(n: number): string {
 
 export function StockDetailsTab() {
   const eng = useGame(s => s.engine);
-  useGame(s => s.tick);
+  useGame(s => s.dataTick);
   const holders = useGame(s => s.activeHolders); // v9: live holders count for active asset
   const priceAlerts = useGame(s => s.priceAlerts);
   const addPriceAlert = useGame(s => s.addPriceAlert);

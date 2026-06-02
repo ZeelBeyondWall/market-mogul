@@ -6,7 +6,7 @@ import { send } from '../net/wsClient';
 
 export function PositionsTab() {
   const eng = useGame(s => s.engine);
-  useGame(s => s.tick);
+  useGame(s => s.dataTick);
   const setActive = useGame(s => s.setActive);
 
   const rows = ASSETS.flatMap(a => {

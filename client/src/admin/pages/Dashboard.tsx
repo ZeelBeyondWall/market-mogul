@@ -182,6 +182,12 @@ export default function Dashboard() {
             sub={`net ${fmt(eco.totalNet)}`}
           />
           <StatCard
+            label="Fee Revenue"
+            value={fmt(eco.totalFeesPaid || 0)}
+            icon="💸"
+            sub={`borrow ${fmt(eco.totalBorrowPaid || 0)}`}
+          />
+          <StatCard
             label="Richest Player"
             value={eco.richest?.name || '—'}
             icon="👑"

@@ -5,7 +5,7 @@ import { AnimatedNumber } from './AnimatedNumber';
 // v8: cleaner header — single row, big level pill, stats as cards.
 export function Header() {
   const eng = useGame(s => s.engine);
-  useGame(s => s.tick);
+  useGame(s => s.dataTick);
   const rank = useGame(s => s.playerRank);
   const total = useGame(s => s.totalTraders);
   const lvl = useGame(s => s.playerLevel);

@@ -4,7 +4,7 @@ import { useGame } from '../store/gameStore';
 
 export function NewsTab() {
   const eng = useGame(s => s.engine);
-  useGame(s => s.tick);
+  useGame(s => s.dataTick);
   const market = useGame(s => s.activeMarket);
   const [filterMarket, setFilterMarket] = useState(true);
 

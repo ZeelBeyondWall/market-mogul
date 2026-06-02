@@ -19,7 +19,7 @@ function dur(a: number, b: number): string {
 }
 
 export function TradeHistoryTab() {
-  useGame(s => s.tick);
+  useGame(s => s.dataTick);
   const trades = useGame(s => s.recentTrades);
 
   const wins = trades.filter(t => t.pnl > 0).length;

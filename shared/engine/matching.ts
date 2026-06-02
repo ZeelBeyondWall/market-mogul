@@ -2,6 +2,11 @@ import { roundShares } from './helpers';
 import { insertOrder, removeOrder } from './orderbook';
 import type { GameState, Trade, Trader } from './types';
 
+// v10: Trading fees — 0.1% commission on each side of every trade.
+// Mutable so admin can adjust at runtime via ENGINE_FLAGS.
+export let TRADE_FEE_RATE = 0.001; // 0.1%
+export function setFeeRate(r: number) { TRADE_FEE_RATE = r; }
+
 // v7.3: player + bots both enforce 50% margin collateral for shorts.
 // Previously player was trusted blindly — letting them short unlimited shares
 // regardless of cash. Now the same rule applies to everyone.
@@ -65,6 +70,11 @@ export function executeTrade(
   // House cash is never mutated (it accumulates nothing → no pollution).
   if (!buyerHouse) buyer.cash -= cash;
   if (!sellerHouse) seller.cash += cash;
+
+  // v10: deduct trading fees (0.1% per side). House is exempt.
+  const fee = cash * TRADE_FEE_RATE;
+  if (!buyerHouse) { buyer.cash -= fee; buyer.totalFeesPaid = (buyer.totalFeesPaid || 0) + fee; }
+  if (!sellerHouse) { seller.cash -= fee; seller.totalFeesPaid = (seller.totalFeesPaid || 0) + fee; }
 
   // Capture pre-trade state for player closed-trade detection.
   const bh = buyer.holdings[assetId];

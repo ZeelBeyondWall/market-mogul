@@ -1,7 +1,7 @@
 import { ASSETS, BOT_COUNT, levelFromXp, xpForTrade } from './constants';
 import { rand, roundShares } from './helpers';
 import { applyEvent, maybeFireEvent, payDividends, provideLiquidity, tickMarket } from './market';
-import { cancelTraderOrders, cleanupBooks, placeOrder } from './matching';
+import { cancelTraderOrders, cleanupBooks, placeOrder, TRADE_FEE_RATE } from './matching';
 import { ensureMissionsCurrent, rolloverDailyLogin, tickMissionProgress, recordClosedTradeForMissions } from './missions';
 import { insertOrder, makeBook } from './orderbook';
 import { checkRekt, maybeMutate, tickBots, traderNet } from './strategies';
@@ -39,12 +39,13 @@ export interface EngineConfig {
   // v7.1: when true, bots can only trade assets with minLevel <= player.level.
   // Default false — bots use their OWN level for asset access (design).
   strictBotLevelGate: boolean;
+  borrowRate: number;
 }
 
 export class Engine {
   state: GameState;
   hooks: EngineHooks = {};
-  config: EngineConfig = { botsEnabled: true, eventsEnabled: true, volMult: 1, activityMult: 1, strictBotLevelGate: false };
+  config: EngineConfig = { botsEnabled: true, eventsEnabled: true, volMult: 1, activityMult: 1, strictBotLevelGate: false, borrowRate: 0.005 };
   private eventCD = { cooldown: 25 };
   private divAcc = 0;
   private tickAcc = 0;
@@ -293,7 +294,29 @@ export class Engine {
     // which let the House get evicted between refreshes → untradeable book.)
     if (this.houseId >= 0) provideLiquidity(this.state, this.houseId, now);
     this.divAcc += dt;
-    if (this.divAcc >= 0.5) { payDividends(this.state, this.divAcc); this.divAcc = 0; }
+    if (this.divAcc >= 0.5) {
+      payDividends(this.state, this.divAcc);
+      // v10: short borrow cost — 0.5%/day charged proportionally each 0.5s tick.
+      // 0.005 / 86400 * dt_seconds = per-second borrow rate.
+      const borrowRatePerSec = (this.config.borrowRate ?? 0.005) / 86400;
+      const dtSec = this.divAcc;
+      for (let i = 0; i < this.state.traders.length; i++) {
+        const t = this.state.traders[i];
+        if (t.isHouse || t.rekt) continue;
+        for (const aid of Object.keys(t.holdings)) {
+          const h = t.holdings[aid];
+          if (h && h.shares < 0) {
+            const px = this.state.assets[aid]?.lastPrice || 0;
+            const borrowCost = (-h.shares) * px * borrowRatePerSec * dtSec;
+            if (borrowCost > 0 && t.cash > borrowCost) {
+              t.cash -= borrowCost;
+              t.totalBorrowPaid = (t.totalBorrowPaid || 0) + borrowCost;
+            }
+          }
+        }
+      }
+      this.divAcc = 0;
+    }
     this.cleanAcc += dt;
     if (this.cleanAcc >= 2) {
       cleanupBooks(this.state, ASSETS.map(a => a.id));

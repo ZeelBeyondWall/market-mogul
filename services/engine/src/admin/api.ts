@@ -4,7 +4,7 @@ import express, { type Request, type Response, type Express } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { ASSETS, marketUnlockLevel, xpToReach } from '../../../../shared/engine/constants';
-import { placeOrder } from '../../../../shared/engine/matching';
+import { placeOrder, setFeeRate } from '../../../../shared/engine/matching';
 import { traderNet } from '../../../../shared/engine/strategies';
 import { ensureMissionsCurrent } from '../../../../shared/engine/missions';
 import type { Market } from '../../../../shared/engine/types';
@@ -88,6 +88,8 @@ export function registerAdminApi(app: Express, deps: AdminDeps): void {
         rekt: !!t.rekt, level: t.level || 1, xp: t.xp || 0,
         bonus: t.bonus || 0, loginStreak: t.loginStreak || 0,
         bornAt: t.bornAt || 0, activity: t.activity,
+        totalFeesPaid: t.totalFeesPaid || 0,
+        totalBorrowPaid: t.totalBorrowPaid || 0,
         stopLoss: t.stopLoss, takeProfit: t.takeProfit,
         openOrders: t.openOrders || [],
         holdings,
@@ -197,6 +199,7 @@ export function registerAdminApi(app: Express, deps: AdminDeps): void {
     const traders = engine.state.traders;
     let richest = { id: 0, name: '', net: 0 };
     let houseCount = 0;
+    let totalFeesPaid = 0, totalBorrowPaid = 0;
     for (let i = 0; i < traders.length; i++) {
       const t = traders[i];
       if (t.isHouse) { houseCount++; continue; } // v8.9: House excluded from economy aggregates
@@ -205,6 +208,8 @@ export function registerAdminApi(app: Express, deps: AdminDeps): void {
       totalNet += n;
       if (n > richest.net) richest = { id: t.id, name: t.name, net: n };
       openOrders += (t.openOrders?.length || 0);
+      totalFeesPaid += (t.totalFeesPaid || 0);
+      totalBorrowPaid += (t.totalBorrowPaid || 0);
       for (const aid of Object.keys(t.holdings || {})) {
         if ((t.holdings[aid]?.shares || 0) !== 0) openPos++;
       }
@@ -228,6 +233,7 @@ export function registerAdminApi(app: Express, deps: AdminDeps): void {
       totalMarketVolume: ASSETS.reduce((s, a) => s + (engine.state.assets[a.id]?.volume || 0), 0),
       openPositions: openPos,
       openOrders,
+      totalFeesPaid, totalBorrowPaid,
       richest,
       perMarket: perMkt,
       flags: { ...ENGINE_FLAGS },
@@ -268,6 +274,8 @@ export function registerAdminApi(app: Express, deps: AdminDeps): void {
     if (key === 'botsRespectPlayerLevel') engine.config.strictBotLevelGate = !!value;
     if (key === 'volatilityMult') engine.config.volMult = +value || 1;
     if (key === 'activityMult') engine.config.activityMult = +value || 1;
+    if (key === 'feeRate') { setFeeRate(+value || 0.001); }
+    if (key === 'borrowRate') engine.config.borrowRate = +value || 0.005;
     return { key, value };
   }));
 

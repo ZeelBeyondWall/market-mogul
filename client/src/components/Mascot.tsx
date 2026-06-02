@@ -5,7 +5,7 @@ import { useGame } from '../store/gameStore';
 // Bull when up vs starting cash, bear when down. Idle bounce animation.
 export function Mascot() {
   const eng = useGame(s => s.engine);
-  useGame(s => s.tick);
+  useGame(s => s.dataTick);
   const reduceMotion = useGame(s => s.reduceMotion);
   const [mood, setMood] = useState<'bull' | 'bear' | 'flat'>('flat');
 

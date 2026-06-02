@@ -13,6 +13,8 @@ vite.config.js
 server/state.json
 server/dist/
 services/engine/state.json
+services/engine/state.json.bak
+services/engine/state.json.tmp
 services/engine/dist/
 services/gateway/dist/
 client/dist/

@@ -3,6 +3,7 @@ import { Engine } from '../../../shared/engine/engine';
 import { ASSETS } from '../../../shared/engine/constants';
 import type { Market, MissionState, PlayerStats, TFKey, Trade } from '../../../shared/engine/types';
 import { setMuted } from '../audio/audio';
+import type { IndicatorId } from '../utils/indicators';
 
 export type Theme = 'game' | 'pro';
 
@@ -32,6 +33,7 @@ export interface UIPrefs extends ChartToggles {
   watchlist: string[]; // user-pinned asset ids
   beginnerMode: boolean; // hides advanced UI when true (v7.2)
   priceAlerts: PriceAlert[]; // v9: persisted price alerts
+  activeIndicators: IndicatorId[]; // v10: chart indicators
 }
 
 export interface LeaderboardEntry {
@@ -41,6 +43,7 @@ export interface LeaderboardEntry {
 interface GameStore extends UIPrefs {
   engine: Engine;
   tick: number;
+  dataTick: number;
   connected: boolean;
   leaderboard: LeaderboardEntry[];
   totalTraders: number;
@@ -91,6 +94,7 @@ interface GameStore extends UIPrefs {
   toggleChartLayer: (k: keyof ChartToggles) => void;
   toggleMute: () => void;
   hideSplash: () => void;
+  notifyDataTick: () => void;
   notifyTick: () => void;
   setConnected: (v: boolean) => void;
   setLeaderboard: (lb: LeaderboardEntry[], total: number, rank: number) => void;
@@ -101,12 +105,13 @@ interface GameStore extends UIPrefs {
   setSettingsOpen: (v: boolean) => void;
   setActiveTF: (tf: TFKey) => void;
   setBeginnerMode: (v: boolean) => void;
+  toggleIndicator: (id: IndicatorId) => void;
 }
 
 const STORAGE = 'mm_ui_prefs_v3';
 const UI_KEYS: (keyof UIPrefs)[] = [
   'muted','chartLine','chartCandles','chartVol','orderType','activeTab','activeMarket','botFilter','splashShown',
-  'theme','reduceMotion','showParticles','autoConfirm','activeTF','watchlist','beginnerMode','priceAlerts',
+  'theme','reduceMotion','showParticles','autoConfirm','activeTF','watchlist','beginnerMode','priceAlerts','activeIndicators',
 ];
 function defaultPrefs(): UIPrefs {
   return {
@@ -118,6 +123,7 @@ function defaultPrefs(): UIPrefs {
     watchlist: [],
     beginnerMode: true, // v7.2: default ON for new users
     priceAlerts: [],
+    activeIndicators: [],
   };
 }
 function loadPrefs(): UIPrefs {
@@ -158,6 +164,7 @@ export const useGame = create<GameStore>((set, get) => {
   return {
     engine,
     tick: 0,
+    dataTick: 0,
     connected: false,
     leaderboard: [],
     totalTraders: 0,
@@ -213,6 +220,7 @@ export const useGame = create<GameStore>((set, get) => {
     },
     hideSplash: () => { set({ splashShown: true }); persist(); },
     notifyTick: () => set(s => ({ tick: s.tick + 1 })),
+    notifyDataTick: () => set(s => ({ dataTick: s.dataTick + 1 })),
     setConnected: (v) => set({ connected: v }),
     setLeaderboard: (lb, total, rank) => set({ leaderboard: lb, totalTraders: total, playerRank: rank }),
     setPlayerExtras: (s) => set({
@@ -265,6 +273,11 @@ export const useGame = create<GameStore>((set, get) => {
       import('../net/wsClient').then(m => m.send({ type: 'setTF', payload: { tf } }));
     },
     setBeginnerMode: (v) => { set({ beginnerMode: v }); persist(); },
+    toggleIndicator: (id) => {
+      const cur = get().activeIndicators;
+      const next = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+      set({ activeIndicators: next }); persist();
+    },
   };
 });
 

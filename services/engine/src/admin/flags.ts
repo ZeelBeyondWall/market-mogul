@@ -13,6 +13,9 @@ export const ENGINE_FLAGS = {
   // v7.1: when true, bots can only trade assets whose minLevel <= player.level.
   // Default false — bots act independently per their own level (the design).
   botsRespectPlayerLevel: false,
+  // v10: trading fee controls (admin-adjustable)
+  feeRate: 0.001, // 0.1% commission per trade side
+  borrowRate: 0.005, // 0.5%/day short borrow cost
 };
 
 export type EngineFlags = typeof ENGINE_FLAGS;

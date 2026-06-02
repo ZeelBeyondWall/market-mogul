@@ -393,6 +393,8 @@ export default function Users() {
                     <KV label="Net Worth" value={fmt(detail.net)} tone={detail.net >= detail.cash ? 'up' : 'dn'} />
                     <KV label="Bonus" value={fmt(detail.bonus || 0)} />
                     <KV label="Login Streak" value={fmtNum(detail.loginStreak || 0) + 'd'} />
+                    <KV label="Fees Paid" value={fmt((detail as any).totalFeesPaid || 0)} />
+                    <KV label="Borrow Paid" value={fmt((detail as any).totalBorrowPaid || 0)} />
                   </div>
                 </div>
 

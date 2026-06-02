@@ -1,5 +1,5 @@
 import { ASSETS, ASSET_BY_ID, TRANSITIONS } from './constants';
-import { calcEMA, rand, roundShares } from './helpers';
+import { calcEMA, calcRSI, rand, roundShares } from './helpers';
 import { cullStaleOrders, placeOrder } from './matching';
 import { bestBid, bestAsk, insertOrder, midPrice } from './orderbook';
 import { activityFor, pickAssetsFor, stopLossFor, takeProfitFor } from './traders';
@@ -100,12 +100,42 @@ export function botDecide(t: Trader, S: GameState): void {
 
   if (t.cash < last && hold.shares <= 0) return;
 
-  // Cheap stats — single pass over history tail
+  // === v10: SMART BOT — Technical Analysis for ALL strategies ===
   const hist = ast.history;
   const histLen = hist.length;
   const tailStart = Math.max(0, histLen - 40);
   const oldP = hist[tailStart] || last;
   const ret = (last - oldP) / (oldP || 1);
+
+  // RSI (14-period) — all bots can read this cheaply
+  const rsi = calcRSI(hist);
+
+  // EMA crossover — lazy-init indicators for ANY strategy (not just 'trend')
+  let ind = t.indicators[aid];
+  if (!ind) { ind = { emaFast: null, emaSlow: null }; t.indicators[aid] = ind; }
+  ind.emaFast = calcEMA(ind.emaFast, last, 0.15);
+  ind.emaSlow = calcEMA(ind.emaSlow, last, 0.04);
+  const emaSignal = (ind.emaFast || 0) - (ind.emaSlow || 0);
+  const emaBullish = emaSignal > last * 0.003;
+  const emaBearish = emaSignal < -last * 0.003;
+
+  // Momentum — short-term velocity over last 10 ticks
+  const momStart = Math.max(0, histLen - 10);
+  const momOldP = hist[momStart] || last;
+  const momentum = (last - momOldP) / (momOldP || 1);
+
+  // News awareness — check most recent event, how old it is, and if it affects THIS asset
+  let newsType: 'boom' | 'crash' | 'news' | null = null;
+  let newsAge = Infinity;
+  let newsAffectsMe = false;
+  if (S.events.length > 0) {
+    const ev = S.events[0];
+    newsAge = (Date.now() - ev.t) / 1000;
+    if (newsAge < 45) { // react to events within 45s
+      newsType = ev.type;
+      newsAffectsMe = !ev.assetIds || ev.assetIds.length === 0 || ev.assetIds.includes(aid);
+    }
+  }
 
   // Variance/sigma only when needed
   let sigma = 0;
@@ -146,6 +176,7 @@ export function botDecide(t: Trader, S: GameState): void {
     placeOrder(S, t.id, aid, 'sell', qty, +(last * pxMult).toFixed(4), 'limit');
   };
 
+  // SL/TP enforcement (unchanged logic)
   if (hold.shares > 0 && hold.avgCost > 0 && t.stopLoss > 0) {
     const pnl = (last - hold.avgCost) / hold.avgCost;
     if (pnl < -t.stopLoss) { sellQty(hold.shares, 0.992); return; }
@@ -164,105 +195,220 @@ export function botDecide(t: Trader, S: GameState): void {
 
   switch (t.strat) {
     case 'yolo':
-      if (Math.random() < 0.7 && t.cash > last) buyQty(positionSize(rand(0.3, 0.7)), 1.008);
+      // v10: YOLO now checks momentum — buys harder on uptrends, shorts harder on downtrends
+      if (momentum > 0.01 && t.cash > last) buyQty(positionSize(rand(0.4, 0.8)), 1.008);
+      else if (momentum < -0.01 && hold.shares <= 0) openShort(positionSize(rand(0.2, 0.5)), 0.992);
+      else if (Math.random() < 0.6 && t.cash > last) buyQty(positionSize(rand(0.3, 0.7)), 1.008);
       else if (hold.shares > 0) sellQty(Math.ceil(hold.shares * rand(0.7, 1)), 0.992);
       else openShort(positionSize(rand(0.1, 0.4)), 0.992);
+      // News reaction: YOLO goes ALL IN on boom news
+      if (newsType === 'boom' && newsAffectsMe && newsAge < 15 && t.cash > last)
+        buyQty(positionSize(rand(0.5, 0.9)), 1.02);
       break;
+
     case 'diamond':
-      if (ret < -0.015 && t.cash > last) buyQty(positionSize(rand(0.08, 0.2)), 1.001);
+      // v10: Diamond hands buys dips more aggressively when RSI is oversold
+      if (rsi < 30 && t.cash > last) buyQty(positionSize(rand(0.15, 0.35)), 1.001);
+      else if (ret < -0.015 && t.cash > last) buyQty(positionSize(rand(0.08, 0.2)), 1.001);
       else if (Math.random() < 0.3 && t.cash > last) buyQty(positionSize(rand(0.03, 0.08)), 1.0);
+      // Diamond hands ignores crash news — holds through everything
       break;
+
     case 'paper':
+      // v10: Paper hands now panic-sells faster with RSI overbought or on bad news
       if (hold.shares > 0 && hold.avgCost > 0) {
         const pnl = (last - hold.avgCost) / hold.avgCost;
-        if (Math.abs(pnl) > 0.015) { sellQty(hold.shares, pnl >= 0 ? 0.999 : 0.995); return; }
+        if (rsi > 70 || (newsType === 'crash' && newsAffectsMe && newsAge < 20)) {
+          sellQty(hold.shares, 0.995); return;
+        }
+        if (Math.abs(pnl) > 0.012) { sellQty(hold.shares, pnl >= 0 ? 0.999 : 0.995); return; }
       }
-      if (t.cash > last && Math.random() < 0.3) buyQty(positionSize(rand(0.05, 0.12)));
+      if (t.cash > last && Math.random() < 0.3 && rsi < 60) buyQty(positionSize(rand(0.05, 0.12)));
       break;
+
     case 'permabull':
-      if (t.cash > last) buyQty(positionSize(rand(0.05, 0.15)), 1.003);
+      // v10: Permabull now uses EMA — buys more when EMA is bullish, less when bearish
+      if (emaBullish && t.cash > last) buyQty(positionSize(rand(0.08, 0.2)), 1.003);
+      else if (t.cash > last && rsi < 65) buyQty(positionSize(rand(0.05, 0.15)), 1.003);
+      // Reacts to boom news by doubling position
+      if (newsType === 'boom' && newsAffectsMe && newsAge < 20 && t.cash > last)
+        buyQty(positionSize(rand(0.1, 0.25)), 1.005);
       break;
+
     case 'permabear':
-      if (hold.shares > 0) sellQty(hold.shares, 0.997);
+      // v10: Permabear uses RSI — shorts more aggressively when overbought
+      if (rsi > 70 && t.cash > last * 2) openShort(positionSize(rand(0.12, 0.3)), 0.997);
+      else if (hold.shares > 0) sellQty(hold.shares, 0.997);
+      else if (emaBearish && t.cash > last * 2) openShort(positionSize(rand(0.1, 0.25)), 0.997);
       else if (t.cash > last * 2) openShort(positionSize(rand(0.08, 0.2)), 0.997);
+      // Reacts to crash news
+      if (newsType === 'crash' && newsAffectsMe && newsAge < 20 && t.cash > last * 2)
+        openShort(positionSize(rand(0.15, 0.4)), 0.985);
       break;
+
     case 'lazy':
-      if (Math.random() < 0.15 && t.cash > last * 5) buyQty(positionSize(rand(0.2, 0.4)), 1.001);
+      // v10: Lazy now checks if conditions are "obviously" good before bothering
+      if (rsi < 40 && emaBullish && Math.random() < 0.3 && t.cash > last * 5)
+        buyQty(positionSize(rand(0.2, 0.4)), 1.001);
+      else if (Math.random() < 0.1 && t.cash > last * 5)
+        buyQty(positionSize(rand(0.15, 0.3)), 1.001);
       break;
+
     case 'newschase': {
-      const ev = S.events[0];
-      if (!ev) return;
-      const age = (Date.now() - ev.t) / 1000;
-      if (age > 30) return;
-      if (ev.type === 'boom' && t.cash > last) buyQty(positionSize(rand(0.2, 0.5)), 1.015);
-      else if (ev.type === 'crash') {
-        if (hold.shares > 0) sellQty(hold.shares, 0.985);
-        else if (t.cash > last * 2) openShort(positionSize(rand(0.15, 0.4)), 0.985);
+      // v10: News chaser is now MUCH smarter — considers RSI/momentum alongside news
+      if (!newsType || newsAge > 30) {
+        // No news: fall back to momentum/RSI based trading
+        if (rsi < 30 && t.cash > last) buyQty(positionSize(rand(0.1, 0.2)), 1.003);
+        else if (rsi > 75 && hold.shares > 0) sellQty(Math.ceil(hold.shares * 0.5), 0.998);
+        return;
+      }
+      if (newsAffectsMe) {
+        if (newsType === 'boom') {
+          const aggression = newsAge < 10 ? rand(0.3, 0.6) : rand(0.15, 0.35);
+          if (t.cash > last) buyQty(positionSize(aggression), newsAge < 10 ? 1.02 : 1.01);
+        } else if (newsType === 'crash') {
+          if (hold.shares > 0) sellQty(hold.shares, newsAge < 10 ? 0.98 : 0.985);
+          else if (t.cash > last * 2) openShort(positionSize(rand(0.2, 0.5)), 0.985);
+        }
+      } else {
+        // Sector rotation: buy unaffected assets during crashes (flight to quality)
+        if (newsType === 'crash' && t.cash > last && rsi < 50)
+          buyQty(positionSize(rand(0.05, 0.15)), 1.002);
       }
       break;
     }
+
     case 'fomo':
-      if (ret > 0.04 && t.cash > last) buyQty(positionSize(rand(0.2, 0.5)), 1.015);
+      // v10: FOMO now also reacts to RSI extremes and news momentum
+      if (momentum > 0.03 && t.cash > last) buyQty(positionSize(rand(0.25, 0.55)), 1.015);
+      else if (ret > 0.04 && t.cash > last) buyQty(positionSize(rand(0.2, 0.5)), 1.015);
       else if (ret < -0.02 && hold.shares > 0) sellQty(hold.shares, 0.985);
+      // FOMO panic: RSI extreme + crash news = instant dump
+      if (rsi > 80 && newsType === 'crash' && hold.shares > 0) sellQty(hold.shares, 0.975);
+      // FOMO also chases boom news aggressively
+      if (newsType === 'boom' && newsAffectsMe && newsAge < 15 && t.cash > last)
+        buyQty(positionSize(rand(0.3, 0.6)), 1.02);
       break;
+
     case 'conservative':
-      if (last < fv * 0.95 && t.cash > last) buyQty(positionSize(rand(0.03, 0.07)));
+      // v10: Conservative now uses value gap + RSI + EMA confirmation for entries
+      if (last < fv * 0.93 && rsi < 45 && t.cash > last)
+        buyQty(positionSize(rand(0.04, 0.09)));
+      else if (last < fv * 0.95 && emaBullish && t.cash > last)
+        buyQty(positionSize(rand(0.03, 0.07)));
       else if (hold.shares > 0 && hold.avgCost > 0) {
         const pnl = (last - hold.avgCost) / hold.avgCost;
-        if (pnl > 0.15) sellQty(Math.ceil(hold.shares * 0.5), 1.002);
+        if (pnl > 0.12 || rsi > 75) sellQty(Math.ceil(hold.shares * 0.5), 1.002);
+      }
+      // Conservative sells on crash news if in profit
+      if (newsType === 'crash' && newsAffectsMe && hold.shares > 0 && hold.avgCost > 0) {
+        const pnl = (last - hold.avgCost) / hold.avgCost;
+        if (pnl > 0) sellQty(Math.ceil(hold.shares * 0.3), 0.998);
       }
       break;
+
     case 'gambler':
-      if (Math.random() < 0.5 && t.cash > last) buyQty(positionSize(rand(0.5, 0.95)), 1.02);
-      else if (hold.shares > 0) sellQty(hold.shares, 0.97);
-      else if (t.cash > last * 2) openShort(positionSize(rand(0.3, 0.6)), 0.97);
+      // v10: Gambler now has slightly smarter coin-flip logic using momentum
+      if (momentum > 0 && Math.random() < 0.55 && t.cash > last)
+        buyQty(positionSize(rand(0.5, 0.95)), 1.02);
+      else if (momentum < 0 && Math.random() < 0.45 && t.cash > last)
+        buyQty(positionSize(rand(0.3, 0.6)), 1.01);
+      else if (hold.shares > 0 && (rsi > 70 || Math.random() < 0.4))
+        sellQty(hold.shares, 0.97);
+      else if (t.cash > last * 2 && rsi > 65)
+        openShort(positionSize(rand(0.3, 0.6)), 0.97);
+      // Gambler goes ALL IN on any news
+      if (newsType && newsAffectsMe && newsAge < 10) {
+        if (newsType === 'boom' && t.cash > last) buyQty(positionSize(rand(0.6, 0.95)), 1.025);
+        else if (newsType === 'crash') {
+          if (hold.shares > 0) sellQty(hold.shares, 0.97);
+          else if (t.cash > last * 2) openShort(positionSize(rand(0.4, 0.7)), 0.97);
+        }
+      }
       break;
+
     case 'value': {
+      // v10: Value investor now uses RSI as confirmation + reacts to extreme dislocation from FV
       const gap = (last - fv) / fv;
-      if (gap < -0.10 && t.cash > last) buyQty(positionSize(rand(0.1, 0.2)));
-      else if (gap > 0.12 && hold.shares > 0) sellQty(Math.ceil(hold.shares * 0.7), 1.002);
+      if (gap < -0.15 && rsi < 35 && t.cash > last)
+        buyQty(positionSize(rand(0.15, 0.3))); // deep value + oversold = aggressive
+      else if (gap < -0.10 && t.cash > last)
+        buyQty(positionSize(rand(0.1, 0.2)));
+      else if (gap > 0.10 && rsi > 65 && hold.shares > 0)
+        sellQty(Math.ceil(hold.shares * 0.7), 1.002);
+      else if (gap > 0.15 && hold.shares > 0)
+        sellQty(Math.ceil(hold.shares * 0.9), 1.001);
       break;
     }
+
     case 'trend': {
-      // Lazy-init: a bot mutated INTO 'trend' didn't have indicators allocated.
-      let ind = t.indicators[aid];
-      if (!ind) { ind = { emaFast: null, emaSlow: null }; t.indicators[aid] = ind; }
-      ind.emaFast = calcEMA(ind.emaFast, last, 0.15);
-      ind.emaSlow = calcEMA(ind.emaSlow, last, 0.04);
-      const xover = (ind.emaFast || 0) - (ind.emaSlow || 0);
-      if (xover > last * 0.005 && t.cash > last) buyQty(positionSize(rand(0.1, 0.2)), 1.003);
-      else if (xover < -last * 0.005 && hold.shares > 0) sellQty(Math.ceil(hold.shares * 0.8), 0.997);
+      // v10: Trend follower now uses RSI + EMA crossover + momentum for stronger signals
+      const strongBull = emaBullish && momentum > 0.01 && rsi < 70;
+      const strongBear = emaBearish && momentum < -0.01 && rsi > 30;
+      if (strongBull && t.cash > last) buyQty(positionSize(rand(0.12, 0.25)), 1.003);
+      else if (emaBullish && t.cash > last) buyQty(positionSize(rand(0.08, 0.15)), 1.003);
+      else if (strongBear && hold.shares > 0) sellQty(Math.ceil(hold.shares * 0.9), 0.997);
+      else if (emaBearish && hold.shares > 0) sellQty(Math.ceil(hold.shares * 0.7), 0.997);
+      // Trend follows news direction
+      if (newsType === 'boom' && newsAffectsMe && newsAge < 20 && t.cash > last)
+        buyQty(positionSize(rand(0.1, 0.2)), 1.005);
+      else if (newsType === 'crash' && newsAffectsMe && newsAge < 20 && hold.shares > 0)
+        sellQty(Math.ceil(hold.shares * 0.5), 0.995);
       break;
     }
+
     case 'mm': {
+      // v10: Market maker now adjusts spread based on RSI + volatility + news
       const mid = midPrice(ast.book) || last;
       const dynSp = Math.max(0.002, Math.min(0.03, sigma / mid));
-      const sp = mid * dynSp;
+      // Widen spread during news events (more risk)
+      const newsSpreadMult = (newsType && newsAffectsMe && newsAge < 20) ? 1.5 : 1.0;
+      // Skew quotes based on RSI (lean bid-heavy when oversold, ask-heavy when overbought)
+      const rsiSkew = (rsi - 50) / 500; // small skew: ±0.1 at extremes
+      const sp = mid * dynSp * newsSpreadMult;
       const sz = positionSize(0.015);
       if (sz > 0 && t.cash > (mid - sp) * sz) {
-        const bid = { id: S.orderId++, ownerId: t.id, px: +(mid - sp).toFixed(4), qty: sz, ts: Date.now() };
+        const bidPx = +(mid - sp * (1 + rsiSkew)).toFixed(4);
+        const bid = { id: S.orderId++, ownerId: t.id, px: bidPx, qty: sz, ts: Date.now() };
         insertOrder(ast.book, 'bids', bid);
         t.openOrders.push({ assetId: aid, side: 'bids', id: bid.id });
       }
       if (hold.shares > 0) {
         const askSize = Math.min(hold.shares, sz);
-        const ask = { id: S.orderId++, ownerId: t.id, px: +(mid + sp).toFixed(4), qty: askSize, ts: Date.now() };
+        const askPx = +(mid + sp * (1 - rsiSkew)).toFixed(4);
+        const ask = { id: S.orderId++, ownerId: t.id, px: askPx, qty: askSize, ts: Date.now() };
         insertOrder(ast.book, 'asks', ask);
         t.openOrders.push({ assetId: aid, side: 'asks', id: ask.id });
       }
       return;
     }
+
     case 'copycat':
-      if (ret > 0.01 && t.cash > last) buyQty(positionSize(rand(0.08, 0.18)), 1.005);
+      // v10: Copycat now follows momentum + EMA trend more precisely
+      if (emaBullish && momentum > 0.005 && t.cash > last) buyQty(positionSize(rand(0.1, 0.2)), 1.005);
+      else if (ret > 0.01 && t.cash > last) buyQty(positionSize(rand(0.08, 0.18)), 1.005);
+      else if (emaBearish && hold.shares > 0) sellQty(Math.ceil(hold.shares * 0.7), 0.995);
       else if (ret < -0.01 && hold.shares > 0) sellQty(Math.ceil(hold.shares * 0.6), 0.995);
+      // Copycat follows news crowd
+      if (newsType === 'boom' && newsAffectsMe && newsAge < 25 && t.cash > last)
+        buyQty(positionSize(rand(0.1, 0.2)), 1.008);
+      else if (newsType === 'crash' && newsAffectsMe && newsAge < 25 && hold.shares > 0)
+        sellQty(Math.ceil(hold.shares * 0.5), 0.99);
       break;
+
     case 'revenge':
+      // v10: Revenge trader now doubles down smarter — only when RSI confirms opportunity
       if (hold.shares > 0 && hold.avgCost > 0) {
         const pnl = (last - hold.avgCost) / hold.avgCost;
-        if (pnl < -0.08 && t.cash > last) buyQty(hold.shares, 1.002);
+        if (pnl < -0.06 && rsi < 40 && t.cash > last)
+          buyQty(hold.shares, 1.002); // double down on oversold dip
+        else if (pnl < -0.08 && t.cash > last)
+          buyQty(Math.ceil(hold.shares * 0.5), 1.002); // reduced doubling if RSI neutral
         else if (pnl > 0.10) sellQty(hold.shares, 1.001);
       } else if (t.cash > last && Math.random() < 0.4) {
-        buyQty(positionSize(rand(0.1, 0.2)), 1.003);
+        // Enter on momentum or oversold conditions
+        if (rsi < 35 || emaBullish) buyQty(positionSize(rand(0.12, 0.25)), 1.003);
+        else buyQty(positionSize(rand(0.1, 0.2)), 1.003);
       }
       break;
   }

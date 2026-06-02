@@ -12,7 +12,7 @@ const FILTERS = ['all','yolo','fomo','gambler','diamond','paper','permabull','pe
 type View = 'bots' | 'you' | 'all';
 
 export function BotsTab() {
-  useGame(s => s.tick);
+  useGame(s => s.dataTick);
   const leaderboard = useGame(s => s.leaderboard);
   const total = useGame(s => s.totalTraders);
   const playerRank = useGame(s => s.playerRank);

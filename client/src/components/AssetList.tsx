@@ -9,7 +9,7 @@ import { Audio } from '../audio/audio';
 
 export function AssetList() {
   const eng = useGame(s => s.engine);
-  useGame(s => s.tick);
+  useGame(s => s.dataTick);
   const setActive = useGame(s => s.setActive);
   const activeMarket = useGame(s => s.activeMarket);
   const watchlist = useGame(s => s.watchlist);

@@ -36,6 +36,8 @@ export interface EconomyResp {
   totalCash: number;
   totalNet: number;
   totalMarketVolume: number;
+  totalFeesPaid: number;
+  totalBorrowPaid: number;
   openPositions: number;
   openOrders: number;
   richest: { id: number; name: string; net: number };
@@ -44,6 +46,7 @@ export interface EconomyResp {
     maintenanceMode: boolean; tradingHalted: boolean; botsEnabled: boolean;
     eventsEnabled: boolean; registrationDisabled: boolean;
     volatilityMult: number; spreadMult: number; activityMult: number;
+    feeRate: number; borrowRate: number;
     broadcastBanner: string;
   };
 }

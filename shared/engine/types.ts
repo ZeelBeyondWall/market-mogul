@@ -133,6 +133,10 @@ export interface Trader {
   _netCache?: number;
   _netDirty?: boolean;
 
+  // v10: cumulative trading fees + short borrow costs paid by this trader.
+  totalFeesPaid?: number;
+  totalBorrowPaid?: number;
+
   // v5: Progression. Bots + player both have it. Small int = cheap at 500K bots.
   level: number;
   xp: number;

@@ -26,9 +26,11 @@ export default function Economy() {
   const [volMult, setVolMult] = useState(1.0);
   const [spreadMult, setSpreadMult] = useState(1.0);
   const [activityMult, setActivityMult] = useState(1.0);
+  const [feeRate, setFeeRate] = useState(0.001);
+  const [borrowRate, setBorrowRate] = useState(0.005);
 
   // Track which fields the user is actively dragging — don't overwrite from server during drag.
-  const dragging = useRef<{ vol: boolean; spread: boolean; act: boolean }>({ vol: false, spread: false, act: false });
+  const dragging = useRef<{ vol: boolean; spread: boolean; act: boolean; fee: boolean; borrow: boolean }>({ vol: false, spread: false, act: false, fee: false, borrow: false });
   // Debounce timers per key.
   const flagTimers = useRef<Record<string, any>>({});
 
@@ -40,6 +42,8 @@ export default function Economy() {
       if (!dragging.current.vol)    setVolMult(r.flags.volatilityMult ?? 1.0);
       if (!dragging.current.spread) setSpreadMult(r.flags.spreadMult ?? 1.0);
       if (!dragging.current.act)    setActivityMult(r.flags.activityMult ?? 1.0);
+      if (!dragging.current.fee)    setFeeRate(r.flags.feeRate ?? 0.001);
+      if (!dragging.current.borrow) setBorrowRate(r.flags.borrowRate ?? 0.005);
     }
   }
 
@@ -112,6 +116,8 @@ export default function Economy() {
           <StatCard label="Total Net"       value={fmt(eco!.totalNet)}           icon="📊" />
           <StatCard label="Total Volume"    value={fmt(eco!.totalMarketVolume)}  icon="🔥" />
           <StatCard label="Open Positions"  value={fmtNum(eco!.openPositions)}   icon="📦" sub={fmtNum(eco!.openOrders) + ' open orders'} />
+          <StatCard label="Total Fees" value={fmt(eco!.totalFeesPaid || 0)} icon="💸" sub="commission collected" />
+          <StatCard label="Borrow Costs" value={fmt(eco!.totalBorrowPaid || 0)} icon="📉" sub="short borrow paid" />
           <StatCard label="Online"          value={fmtNum(eco!.totalOnline)}     icon="🟢" />
           <StatCard
             label="Richest"
@@ -221,6 +227,22 @@ export default function Economy() {
           onInput={v => { setActivityMult(v); dragging.current.act = true; postFlag('activityMult', v); }}
           onCommit={() => { dragging.current.act = false; }}
         />
+        <SliderRow
+          label="Fee Rate"
+          sub="Commission fee per trade side (0.001 = 0.1%)"
+          value={feeRate}
+          min={0} max={0.01} step={0.0005} suffix=""
+          onInput={v => { setFeeRate(v); dragging.current.fee = true; postFlag('feeRate', v); }}
+          onCommit={() => { dragging.current.fee = false; }}
+        />
+        <SliderRow
+          label="Borrow Rate"
+          sub="Daily short borrow cost (0.005 = 0.5%/day)"
+          value={borrowRate}
+          min={0} max={0.01} step={0.0005} suffix=""
+          onInput={v => { setBorrowRate(v); dragging.current.borrow = true; postFlag('borrowRate', v); }}
+          onCommit={() => { dragging.current.borrow = false; }}
+        />
       </div>
 
       {/* ===== Section 5: Event Toggle ===== */}
@@ -265,26 +287,28 @@ export default function Economy() {
 }
 
 // ---- Internal slider row ----
-function SliderRow({ label, sub, value, onInput, onCommit }: {
+function SliderRow({ label, sub, value, onInput, onCommit, min = 0.1, max = 3.0, step = 0.1, suffix = '×' }: {
   label: string; sub?: string; value: number;
   onInput: (v: number) => void; onCommit: () => void;
+  min?: number; max?: number; step?: number; suffix?: string;
 }) {
-  const pct = ((value - 0.1) / (3.0 - 0.1)) * 100;
-  const tone = value > 1.5 ? 'up' : value < 0.7 ? 'dn' : undefined;
+  const pct = ((value - min) / (max - min)) * 100;
+  const decimals = suffix === '×' ? 2 : 4;
+  const tone = suffix === '×' ? (value > 1.5 ? 'up' : value < 0.7 ? 'dn' : undefined) : undefined;
   return (
     <div className="a-form-row" style={{ marginBottom: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
         <label className="a-label" style={{ margin: 0 }}>{label}</label>
         <span className={'a-stat-value' + (tone ? ' ' + tone : '')} style={{ fontSize: 16 }}>
-          {value.toFixed(2)}×
+          {value.toFixed(decimals)}{suffix}
         </span>
       </div>
       {sub && <div className="a-page-sub" style={{ marginBottom: 6 }}>{sub}</div>}
       <input
         type="range"
-        min={0.1}
-        max={3.0}
-        step={0.1}
+        min={min}
+        max={max}
+        step={step}
         value={value}
         onChange={e => onInput(Number(e.target.value))}
         onMouseUp={onCommit}
@@ -297,7 +321,7 @@ function SliderRow({ label, sub, value, onInput, onCommit }: {
         }}
       />
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--a-text-mute)', marginTop: 2 }}>
-        <span>0.1×</span><span>1.0×</span><span>3.0×</span>
+        <span>{min.toFixed(decimals)}{suffix}</span><span>{((min + max) / 2).toFixed(decimals)}{suffix}</span><span>{max.toFixed(decimals)}{suffix}</span>
       </div>
     </div>
   );
