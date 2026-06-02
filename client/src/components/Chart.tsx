@@ -33,17 +33,21 @@ export function Chart() {
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1); // 1 = default, 0.5 = zoomed in, 2 = zoomed out
   const [panOffset, setPanOffset] = useState(0); // number of candles panned right
+  const [yScale, setYScale] = useState(1); // Y-axis price scaling factor (TradingView style)
   const isDragging = useRef(false);
   const dragStartX = useRef(0);
   const dragStartPan = useRef(0);
+  const isDraggingY = useRef(false);
+  const dragStartY = useRef(0);
+  const dragStartScale = useRef(1);
 
   const a = ASSETS.find(x => x.id === eng.state.active)!;
   const ast = eng.state.assets[a.id];
   const series = ast.series?.[activeTF] || { candles: [], curCandle: null, candleStartT: 0 };
   const tfMs = TF_MS[activeTF];
 
-  // Reset zoom/pan when active asset or TF changes
-  useEffect(() => { setZoomLevel(1); setPanOffset(0); }, [a.id, activeTF]);
+  // Reset zoom/pan/yScale when active asset or TF changes
+  useEffect(() => { setZoomLevel(1); setPanOffset(0); setYScale(1); }, [a.id, activeTF]);
 
   // Canvas resize
   useEffect(() => {
@@ -67,7 +71,12 @@ export function Chart() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     setMousePos({ x, y });
-    if (isDragging.current) {
+    if (isDraggingY.current) {
+      const dy = e.clientY - dragStartY.current;
+      const sensitivity = 0.005;
+      const newScale = Math.max(0.05, Math.min(20, dragStartScale.current + dy * sensitivity));
+      setYScale(newScale);
+    } else if (isDragging.current) {
       const dx = e.clientX - dragStartX.current;
       const canvasW = rect.width;
       const candlesPerScreen = Math.round(30 * zoomLevel);
@@ -77,19 +86,46 @@ export function Chart() {
     }
   }, [zoomLevel]);
 
-  const onMouseLeave = useCallback(() => { setMousePos(null); isDragging.current = false; }, []);
+  const onMouseLeave = useCallback(() => {
+    setMousePos(null);
+    isDragging.current = false;
+    isDraggingY.current = false;
+  }, []);
 
-  const onMouseDown = useCallback((e: React.MouseEvent) => {
-    isDragging.current = true;
-    dragStartX.current = e.clientX;
-    dragStartPan.current = panOffset;
-  }, [panOffset]);
+  const onMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current; if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const w = rect.width;
+    if (x > w - 64) {
+      isDraggingY.current = true;
+      dragStartY.current = e.clientY;
+      dragStartScale.current = yScale;
+    } else {
+      isDragging.current = true;
+      dragStartX.current = e.clientX;
+      dragStartPan.current = panOffset;
+    }
+  }, [panOffset, yScale]);
 
-  const onMouseUp = useCallback(() => { isDragging.current = false; }, []);
+  const onMouseUp = useCallback(() => {
+    isDragging.current = false;
+    isDraggingY.current = false;
+  }, []);
 
   const onWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     setZoomLevel(z => Math.max(0.3, Math.min(4, z + (e.deltaY > 0 ? 0.15 : -0.15))));
+  }, []);
+
+  const onDoubleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current; if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    if (x > rect.width - 64) {
+      setYScale(1);
+      Audio.click();
+    }
   }, []);
 
   // Main draw loop
@@ -152,6 +188,12 @@ export function Chart() {
     }
     const pad = (pMax - pMin) * 0.15 || ast.lastPrice * 0.005 || 1;
     pMin -= pad; pMax += pad;
+
+    // Apply Y-axis scale (TradingView-style drag scale)
+    const mid = (pMax + pMin) / 2;
+    const halfRange = ((pMax - pMin) / 2) * yScale;
+    pMin = mid - halfRange;
+    pMax = mid + halfRange;
     const range = pMax - pMin || 1;
 
     const startP = lineHist[0] || hist[0];
@@ -531,16 +573,30 @@ export function Chart() {
         </div>
       </div>
       <div className="chart-box">
-        <canvas
-          id="chart"
-          ref={canvasRef}
-          onMouseMove={onMouseMove}
-          onMouseLeave={onMouseLeave}
-          onMouseDown={onMouseDown}
-          onMouseUp={onMouseUp}
-          onWheel={onWheel}
-          style={{ cursor: isDragging.current ? 'grabbing' : 'crosshair' }}
-        />
+        {(() => {
+          let cursorStyle = 'crosshair';
+          const isHoveringY = mousePos ? mousePos.x > (canvasRef.current?.getBoundingClientRect().width ?? 0) - 64 : false;
+          if (isDraggingY.current) {
+            cursorStyle = 'ns-resize';
+          } else if (isDragging.current) {
+            cursorStyle = 'grabbing';
+          } else if (isHoveringY) {
+            cursorStyle = 'ns-resize';
+          }
+          return (
+            <canvas
+              id="chart"
+              ref={canvasRef}
+              onMouseMove={onMouseMove}
+              onMouseLeave={onMouseLeave}
+              onMouseDown={onMouseDown}
+              onMouseUp={onMouseUp}
+              onWheel={onWheel}
+              onDoubleClick={onDoubleClick}
+              style={{ cursor: cursorStyle }}
+            />
+          );
+        })()}
       </div>
     </>
   );
