@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZScript Documentation | MarketMogul Technical Analysis</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #060913;
+      --panel: #0d1424;
+      --panel2: #090e1a;
+      --border: rgba(223, 166, 55, 0.18);
+      --accent: #dfa637;
+      --accent2: #fbbf24;
+      --text: #e2e8f0;
+      --text-mute: #718096;
+      --green: #22c55e;
+      --red: #ef4444;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-sans: 'Inter', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6), inset 0 0 20px rgba(223,166,55,0.02);
+      position: relative;
+    }
+
+    /* Cyberpunk decoration corners */
+    .container::before {
+      content: '';
+      position: absolute;
+      top: -1px; left: -1px;
+      width: 12px; height: 12px;
+      border-top: 3px solid var(--accent);
+      border-left: 3px solid var(--accent);
+      border-radius: 4px 0 0 0;
+    }
+    .container::after {
+      content: '';
+      position: absolute;
+      bottom: -1px; right: -1px;
+      width: 12px; height: 12px;
+      border-bottom: 3px solid var(--accent);
+      border-right: 3px solid var(--accent);
+      border-radius: 0 0 4px 0;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 24px;
+      margin-bottom: 24px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(223, 166, 55, 0.1);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      text-shadow: 0 0 4px rgba(223,166,55,0.3);
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--text-mute);
+    }
+
+    h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin: 28px 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-left: 3px solid var(--accent);
+      padding-left: 10px;
+    }
+
+    p {
+      margin-bottom: 16px;
+      color: #cbd5e1;
+      font-size: 14px;
+    }
+
+    ul, ol {
+      margin-bottom: 18px;
+      padding-left: 20px;
+      font-size: 14px;
+      color: #cbd5e1;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    /* Code block styling */
+    pre {
+      background: var(--panel2);
+      border: 1px solid rgba(255,255,255,0.05);
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin-bottom: 20px;
+    }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: #38bdf8; /* light blue for code syntax */
+    }
+
+    pre code {
+      color: #e2e8f0;
+      line-height: 1.5;
+    }
+
+    .key-keyword { color: #f43f5e; } /* pink */
+    .key-func { color: #38bdf8; }    /* cyan */
+    .key-prop { color: #fbbf24; }    /* gold */
+    .key-comment { color: #64748b; } /* gray */
+
+    /* Inline highlight */
+    p code, li code {
+      background: var(--panel2);
+      border: 1px solid rgba(255,255,255,0.04);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--accent2);
+    }
+
+    /* Warning box */
+    .alert-box {
+      background: rgba(223, 166, 55, 0.05);
+      border: 1px solid rgba(223, 166, 55, 0.25);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      padding: 16px;
+      margin: 20px 0;
+    }
+    .alert-box h4 {
+      font-size: 13px;
+      font-weight: bold;
+      color: var(--accent2);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .alert-box p {
+      margin-bottom: 0;
+      font-size: 13px;
+      color: #cbd5e1;
+    }
+
+    /* Back button */
+    .btn-close {
+      display: inline-block;
+      margin-top: 10px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-mute);
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+    .btn-close:hover {
+      border-color: var(--accent);
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <span class="badge">ZScript Compiler v1.0</span>
+      <h1>ZScript Developer Guide</h1>
+      <div class="subtitle">Write custom technical analysis indicators to gain an edge in the markets</div>
+    </header>
+
+    <h2>Introduction</h2>
+    <p>
+      <strong>ZScript</strong> is a secure, sandboxed client-side JavaScript engine designed to calculate custom technical indicators for the MarketMogul chart engine. 
+      You write a script that processes historical candle records, and the compiler automatically runs and plots the result directly on the chart canvas.
+    </p>
+
+    <h2>API Schema</h2>
+    <p>Your script must contain a valid JavaScript expression or function body that takes a <code>candles</code> array as input and returns a numeric array of the exact same length.</p>
+
+    <h3>1. The Candle Data Structure</h3>
+    <p>Each candle in the <code>candles</code> array is an object with the following properties:</p>
+    <pre><code>{
+  <span class="key-prop">o</span>: <span class="key-keyword">number</span>,  <span class="key-comment">// Open price</span>
+  <span class="key-prop">h</span>: <span class="key-keyword">number</span>,  <span class="key-comment">// High price</span>
+  <span class="key-prop">l</span>: <span class="key-keyword">number</span>,  <span class="key-comment">// Low price</span>
+  <span class="key-prop">c</span>: <span class="key-keyword">number</span>,  <span class="key-comment">// Close price</span>
+  <span class="key-prop">v</span>: <span class="key-keyword">number</span>,  <span class="key-comment">// Volume</span>
+  <span class="key-prop">t</span>: <span class="key-keyword">number</span>   <span class="key-comment">// Millisecond timestamp (Unix epoch)</span>
+}</code></pre>
+
+    <h3>2. Return Requirements</h3>
+    <ul>
+      <li>Your script must return an array (e.g. using <code>map()</code> or <code>reduce()</code>) containing <code>number</code>, <code>null</code>, or <code>NaN</code>.</li>
+      <li>The output array <strong>MUST</strong> have the same length as the <code>candles</code> input array.</li>
+      <li>If a value cannot be calculated for early periods (like a 20-period moving average), return <code>null</code> or <code>NaN</code> for those indices.</li>
+    </ul>
+
+    <div class="alert-box">
+      <h4>⚠️ Important: Price Overlay Rule</h4>
+      <p>
+        ZScript custom indicators are drawn directly as an overlay on the main price chart. 
+        Ensure that your return values match the price range of the active asset. 
+        For example, returning a fixed value like <code>50</code> (e.g. for RSI) on a stock priced at <code>$1000</code> will render a flat line at the bottom of the screen.
+      </p>
+    </div>
+
+    <h2>ZScript Examples</h2>
+    <p>You can copy and paste these working examples directly into the ZScript editor:</p>
+
+    <h3>Example 1: Median Price Overlay</h3>
+    <p>Returns the average of the High and Low prices for every candle.</p>
+    <pre><code><span class="key-comment">// Calculate (High + Low) / 2</span>
+<span class="key-keyword">return</span> candles.<span class="key-func">map</span>(c => (c.<span class="key-prop">h</span> + c.<span class="key-prop">l</span>) / <span class="key-keyword">2</span>);</code></pre>
+
+    <h3>Example 2: Simple Moving Average (10-period SMA)</h3>
+    <p>Calculates the average close price of the last 10 candles.</p>
+    <pre><code><span class="key-comment">// 10-Period Simple Moving Average</span>
+<span class="key-keyword">return</span> candles.<span class="key-func">map</span>((c, i) => {
+  <span class="key-keyword">if</span> (i &lt; <span class="key-keyword">9</span>) <span class="key-keyword">return null</span>; <span class="key-comment">// Not enough candles yet</span>
+  
+  <span class="key-keyword">let</span> sum = <span class="key-keyword">0</span>;
+  <span class="key-keyword">for</span> (<span class="key-keyword">let</span> j = <span class="key-keyword">0</span>; j &lt; <span class="key-keyword">10</span>; j++) {
+    sum += candles[i - <span class="key-keyword">9</span> + j].<span class="key-prop">c</span>;
+  }
+  <span class="key-keyword">return</span> sum / <span class="key-keyword">10</span>;
+});</code></pre>
+
+    <h3>Example 3: High-Low Spread Midpoint</h3>
+    <p>Displays a channel line representing the midpoint of the high/low spread relative to the close price.</p>
+    <pre><code><span class="key-comment">// High-Low Range Midpoint</span>
+<span class="key-keyword">return</span> candles.<span class="key-func">map</span>(c => {
+  <span class="key-keyword">const</span> range = c.<span class="key-prop">h</span> - c.<span class="key-prop">l</span>;
+  <span class="key-keyword">return</span> c.<span class="key-prop">c</span> + (range * <span class="key-keyword">0.1</span>); <span class="key-comment">// Close price offset by 10% of candle range</span>
+});</code></pre>
+
+    <h2>Editor & Diagnostics</h2>
+    <p>
+      When you click <strong>Compile & Save</strong>, the engine performs a secure sandbox execution using sample data. 
+      If there is a syntax error or runtime issue (e.g. referencing an undefined property), the error stack trace will be printed directly in the editor status bar, highlighting the offending line.
+    </p>
+
+    <div style="text-align: right; margin-top: 30px;">
+      <a href="javascript:window.close();" class="btn-close">Close Document</a>
+    </div>
+  </div>
+</body>
+</html>

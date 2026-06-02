@@ -44,6 +44,109 @@ export function Chart() {
   const [showIndModal, setShowIndModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // ZScript Custom Indicators Setup
+  interface CustomIndicator {
+    id: string;
+    name: string;
+    code: string;
+    color: string;
+    active: boolean;
+  }
+
+  const [customIndicators, setCustomIndicators] = useState<CustomIndicator[]>(() => {
+    try {
+      const saved = localStorage.getItem('mm_custom_indicators');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const saveCustomIndicators = (list: CustomIndicator[]) => {
+    setCustomIndicators(list);
+    try {
+      localStorage.setItem('mm_custom_indicators', JSON.stringify(list));
+    } catch (err) {}
+  };
+
+  const [showZEditor, setShowZEditor] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [scriptName, setScriptName] = useState('');
+  const [scriptCode, setScriptCode] = useState('');
+  const [scriptColor, setScriptColor] = useState('#00f0ff');
+  const [compileError, setCompileError] = useState<string | null>(null);
+  const [compileSuccess, setCompileSuccess] = useState(false);
+
+  const validateAndSave = () => {
+    setCompileError(null);
+    setCompileSuccess(false);
+
+    if (!scriptName.trim()) {
+      setCompileError('Indicator name cannot be empty.');
+      return;
+    }
+    if (!scriptCode.trim()) {
+      setCompileError('Script code cannot be empty.');
+      return;
+    }
+
+    try {
+      // 1. Syntax check
+      const func = new Function('candles', scriptCode);
+
+      // 2. Runtime test pass with mock candle series
+      const mockCandles = [
+        { o: 100, h: 105, l: 95, c: 102, v: 10, t: Date.now() },
+        { o: 102, h: 110, l: 101, c: 108, v: 15, t: Date.now() + 1000 }
+      ];
+      
+      const result = func(mockCandles);
+
+      // 3. Validation of output type and length
+      if (!Array.isArray(result)) {
+        setCompileError('Validation failed: The script must return an array.');
+        return;
+      }
+      if (result.length !== mockCandles.length) {
+        setCompileError(`Validation failed: Returned length (${result.length}) does not match input candles length (${mockCandles.length}).`);
+        return;
+      }
+
+      for (let i = 0; i < result.length; i++) {
+        const val = result[i];
+        if (val !== null && typeof val !== 'number') {
+          setCompileError(`Validation failed: Item at index ${i} is not a number, null, or NaN.`);
+          return;
+        }
+      }
+
+      // Save custom script
+      const newList = [...customIndicators];
+      if (editingId) {
+        const idx = newList.findIndex(x => x.id === editingId);
+        if (idx !== -1) {
+          newList[idx] = { ...newList[idx], name: scriptName, code: scriptCode, color: scriptColor };
+        }
+      } else {
+        const id = 'cust_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+        newList.push({ id, name: scriptName, code: scriptCode, color: scriptColor, active: true });
+      }
+
+      saveCustomIndicators(newList);
+      setCompileSuccess(true);
+      Audio.buy();
+
+      setTimeout(() => {
+        setShowZEditor(false);
+        setEditingId(null);
+        setCompileSuccess(false);
+      }, 1000);
+
+    } catch (err: any) {
+      setCompileError(`Compilation Error: ${err.message || err}`);
+    }
+  };
+
   const a = ASSETS.find(x => x.id === eng.state.active)!;
   const ast = eng.state.assets[a.id];
   const series = ast.series?.[activeTF] || { candles: [], curCandle: null, candleStartT: 0 };
@@ -345,6 +448,71 @@ export function Chart() {
       });
     }
 
+    // === Render Custom ZScript Indicators ===
+    customIndicators.forEach(ind => {
+      if (!ind.active) return;
+      try {
+        const func = new Function('candles', ind.code);
+        cctx.strokeStyle = ind.color;
+        cctx.lineWidth = 1.5;
+        cctx.beginPath();
+
+        if (chartCandles && visible.length) {
+          // Draw overlay aligned with candles
+          const customValues = func(allCandles);
+          if (Array.isArray(customValues)) {
+            const visibleCustom = customValues.slice(visStart, visEnd);
+            const rightX = padL + cw - candleW * 0.5;
+            const scroll = panOffset === 0 ? candleProgress * candleW : 0;
+            let started = false;
+
+            visibleCustom.forEach((val, i) => {
+              if (val === null || isNaN(val) || typeof val !== 'number') {
+                started = false;
+                return;
+              }
+              const x = rightX - (visibleCustom.length - 1 - i) * candleW - scroll;
+              const y = padT + ch - (val - pMin) / range * ch;
+              if (!started) {
+                cctx.moveTo(x, y);
+                started = true;
+              } else {
+                cctx.lineTo(x, y);
+              }
+            });
+            cctx.stroke();
+          }
+        } else {
+          // Draw overlay aligned with line chart
+          const lineCandles = hist.map(p => ({ o: p, h: p, l: p, c: p, v: 0, t: Date.now() }));
+          const customValues = func(lineCandles);
+          if (Array.isArray(customValues)) {
+            const visibleCustom = customValues.slice(lineStart, lineEnd);
+            const offset = -tickFrac * sliceW;
+            let started = false;
+
+            visibleCustom.forEach((val, i) => {
+              if (val === null || isNaN(val) || typeof val !== 'number') {
+                started = false;
+                return;
+              }
+              const x = padL + cw - (visibleCustom.length - 1 - i) * sliceW + offset;
+              const y = padT + ch - (val - pMin) / range * ch;
+              if (!started) {
+                cctx.moveTo(x, y);
+                started = true;
+              } else {
+                cctx.lineTo(x, y);
+              }
+            });
+            cctx.stroke();
+          }
+        }
+      } catch (err) {
+        // Silent catch during render to protect main drawing loop from user runtime bugs
+      }
+    });
+
     // === SMA overlay ===
     if (indicators && activeIndicators.includes('sma') && !hiddenIndicators.includes('sma')) {
       cctx.strokeStyle = '#f5a623'; cctx.lineWidth = 1.2;
@@ -618,8 +786,9 @@ export function Chart() {
         </div>
       </div>
       <div className="chart-box">
-        {activeIndicators.length > 0 && (
+        {(activeIndicators.length > 0 || customIndicators.some(x => x.active)) && (
           <div className="chart-legend">
+            {/* Built-in Indicators */}
             {activeIndicators.map(id => {
               const label = INDICATOR_OPTIONS.find(o => o.id === id)?.label || id.toUpperCase();
               const isHidden = hiddenIndicators.includes(id);
@@ -656,6 +825,41 @@ export function Chart() {
                 </div>
               );
             })}
+
+            {/* Custom ZScript Indicators */}
+            {customIndicators.filter(x => x.active).map(ind => (
+              <div key={ind.id} className="legend-item">
+                <span className="legend-dot" style={{ background: ind.color, width: 6, height: 6, borderRadius: '50%', display: 'inline-block' }} />
+                <span className="legend-label">{ind.name}</span>
+                <button
+                  className="legend-btn"
+                  title="Edit Script"
+                  onClick={() => {
+                    setEditingId(ind.id);
+                    setScriptName(ind.name);
+                    setScriptCode(ind.code);
+                    setScriptColor(ind.color);
+                    setShowZEditor(true);
+                    setCompileError(null);
+                    setCompileSuccess(false);
+                    Audio.click();
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 10, height: 10 }}><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                </button>
+                <button
+                  className="legend-btn close-btn"
+                  title="Remove Indicator"
+                  onClick={() => {
+                    const newList = customIndicators.map(x => x.id === ind.id ? { ...x, active: false } : x);
+                    saveCustomIndicators(newList);
+                    Audio.click();
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
           </div>
         )}
         {showIndModal && (
@@ -676,6 +880,24 @@ export function Chart() {
                 />
               </div>
               <div className="chart-modal-list">
+                <div 
+                  className="custom-indicator-create-btn" 
+                  onClick={() => { 
+                    setShowZEditor(true); 
+                    setShowIndModal(false); 
+                    setEditingId(null); 
+                    setScriptName(''); 
+                    setScriptCode('// Calculate custom value\nreturn candles.map(c => (c.h + c.l) / 2);'); 
+                    setScriptColor('#00f0ff'); 
+                    setCompileError(null); 
+                    setCompileSuccess(false); 
+                    Audio.click(); 
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14, height: 14, marginRight: 6, verticalAlign: 'middle' }}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Create ZScript Indicator
+                </div>
+
                 {INDICATOR_OPTIONS
                   .filter(opt => opt.label.toLowerCase().includes(searchQuery.toLowerCase()))
                   .map(opt => {
@@ -694,6 +916,118 @@ export function Chart() {
                       </div>
                     );
                   })}
+
+                {customIndicators.length > 0 && (
+                  <>
+                    <div className="chart-modal-section-title">ZScript (Custom)</div>
+                    {customIndicators
+                      .filter(ind => ind.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .map(ind => (
+                        <div key={ind.id} className="chart-modal-item custom-item">
+                          <div className="custom-item-left" onClick={() => {
+                            const newList = customIndicators.map(x => x.id === ind.id ? { ...x, active: !x.active } : x);
+                            saveCustomIndicators(newList);
+                            Audio.click();
+                          }}>
+                            <span className="color-dot" style={{ background: ind.color, width: 8, height: 8, borderRadius: '50%', display: 'inline-block', marginRight: 8, verticalAlign: 'middle' }} />
+                            <span style={{ fontWeight: ind.active ? 'bold' : 'normal', color: ind.active ? '#f5a623' : '#c8d0e0' }}>{ind.name}</span>
+                          </div>
+                          <div className="custom-item-actions">
+                            <button className="edit-btn" onClick={() => {
+                              setEditingId(ind.id);
+                              setScriptName(ind.name);
+                              setScriptCode(ind.code);
+                              setScriptColor(ind.color);
+                              setShowZEditor(true);
+                              setShowIndModal(false);
+                              setCompileError(null);
+                              setCompileSuccess(false);
+                              Audio.click();
+                            }}>Edit</button>
+                            <button className="delete-btn" onClick={() => {
+                              const newList = customIndicators.filter(x => x.id !== ind.id);
+                              saveCustomIndicators(newList);
+                              Audio.click();
+                            }}>Delete</button>
+                          </div>
+                        </div>
+                      ))
+                    }
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showZEditor && (
+          <div className="chart-modal-overlay" onClick={() => { setShowZEditor(false); setEditingId(null); }}>
+            <div className="chart-modal zscript-modal" onClick={e => e.stopPropagation()}>
+              <div className="chart-modal-header">
+                <h3>{editingId ? 'Edit ZScript' : 'Create ZScript'}</h3>
+                <a href="/zscript-docs.html" target="_blank" className="zscript-docs-link">
+                  DOCS 📖
+                </a>
+                <button className="chart-modal-close" onClick={() => { setShowZEditor(false); setEditingId(null); }}>×</button>
+              </div>
+              
+              <div className="chart-modal-body zscript-body">
+                <div className="zscript-row">
+                  <label className="zscript-label">Indicator Name</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Weighted MA" 
+                    value={scriptName}
+                    onChange={e => setScriptName(e.target.value)}
+                    className="zscript-input"
+                  />
+                </div>
+                
+                <div className="zscript-row">
+                  <div className="zscript-row-header">
+                    <label className="zscript-label">ZScript Code (JS Function Body)</label>
+                    <span className="zscript-lang-badge">JS / ES6</span>
+                  </div>
+                  <textarea 
+                    value={scriptCode}
+                    onChange={e => setScriptCode(e.target.value)}
+                    placeholder="// candles is an array of { o, h, l, c, v, t }&#10;return candles.map(c => c.c);"
+                    className="zscript-textarea"
+                    spellCheck={false}
+                  />
+                </div>
+
+                <div className="zscript-row color-row">
+                  <label className="zscript-label">Line Color</label>
+                  <div className="zscript-color-picker-container">
+                    <input 
+                      type="color" 
+                      value={scriptColor}
+                      onChange={e => setScriptColor(e.target.value)}
+                      className="zscript-color-picker"
+                    />
+                    <span className="zscript-color-hex">{scriptColor}</span>
+                  </div>
+                </div>
+
+                {compileError && (
+                  <div className="zscript-status error">
+                    <div className="status-title">Compilation Failed ✗</div>
+                    <div className="status-msg">{compileError}</div>
+                  </div>
+                )}
+
+                {compileSuccess && (
+                  <div className="zscript-status success">
+                    <div className="status-title">Success ✅</div>
+                    <div className="status-msg">Script compiled and saved!</div>
+                  </div>
+                )}
+              </div>
+
+              <div className="chart-modal-footer">
+                <button className="zscript-btn cancel-btn" onClick={() => { setShowZEditor(false); setEditingId(null); }}>Cancel</button>
+                <button className="zscript-btn save-btn" onClick={validateAndSave}>Compile & Save</button>
               </div>
             </div>
           </div>
