@@ -59,6 +59,15 @@ export class Engine {
   constructor(loaded?: GameState) {
     this.state = loaded ?? this.freshState();
     if (!loaded) this.seedBooks();
+    // v9.4: a loaded save never ran freshState(), so recover the House index —
+    // prefer the persisted value, else find the isHouse trader. Without this the
+    // House stays -1 after a server restart and liquidity silently stops.
+    if (loaded) {
+      this.houseId = (typeof this.state.houseId === 'number' && this.state.houseId >= 0)
+        ? this.state.houseId
+        : this.state.traders.findIndex(t => t.isHouse);
+    }
+    this.state.houseId = this.houseId; // keep state in sync for the matcher
     this.lastT = performance.now();
   }
 
@@ -94,7 +103,7 @@ export class Engine {
         volEventTicks: 0,
       };
     });
-    return { traders, assets, events: [], active: ASSETS[0]?.id || 'NEXA', orderId: 1 };
+    return { traders, assets, events: [], active: ASSETS[0]?.id || 'NEXA', orderId: 1, houseId: this.houseId };
   }
 
   // Optional fromId — only seed traders whose id >= fromId (avoids re-seeding
@@ -276,14 +285,13 @@ export class Engine {
       this.tickAcc -= 0.1;
     }
     this.tickFrac = this.tickAcc / 0.1;
-    // v8.9: refresh House liquidity every ~0.5s so every asset stays tradeable.
-    this.liqAcc += dt;
-    if (this.liqAcc >= 0.5 && this.houseId >= 0) {
-      provideLiquidity(this.state, this.houseId, now);
-      this.liqAcc = 0;
-    }
     // v6: admin can disable bots globally.
     if (this.config.botsEnabled) tickBots(this.state, dt);
+    // v9.4: refresh House liquidity AFTER bots, every tick. Bots flood the book
+    // and insertOrder truncates to 40 levels — running last keeps the House
+    // quote on top so a side never goes empty. (Was every 0.5s BEFORE bots,
+    // which let the House get evicted between refreshes → untradeable book.)
+    if (this.houseId >= 0) provideLiquidity(this.state, this.houseId, now);
     this.divAcc += dt;
     if (this.divAcc >= 0.5) { payDividends(this.state, this.divAcc); this.divAcc = 0; }
     this.cleanAcc += dt;

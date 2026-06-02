@@ -245,6 +245,10 @@ export interface GameState {
   events: NewsEvent[];
   active: string;
   orderId: number;
+  // v9.4: index of the House Market Maker in `traders`. Persisted so a loaded
+  // save still knows its house (otherwise liquidity silently stops after a
+  // server restart, leaving books to drain). -1 = none.
+  houseId?: number;
   // v7.1: transient cap for bot asset access. Set by engine each tick when
   // admin enables strictBotLevelGate. 0/undefined = no cap (default).
   playerLevelCap?: number;

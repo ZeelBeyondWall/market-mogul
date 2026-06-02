@@ -244,6 +244,33 @@ export function placeOrder(
         if (top.qty <= 0) opp.shift();
       }
     }
+    // v9.4: GUARANTEED liquidity. If the book ran dry (truncation, timing, or a
+    // just-restarted save), fill the remainder directly against the House at a
+    // tight band around the last price. The House is an infinite counterparty,
+    // so the player can ALWAYS buy/sell — no more "empty book, can't trade".
+    if (remaining > 0 && typeof S.houseId === 'number' && S.houseId >= 0 && S.houseId !== traderId) {
+      const mid = ast.lastPrice > 0 ? ast.lastPrice : (ast.fv > 0 ? ast.fv : 0);
+      if (mid > 0) {
+        const dec = mid < 10 ? 4 : 2;
+        const spread = 0.0035; // matches HOUSE_SPREAD
+        if (side === 'buy') {
+          const fillPx = +(mid * (1 + spread)).toFixed(dec);
+          let q = remaining;
+          if (t.cash < fillPx * q) q = roundShares(t.cash / fillPx);
+          if (q > 0) {
+            trigger(traderId, S.houseId, q, fillPx);
+            totalCost += fillPx * q; totalQty += q; remaining -= q;
+          }
+        } else {
+          const fillPx = +(mid * (1 - spread)).toFixed(dec);
+          const q = Math.min(remaining, sellableQty(t, assetId, remaining, fillPx));
+          if (q > 0) {
+            trigger(S.houseId, traderId, q, fillPx);
+            totalCost += fillPx * q; totalQty += q; remaining -= q;
+          }
+        }
+      }
+    }
     return { filled: totalQty, cost: totalCost };
   }
 
