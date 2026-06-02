@@ -47,7 +47,31 @@ export function Chart() {
   const tfMs = TF_MS[activeTF];
 
   // Reset zoom/pan/yScale when active asset or TF changes
-  useEffect(() => { setZoomLevel(1); setPanOffset(0); setYScale(1); }, [a.id, activeTF]);
+  useEffect(() => { setZoomLevel(1); setPanOffset(0); setYScale(1); setContextMenu(null); }, [a.id, activeTF]);
+
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
+  // Close context menu on any click outside
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    window.addEventListener('click', close);
+    window.addEventListener('contextmenu', close);
+    return () => {
+      window.removeEventListener('click', close);
+      window.removeEventListener('contextmenu', close);
+    };
+  }, [contextMenu]);
+
+  const onContextMenu = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const canvas = canvasRef.current; if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setContextMenu({ x, y });
+  }, []);
 
   // Canvas resize
   useEffect(() => {
@@ -584,17 +608,133 @@ export function Chart() {
             cursorStyle = 'ns-resize';
           }
           return (
-            <canvas
-              id="chart"
-              ref={canvasRef}
-              onMouseMove={onMouseMove}
-              onMouseLeave={onMouseLeave}
-              onMouseDown={onMouseDown}
-              onMouseUp={onMouseUp}
-              onWheel={onWheel}
-              onDoubleClick={onDoubleClick}
-              style={{ cursor: cursorStyle }}
-            />
+            <>
+              <canvas
+                id="chart"
+                ref={canvasRef}
+                onMouseMove={onMouseMove}
+                onMouseLeave={onMouseLeave}
+                onMouseDown={onMouseDown}
+                onMouseUp={onMouseUp}
+                onWheel={onWheel}
+                onDoubleClick={onDoubleClick}
+                onContextMenu={onContextMenu}
+                style={{ cursor: cursorStyle }}
+              />
+              {contextMenu && (
+                <div className="chart-ctx-menu" style={{ left: contextMenu.x, top: contextMenu.y }} onClick={(e) => e.stopPropagation()}>
+                  <div className="chart-ctx-item" onClick={() => { setZoomLevel(1); setPanOffset(0); setYScale(1); setContextMenu(null); Audio.click(); }}>
+                    Reset Chart View
+                  </div>
+                  <div className="chart-ctx-divider" />
+                  
+                  <div className="chart-ctx-item chart-ctx-submenu-indicator">
+                    Chart Type
+                    <div className="chart-ctx-submenu">
+                      <div className={`chart-ctx-item ${chartLine ? 'active' : ''}`} onClick={() => { toggleChartLayer('chartLine'); Audio.click(); }}>
+                        {chartLine ? '✓ Line' : 'Line'}
+                      </div>
+                      <div className={`chart-ctx-item ${chartCandles ? 'active' : ''}`} onClick={() => { toggleChartLayer('chartCandles'); Audio.click(); }}>
+                        {chartCandles ? '✓ Candles' : 'Candles'}
+                      </div>
+                      <div className={`chart-ctx-item ${chartVol ? 'active' : ''}`} onClick={() => { toggleChartLayer('chartVol'); Audio.click(); }}>
+                        {chartVol ? '✓ Volume' : 'Volume'}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="chart-ctx-item chart-ctx-submenu-indicator">
+                    Timeframe
+                    <div className="chart-ctx-submenu">
+                      {TF_LIST.map(tf => (
+                        <div key={tf} className={`chart-ctx-item ${activeTF === tf ? 'active' : ''}`} onClick={() => { setActiveTF(tf as TFKey); Audio.click(); }}>
+                          {activeTF === tf ? `✓ ${tf}` : tf}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="chart-ctx-item chart-ctx-submenu-indicator">
+                    Indicators
+                    <div className="chart-ctx-submenu">
+                      {INDICATOR_OPTIONS.map(opt => {
+                        const isOn = activeIndicators.includes(opt.id);
+                        return (
+                          <div key={opt.id} className={`chart-ctx-item ${isOn ? 'active' : ''}`} onClick={() => { toggleIndicator(opt.id); Audio.click(); }}>
+                            {isOn ? `✓ ${opt.label}` : opt.label}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <style>{`
+                .chart-ctx-menu {
+                  position: absolute;
+                  z-index: 1000;
+                  background: rgba(13, 20, 38, 0.97);
+                  backdrop-filter: blur(10px);
+                  border: 1px solid rgba(0, 240, 255, 0.18);
+                  border-radius: 6px;
+                  padding: 5px 0;
+                  min-width: 170px;
+                  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), 0 0 15px rgba(0, 240, 255, 0.05);
+                  font-family: var(--font-sans), sans-serif;
+                  animation: chartMenuFade 0.12s ease-out;
+                }
+                @keyframes chartMenuFade {
+                  from { opacity: 0; transform: scale(0.95); }
+                  to { opacity: 1; transform: scale(1); }
+                }
+                .chart-ctx-item {
+                  position: relative;
+                  padding: 8px 14px;
+                  color: #c8d0e0;
+                  font-size: 11.5px;
+                  cursor: pointer;
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  transition: all 0.15s ease;
+                  user-select: none;
+                }
+                .chart-ctx-item:hover {
+                  background: rgba(0, 240, 255, 0.08);
+                  color: #fff;
+                }
+                .chart-ctx-item.active {
+                  color: #f5a623;
+                  font-weight: bold;
+                }
+                .chart-ctx-divider {
+                  height: 1px;
+                  background: rgba(0, 240, 255, 0.1);
+                  margin: 4px 0;
+                }
+                .chart-ctx-submenu-indicator::after {
+                  content: '▶';
+                  font-size: 7px;
+                  color: #718096;
+                  margin-left: 8px;
+                }
+                .chart-ctx-submenu {
+                  display: none;
+                  position: absolute;
+                  left: 100%;
+                  top: -5px;
+                  background: rgba(13, 20, 38, 0.98);
+                  border: 1px solid rgba(0, 240, 255, 0.18);
+                  border-radius: 6px;
+                  padding: 5px 0;
+                  min-width: 130px;
+                  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+                }
+                .chart-ctx-item:hover > .chart-ctx-submenu {
+                  display: block;
+                }
+              `}</style>
+            </>
           );
         })()}
       </div>
