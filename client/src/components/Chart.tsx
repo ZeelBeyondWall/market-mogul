@@ -51,6 +51,8 @@ export function Chart() {
     code: string;
     color: string;
     active: boolean;
+    inputsSchema?: Array<{ type: string; name: string; default: any; label: string }>;
+    inputs?: Record<string, any>;
   }
 
   const [customIndicators, setCustomIndicators] = useState<CustomIndicator[]>(() => {
@@ -76,6 +78,35 @@ export function Chart() {
   const [scriptColor, setScriptColor] = useState('#00f0ff');
   const [compileError, setCompileError] = useState<string | null>(null);
   const [compileSuccess, setCompileSuccess] = useState(false);
+  const [showSettingsId, setShowSettingsId] = useState<string | null>(null);
+
+  const parseInputsSchema = (code: string) => {
+    const schema: Array<{ type: string; name: string; default: any; label: string }> = [];
+    const lines = code.split('\n');
+    const inputRegex = /\/\/\s*@input\s+(\w+)\s+(\w+)\s*=\s*([^\s"']+|"[^"]*"|'[^']*')(?:\s+"([^"]*)")?\s*$/;
+    for (const line of lines) {
+      const match = inputRegex.exec(line);
+      if (match) {
+        const [_, type, name, defaultValueStr, label] = match;
+        let defaultValue: any;
+        const cleanValStr = defaultValueStr.trim().replace(/^['"]|['"]$/g, '');
+        if (type === 'bool' || type === 'boolean') {
+          defaultValue = cleanValStr === 'true';
+        } else if (type === 'int' || type === 'integer' || type === 'float' || type === 'number') {
+          defaultValue = Number(cleanValStr);
+        } else {
+          defaultValue = cleanValStr;
+        }
+        schema.push({
+          type,
+          name,
+          default: defaultValue,
+          label: label || name
+        });
+      }
+    }
+    return schema;
+  };
 
   const validateAndSave = () => {
     setCompileError(null);
@@ -91,45 +122,132 @@ export function Chart() {
     }
 
     try {
-      // 1. Syntax check
-      const func = new Function('candles', scriptCode);
+      // 1. Parse inputs schema
+      const schema = parseInputsSchema(scriptCode);
+      const testInputs: Record<string, any> = {};
+      let preamble = '';
+      schema.forEach(inp => {
+        testInputs[inp.name] = inp.default;
+        preamble += `const ${inp.name} = ${JSON.stringify(inp.default)};\n`;
+      });
 
-      // 2. Runtime test pass with mock candle series
+      // 2. Syntax check & Compile function
+      const func = new Function('candles', 'inputs', preamble + '\n' + scriptCode);
+
+      // 3. Runtime test pass with mock candle series
       const mockCandles = [
         { o: 100, h: 105, l: 95, c: 102, v: 10, t: Date.now() },
         { o: 102, h: 110, l: 101, c: 108, v: 15, t: Date.now() + 1000 }
       ];
       
-      const result = func(mockCandles);
+      const result = func(mockCandles, testInputs);
 
-      // 3. Validation of output type and length
-      if (!Array.isArray(result)) {
-        setCompileError('Validation failed: The script must return an array.');
+      // 4. Validation of output type, plots, and length
+      let isMultiPlot = false;
+      let plotsList: any[] = [];
+
+      if (result && typeof result === 'object' && Array.isArray(result.plots)) {
+        isMultiPlot = true;
+        plotsList = result.plots;
+      } else if (Array.isArray(result)) {
+        isMultiPlot = false;
+      } else {
+        setCompileError('Validation failed: The script must return a number array or an object containing a "plots" array.');
         return;
       }
-      if (result.length !== mockCandles.length) {
-        setCompileError(`Validation failed: Returned length (${result.length}) does not match input candles length (${mockCandles.length}).`);
-        return;
-      }
 
-      for (let i = 0; i < result.length; i++) {
-        const val = result[i];
-        if (val !== null && typeof val !== 'number') {
-          setCompileError(`Validation failed: Item at index ${i} is not a number, null, or NaN.`);
+      if (isMultiPlot) {
+        if (plotsList.length === 0) {
+          setCompileError('Validation failed: "plots" array cannot be empty.');
           return;
+        }
+        for (let pIdx = 0; pIdx < plotsList.length; pIdx++) {
+          const plot = plotsList[pIdx];
+          if (!plot || typeof plot !== 'object') {
+            setCompileError(`Validation failed: Plot at index ${pIdx} is not an object.`);
+            return;
+          }
+          if (!plot.name || typeof plot.name !== 'string') {
+            setCompileError(`Validation failed: Plot at index ${pIdx} must have a string "name".`);
+            return;
+          }
+          if (!Array.isArray(plot.values)) {
+            setCompileError(`Validation failed: Plot "${plot.name}" must have a "values" array.`);
+            return;
+          }
+          if (plot.values.length !== mockCandles.length) {
+            setCompileError(`Validation failed: Plot "${plot.name}" values length (${plot.values.length}) does not match input candles length (${mockCandles.length}).`);
+            return;
+          }
+          for (let i = 0; i < plot.values.length; i++) {
+            const val = plot.values[i];
+            if (val !== null && typeof val !== 'number' && !isNaN(val)) {
+              setCompileError(`Validation failed: Plot "${plot.name}" value at index ${i} is not a number, null, or NaN.`);
+              return;
+            }
+          }
+          if (plot.style && !['solid', 'dashed', 'dotted'].includes(plot.style)) {
+            setCompileError(`Validation failed: Plot "${plot.name}" style must be 'solid', 'dashed', or 'dotted'.`);
+            return;
+          }
+          if (plot.color !== undefined) {
+            if (typeof plot.color !== 'string' && !Array.isArray(plot.color)) {
+              setCompileError(`Validation failed: Plot "${plot.name}" color must be a string or an array of strings.`);
+              return;
+            }
+            if (Array.isArray(plot.color) && plot.color.length !== mockCandles.length) {
+              setCompileError(`Validation failed: Plot "${plot.name}" color array length (${plot.color.length}) does not match input candles length (${mockCandles.length}).`);
+              return;
+            }
+          }
+        }
+      } else {
+        // Single plot array validation
+        if (result.length !== mockCandles.length) {
+          setCompileError(`Validation failed: Returned length (${result.length}) does not match input candles length (${mockCandles.length}).`);
+          return;
+        }
+        for (let i = 0; i < result.length; i++) {
+          const val = result[i];
+          if (val !== null && typeof val !== 'number' && !isNaN(val)) {
+            setCompileError(`Validation failed: Item at index ${i} is not a number, null, or NaN.`);
+            return;
+          }
         }
       }
 
       // Save custom script
       const newList = [...customIndicators];
+      const defaultInputs: Record<string, any> = {};
+      schema.forEach(s => {
+        defaultInputs[s.name] = s.default;
+      });
+
       if (editingId) {
         const idx = newList.findIndex(x => x.id === editingId);
         if (idx !== -1) {
-          newList[idx] = { ...newList[idx], name: scriptName, code: scriptCode, color: scriptColor };
+          const existing = newList[idx];
+          const mergedInputs = { ...defaultInputs, ...(existing.inputs || {}) };
+          newList[idx] = { 
+            ...existing, 
+            name: scriptName, 
+            code: scriptCode, 
+            color: scriptColor,
+            inputsSchema: schema,
+            inputs: mergedInputs
+          };
         }
       } else {
         const id = 'cust_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-        newList.push({ id, name: scriptName, code: scriptCode, color: scriptColor, active: true });
+        newList.push({ 
+          id, 
+          name: scriptName, 
+          code: scriptCode, 
+          color: scriptColor, 
+          active: true,
+          inputsSchema: schema,
+          inputs: defaultInputs
+        });
       }
 
       saveCustomIndicators(newList);
@@ -452,62 +570,162 @@ export function Chart() {
     customIndicators.forEach(ind => {
       if (!ind.active) return;
       try {
-        const func = new Function('candles', ind.code);
-        cctx.strokeStyle = ind.color;
-        cctx.lineWidth = 1.5;
-        cctx.beginPath();
+        // Compile with inputs preamble
+        const schema = ind.inputsSchema || [];
+        const userInputs = ind.inputs || {};
+        let preamble = '';
+        schema.forEach(inp => {
+          const userVal = userInputs[inp.name];
+          const val = userVal !== undefined ? userVal : inp.default;
+          preamble += `const ${inp.name} = ${JSON.stringify(val)};\n`;
+        });
+        const func = new Function('candles', 'inputs', preamble + '\n' + ind.code);
 
+        // Get values
+        let rawResult;
         if (chartCandles && visible.length) {
-          // Draw overlay aligned with candles
-          const customValues = func(allCandles);
-          if (Array.isArray(customValues)) {
-            const visibleCustom = customValues.slice(visStart, visEnd);
+          rawResult = func(allCandles, userInputs);
+        } else {
+          const lineCandles = hist.map(p => ({ o: p, h: p, l: p, c: p, v: 0, t: Date.now() }));
+          rawResult = func(lineCandles, userInputs);
+        }
+
+        if (!rawResult) return;
+
+        // Parse result into list of plots
+        let plots: any[] = [];
+        if (rawResult && typeof rawResult === 'object' && Array.isArray(rawResult.plots)) {
+          plots = rawResult.plots;
+        } else if (Array.isArray(rawResult)) {
+          plots = [{
+            name: ind.name,
+            values: rawResult,
+            color: ind.color,
+            width: 1.5,
+            style: 'solid'
+          }];
+        } else {
+          return;
+        }
+
+        plots.forEach(plot => {
+          if (!plot || !Array.isArray(plot.values)) return;
+
+          cctx.save(); // Save styles to modify dash and stroke
+          
+          // Width & Style
+          const width = typeof plot.width === 'number' ? plot.width : 1.5;
+          const style = plot.style || 'solid';
+          cctx.lineWidth = width;
+          
+          if (style === 'dashed') {
+            cctx.setLineDash([6, 4]);
+          } else if (style === 'dotted') {
+            cctx.setLineDash([2, 3]);
+          } else {
+            cctx.setLineDash([]);
+          }
+
+          if (chartCandles && visible.length) {
+            // Draw overlay aligned with candles
+            const visibleCustom = plot.values.slice(visStart, visEnd);
             const rightX = padL + cw - candleW * 0.5;
             const scroll = panOffset === 0 ? candleProgress * candleW : 0;
-            let started = false;
+            
+            // Check if color is dynamic (array of colors)
+            const colorVal = plot.color || ind.color;
+            const isDynamicColor = Array.isArray(colorVal);
 
-            visibleCustom.forEach((val, i) => {
-              if (val === null || isNaN(val) || typeof val !== 'number') {
-                started = false;
-                return;
+            if (isDynamicColor) {
+              const visibleColors = colorVal.slice(visStart, visEnd);
+              // For dynamic colors, we draw line segments individually
+              for (let i = 1; i < visibleCustom.length; i++) {
+                const valPrev = visibleCustom[i - 1];
+                const valCurr = visibleCustom[i];
+                if (valPrev === null || isNaN(valPrev) || valCurr === null || isNaN(valCurr) || typeof valPrev !== 'number' || typeof valCurr !== 'number') {
+                  continue;
+                }
+                const x1 = rightX - (visibleCustom.length - 1 - (i - 1)) * candleW - scroll;
+                const y1 = padT + ch - (valPrev - pMin) / range * ch;
+                const x2 = rightX - (visibleCustom.length - 1 - i) * candleW - scroll;
+                const y2 = padT + ch - (valCurr - pMin) / range * ch;
+
+                cctx.strokeStyle = visibleColors[i] || ind.color;
+                cctx.beginPath();
+                cctx.moveTo(x1, y1);
+                cctx.lineTo(x2, y2);
+                cctx.stroke();
               }
-              const x = rightX - (visibleCustom.length - 1 - i) * candleW - scroll;
-              const y = padT + ch - (val - pMin) / range * ch;
-              if (!started) {
-                cctx.moveTo(x, y);
-                started = true;
-              } else {
-                cctx.lineTo(x, y);
-              }
-            });
-            cctx.stroke();
-          }
-        } else {
-          // Draw overlay aligned with line chart
-          const lineCandles = hist.map(p => ({ o: p, h: p, l: p, c: p, v: 0, t: Date.now() }));
-          const customValues = func(lineCandles);
-          if (Array.isArray(customValues)) {
-            const visibleCustom = customValues.slice(lineStart, lineEnd);
+            } else {
+              cctx.strokeStyle = colorVal;
+              cctx.beginPath();
+              let started = false;
+              visibleCustom.forEach((val: any, i: number) => {
+                if (val === null || isNaN(val) || typeof val !== 'number') {
+                  started = false;
+                  return;
+                }
+                const x = rightX - (visibleCustom.length - 1 - i) * candleW - scroll;
+                const y = padT + ch - (val - pMin) / range * ch;
+                if (!started) {
+                  cctx.moveTo(x, y);
+                  started = true;
+                } else {
+                  cctx.lineTo(x, y);
+                }
+              });
+              cctx.stroke();
+            }
+          } else {
+            // Draw overlay aligned with line chart
+            const visibleCustom = plot.values.slice(lineStart, lineEnd);
             const offset = -tickFrac * sliceW;
-            let started = false;
+            const colorVal = plot.color || ind.color;
+            const isDynamicColor = Array.isArray(colorVal);
 
-            visibleCustom.forEach((val, i) => {
-              if (val === null || isNaN(val) || typeof val !== 'number') {
-                started = false;
-                return;
+            if (isDynamicColor) {
+              const visibleColors = colorVal.slice(lineStart, lineEnd);
+              for (let i = 1; i < visibleCustom.length; i++) {
+                const valPrev = visibleCustom[i - 1];
+                const valCurr = visibleCustom[i];
+                if (valPrev === null || isNaN(valPrev) || valCurr === null || isNaN(valCurr) || typeof valPrev !== 'number' || typeof valCurr !== 'number') {
+                  continue;
+                }
+                const x1 = padL + cw - (visibleCustom.length - 1 - (i - 1)) * sliceW + offset;
+                const y1 = padT + ch - (valPrev - pMin) / range * ch;
+                const x2 = padL + cw - (visibleCustom.length - 1 - i) * sliceW + offset;
+                const y2 = padT + ch - (valCurr - pMin) / range * ch;
+
+                cctx.strokeStyle = visibleColors[i] || ind.color;
+                cctx.beginPath();
+                cctx.moveTo(x1, y1);
+                cctx.lineTo(x2, y2);
+                cctx.stroke();
               }
-              const x = padL + cw - (visibleCustom.length - 1 - i) * sliceW + offset;
-              const y = padT + ch - (val - pMin) / range * ch;
-              if (!started) {
-                cctx.moveTo(x, y);
-                started = true;
-              } else {
-                cctx.lineTo(x, y);
-              }
-            });
-            cctx.stroke();
+            } else {
+              cctx.strokeStyle = colorVal;
+              cctx.beginPath();
+              let started = false;
+              visibleCustom.forEach((val: any, i: number) => {
+                if (val === null || isNaN(val) || typeof val !== 'number') {
+                  started = false;
+                  return;
+                }
+                const x = padL + cw - (visibleCustom.length - 1 - i) * sliceW + offset;
+                const y = padT + ch - (val - pMin) / range * ch;
+                if (!started) {
+                  cctx.moveTo(x, y);
+                  started = true;
+                } else {
+                  cctx.lineTo(x, y);
+                }
+              });
+              cctx.stroke();
+            }
           }
-        }
+          
+          cctx.restore(); // Restore styles
+        });
       } catch (err) {
         // Silent catch during render to protect main drawing loop from user runtime bugs
       }
@@ -831,6 +1049,21 @@ export function Chart() {
               <div key={ind.id} className="legend-item">
                 <span className="legend-dot" style={{ background: ind.color, width: 6, height: 6, borderRadius: '50%', display: 'inline-block' }} />
                 <span className="legend-label">{ind.name}</span>
+                {ind.inputsSchema && ind.inputsSchema.length > 0 && (
+                  <button
+                    className="legend-btn"
+                    title="Configure Inputs"
+                    onClick={() => {
+                      setShowSettingsId(ind.id);
+                      Audio.click();
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 10, height: 10 }}>
+                      <circle cx="12" cy="12" r="3"/>
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                  </button>
+                )}
                 <button
                   className="legend-btn"
                   title="Edit Script"
@@ -933,6 +1166,13 @@ export function Chart() {
                             <span style={{ fontWeight: ind.active ? 'bold' : 'normal', color: ind.active ? '#f5a623' : '#c8d0e0' }}>{ind.name}</span>
                           </div>
                           <div className="custom-item-actions">
+                            {ind.inputsSchema && ind.inputsSchema.length > 0 && (
+                              <button className="edit-btn" onClick={() => {
+                                setShowSettingsId(ind.id);
+                                setShowIndModal(false);
+                                Audio.click();
+                              }}>Settings</button>
+                            )}
                             <button className="edit-btn" onClick={() => {
                               setEditingId(ind.id);
                               setScriptName(ind.name);
@@ -1032,6 +1272,90 @@ export function Chart() {
             </div>
           </div>
         )}
+
+        {showSettingsId && (() => {
+          const ind = customIndicators.find(x => x.id === showSettingsId);
+          if (!ind || !ind.inputsSchema || ind.inputsSchema.length === 0) return null;
+          
+          return (
+            <div className="chart-modal-overlay" onClick={() => setShowSettingsId(null)}>
+              <div className="chart-modal zscript-modal settings-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+                <div className="chart-modal-header">
+                  <h3>{ind.name} Settings</h3>
+                  <button className="chart-modal-close" onClick={() => setShowSettingsId(null)}>×</button>
+                </div>
+                
+                <div className="chart-modal-body zscript-body" style={{ maxHeight: '60vh', overflowY: 'auto', padding: '15px 20px' }}>
+                  {ind.inputsSchema.map(inp => {
+                    const currentVal = (ind.inputs && ind.inputs[inp.name] !== undefined) ? ind.inputs[inp.name] : inp.default;
+                    
+                    const handleValueChange = (newVal: any) => {
+                      const updatedInputs = { ...ind.inputs, [inp.name]: newVal };
+                      const newList = customIndicators.map(x => x.id === ind.id ? { ...x, inputs: updatedInputs } : x);
+                      saveCustomIndicators(newList);
+                    };
+                    
+                    return (
+                      <div key={inp.name} className="zscript-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                        <label className="zscript-label" style={{ color: '#c8d0e0', fontSize: '13px', margin: 0, flex: 1 }}>{inp.label || inp.name}</label>
+                        <div className="zscript-input-container" style={{ marginLeft: '10px' }}>
+                          {(inp.type === 'bool' || inp.type === 'boolean') ? (
+                            <input 
+                              type="checkbox" 
+                              checked={currentVal} 
+                              onChange={e => handleValueChange(e.target.checked)}
+                              style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#f5a623' }}
+                            />
+                          ) : (inp.type === 'color') ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <input 
+                                type="color" 
+                                value={currentVal} 
+                                onChange={e => handleValueChange(e.target.value)}
+                                style={{ width: '32px', height: '32px', border: 'none', background: 'none', cursor: 'pointer' }}
+                              />
+                              <span style={{ fontSize: '11px', color: '#8c9ba5', fontFamily: 'monospace' }}>{currentVal}</span>
+                            </div>
+                          ) : (inp.type === 'int' || inp.type === 'integer') ? (
+                            <input 
+                              type="number" 
+                              step="1"
+                              value={currentVal} 
+                              onChange={e => handleValueChange(parseInt(e.target.value) || 0)}
+                              className="zscript-input"
+                              style={{ width: '90px', padding: '4px 8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', color: '#fff', textAlign: 'right' }}
+                            />
+                          ) : (inp.type === 'float' || inp.type === 'number') ? (
+                            <input 
+                              type="number" 
+                              step="any"
+                              value={currentVal} 
+                              onChange={e => handleValueChange(parseFloat(e.target.value) || 0)}
+                              className="zscript-input"
+                              style={{ width: '90px', padding: '4px 8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', color: '#fff', textAlign: 'right' }}
+                            />
+                          ) : (
+                            <input 
+                              type="text" 
+                              value={currentVal} 
+                              onChange={e => handleValueChange(e.target.value)}
+                              className="zscript-input"
+                              style={{ width: '120px', padding: '4px 8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', color: '#fff' }}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                <div className="chart-modal-footer">
+                  <button className="zscript-btn save-btn" onClick={() => setShowSettingsId(null)}>Close</button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
         {(() => {
           let cursorStyle = 'crosshair';
           const isHoveringY = mousePos ? mousePos.x > (canvasRef.current?.getBoundingClientRect().width ?? 0) - 64 : false;

@@ -239,10 +239,43 @@
 
     <h3>2. Return Requirements</h3>
     <ul>
-      <li>Your script must return an array (e.g. using <code>map()</code> or <code>reduce()</code>) containing <code>number</code>, <code>null</code>, or <code>NaN</code>.</li>
-      <li>The output array <strong>MUST</strong> have the same length as the <code>candles</code> input array.</li>
-      <li>If a value cannot be calculated for early periods (like a 20-period moving average), return <code>null</code> or <code>NaN</code> for those indices.</li>
+      <li><strong>Standard Mode (Single Line):</strong> Return an array of numbers (e.g. using <code>map()</code>) of the exact same length as <code>candles</code>.</li>
+      <li><strong>Advanced Mode (Multiple Plots):</strong> Return an object with a <code>plots</code> array property. This lets you draw multiple lines with distinct styles, widths, and colors.</li>
     </ul>
+
+    <h3>3. Multiple Plots & Styles</h3>
+    <p>To render multiple lines or customize line styles, return an object matching the following structure:</p>
+    <pre><code><span class="key-keyword">return</span> {
+  <span class="key-prop">plots</span>: [
+    {
+      <span class="key-prop">name</span>: <span class="key-keyword">"Base line"</span>,
+      <span class="key-prop">values</span>: trailValues,
+      <span class="key-prop">color</span>: <span class="key-keyword">"#00ff00"</span>, <span class="key-comment">// Or Array of strings for dynamic per-candle colors</span>
+      <span class="key-prop">width</span>: <span class="key-keyword">2</span>,         <span class="key-comment">// Thickness in pixels (default 1.5)</span>
+      <span class="key-prop">style</span>: <span class="key-keyword">"solid"</span>    <span class="key-comment">// "solid" | "dashed" | "dotted"</span>
+    },
+    {
+      <span class="key-prop">name</span>: <span class="key-keyword">"Upper band"</span>,
+      <span class="key-prop">values</span>: upperBand,
+      <span class="key-prop">color</span>: <span class="key-keyword">"#ff3366"</span>,
+      <span class="key-prop">style</span>: <span class="key-keyword">"dashed"</span>
+    }
+  ]
+};</code></pre>
+
+    <h3>4. Custom settings & Inputs</h3>
+    <p>
+      You can define customization options that users can modify in a settings popup without editing the ZScript code.
+      Declare these inputs as special comments at the top of your ZScript:
+    </p>
+    <pre><code><span class="key-comment">// @input bool useInternal = true "Use In-Built Smart Trail?"</span>
+<span class="key-comment">// @input int itPeriod = 20 "Trend Sensitivity"</span>
+<span class="key-comment">// @input float itMult = 3.0 "Trend Multiplier"</span>
+<span class="key-comment">// @input color trailColor = "#00f0ff" "Trail Color"</span></code></pre>
+    <p>
+      The compiler parses these lines and automatically injects them into your script's execution context. 
+      You can reference these variables directly by name (e.g. <code>itPeriod</code>, <code>itMult</code>) anywhere in your script.
+    </p>
 
     <div class="alert-box">
       <h4>⚠️ Important: Price Overlay Rule</h4>
