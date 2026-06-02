@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGame } from '../store/gameStore';
-import { roundShares, fmt, fmtNum } from '../../../shared/engine/helpers';
+import { roundShares, fmt, fmtNum, fmtPct } from '../../../shared/engine/helpers';
 import { send } from '../net/wsClient';
 import { TRADE_FEE_RATE } from '../../../shared/engine/matching';
+import { Audio } from '../audio/audio';
 
 type Mode = 'buy' | 'short';
 
@@ -75,6 +76,28 @@ export function TradePanel() {
   const [limitPx, setLimitPx] = useState('');
   const slRef = useRef<HTMLInputElement>(null);
   const tpRef = useRef<HTMLInputElement>(null);
+
+  // Mobile drawer states
+  const [orderSheetMode, setOrderSheetMode] = useState<'buy' | 'short' | null>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 820);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 820);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Close sheet on asset change
+  useEffect(() => {
+    setOrderSheetMode(null);
+  }, [aid]);
+
+  // Reset qty to 1 when sheet opens
+  useEffect(() => {
+    if (orderSheetMode) {
+      setQty(1);
+    }
+  }, [orderSheetMode]);
 
   // FIX v7.3: re-sync limit to current asset's price on asset switch too.
   // Previously stale $180 from NEXA would carry over to e.g. an $80 stock,
@@ -154,6 +177,181 @@ export function TradePanel() {
            : `Need $${Math.max(0, ast.lastPrice * 0.5 - eng.player().cash).toFixed(0)} more for margin`)
         : 'Nothing to sell')
     : null;
+
+  // v9.7 mobile layout switch
+  if (isMobile) {
+    const activeMax = orderSheetMode === 'buy' ? buyMax : shortMax;
+    const activeReason = orderSheetMode === 'buy' ? buyReason : sellReason;
+    const activeCost = orderSheetMode === 'buy' 
+      ? (isLimit ? lpx * qty : modeCost(eng, aid, 'buy', qty))
+      : (isLimit ? lpx * qty : modeCost(eng, aid, 'short', qty));
+
+    const handleSetQty = (value: number) => {
+      const clamped = Math.max(1, Math.min(value, activeMax || 1));
+      setQty(clamped);
+    };
+
+    const confirmBtnText = activeMax <= 0 && activeReason
+      ? activeReason
+      : `Confirm ${orderSheetMode === 'buy' ? (isShort ? 'Cover' : 'Buy') : (isLong ? 'Sell' : 'Short')}`;
+
+    return (
+      <div className="mobile-trade-panel">
+        {/* Compact Sticky Bottom Bar */}
+        <div className="mobile-bottom-bar">
+          {/* Position summary card (if not flat) */}
+          {!isFlat && (
+            <div className="mobile-pos-card" onClick={(e) => {
+              if ((e.target as HTMLElement).tagName !== 'BUTTON') {
+                useGame.getState().setMobileView('panel');
+                Audio.click();
+              }
+            }}>
+              <div className="pos-info">
+                <span className={`pos-tag ${posClass}`}>{hold.shares > 0 ? 'LONG' : 'SHORT'}</span>
+                <span className="pos-shares"><b>{fmtNum(Math.abs(hold.shares))}</b> sh</span>
+                <span className="pos-avg">avg {fmt(hold.avgCost, hold.avgCost < 10 ? 3 : 2)}</span>
+              </div>
+              <div className="pos-pl-section">
+                <span className={`pos-pl-val ${plLong >= 0 ? 'up' : 'dn'}`}>
+                  {plLong >= 0 ? '+' : ''}{fmt(plLong)} ({fmtPct(hold.avgCost > 0 ? (plLong / (hold.avgCost * Math.abs(hold.shares))) * 100 : 0)})
+                </span>
+              </div>
+              <button 
+                className="pos-quick-close-btn" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  send({ type: 'close', payload: { aid } });
+                  Audio.click();
+                }}
+              >
+                CLOSE
+              </button>
+            </div>
+          )}
+
+          {/* Quick Action buttons */}
+          <div className="mobile-action-buttons">
+            <button className="mobile-action-btn buy" onClick={() => { setOrderSheetMode('buy'); Audio.click(); }}>
+              <span className="btn-title">{isShort ? 'COVER' : 'BUY'}</span>
+              <span className="btn-sub">{buyReason || `Max ${fmtNum(buyMax)}sh`}</span>
+            </button>
+            <button className="mobile-action-btn sell" onClick={() => { setOrderSheetMode('short'); Audio.click(); }}>
+              <span className="btn-title">{isLong ? 'SELL' : 'SHORT'}</span>
+              <span className="btn-sub">{sellReason || `Max ${fmtNum(shortMax)}sh`}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Drawer overlay / bottom-sheet */}
+        {orderSheetMode && (
+          <div className="mobile-order-drawer-backdrop" onClick={() => setOrderSheetMode(null)}>
+            <div className="mobile-order-drawer" onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="mod-header">
+                <div className="mod-title">
+                  <span className={`mod-side-tag ${orderSheetMode}`}>{orderSheetMode === 'buy' ? (isShort ? 'COVER' : 'BUY') : (isLong ? 'SELL' : 'SHORT')}</span>
+                  <span className="mod-asset-id">{aid}</span>
+                </div>
+                <div className="mod-cash">
+                  Cash: <b>{fmt(eng.player().cash)}</b>
+                </div>
+                <button className="mod-close" onClick={() => setOrderSheetMode(null)}>×</button>
+              </div>
+
+              {/* Form fields */}
+              <div className="mod-body">
+                {/* Order Type Selector */}
+                <div className="mod-row">
+                  <label className="mod-label">Order Type</label>
+                  <div className="tb-ordertype">
+                    <button className={!isLimit ? 'on' : ''} onClick={() => { setOrderType('market'); Audio.click(); }}>MKT</button>
+                    <button className={isLimit ? 'on' : ''} onClick={() => { setOrderType('limit'); Audio.click(); }}>LMT</button>
+                  </div>
+                </div>
+
+                {/* Limit Price (if LMT) */}
+                {isLimit && (
+                  <div className="mod-row">
+                    <label className="mod-label">Limit Price ($)</label>
+                    <input 
+                      type="number" 
+                      value={limitPx} 
+                      step="0.01" 
+                      className="mod-input-field"
+                      onChange={e => setLimitPx(e.target.value)} 
+                    />
+                  </div>
+                )}
+
+                {/* Quantity and presets */}
+                <div className="mod-row qty-row">
+                  <div className="qty-label-container">
+                    <label className="mod-label">Quantity</label>
+                    <span className="max-qty-label">Max: {fmtNum(activeMax)}sh</span>
+                  </div>
+                  <div className="qty-input-container">
+                    <button type="button" className="qty-adj-btn" onClick={() => { handleSetQty(qty - 1); Audio.click(); }}>-</button>
+                    <input 
+                      type="number" 
+                      value={qty} 
+                      min={1} 
+                      className="mod-input-field qty-input"
+                      onChange={e => handleSetQty(+e.target.value || 0)} 
+                    />
+                    <button type="button" className="qty-adj-btn" onClick={() => { handleSetQty(qty + 1); Audio.click(); }}>+</button>
+                  </div>
+                  <div className="mod-presets">
+                    <button type="button" className="preset-btn" onClick={() => { handleSetQty(Math.max(1, Math.floor(Math.max(1, activeMax) * 0.1))); Audio.click(); }}>10%</button>
+                    <button type="button" className="preset-btn" onClick={() => { handleSetQty(Math.max(1, Math.floor(Math.max(1, activeMax) * 0.25))); Audio.click(); }}>25%</button>
+                    <button type="button" className="preset-btn" onClick={() => { handleSetQty(Math.max(1, Math.floor(Math.max(1, activeMax) * 0.5))); Audio.click(); }}>50%</button>
+                    <button type="button" className="preset-btn" onClick={() => { handleSetQty(Math.max(1, Math.floor(activeMax))); Audio.click(); }}>MAX</button>
+                  </div>
+                </div>
+
+                {/* SL / TP targets */}
+                <div className="mod-row sltp-row">
+                  <div className="sltp-col">
+                    <label className="mod-label">Stop Loss (SL %)</label>
+                    <input type="number" ref={slRef} step="0.01" min="0" placeholder="None" className="mod-input-field compact" />
+                  </div>
+                  <div className="sltp-col">
+                    <label className="mod-label">Take Profit (TP %)</label>
+                    <input type="number" ref={tpRef} step="0.01" min="0" placeholder="None" className="mod-input-field compact" />
+                  </div>
+                </div>
+
+                {/* Cost Summary */}
+                <div className="mod-summary">
+                  <div className="summary-item">
+                    <span>Est. {orderSheetMode === 'buy' ? 'Cost' : 'Proceeds'}</span>
+                    <b className="val">{fmt(activeCost < 0 ? 0 : activeCost)}</b>
+                  </div>
+                  <div className="summary-item">
+                    <span>Fee (0.1%)</span>
+                    <b className="val">{fmt((activeCost < 0 ? 0 : activeCost) * TRADE_FEE_RATE)}</b>
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <button 
+                  className={`mod-submit-btn ${orderSheetMode}`}
+                  disabled={activeMax <= 0 || qty <= 0 || qty > activeMax || activeCost < 0}
+                  onClick={() => {
+                    submit(orderSheetMode, false);
+                    setOrderSheetMode(null);
+                  }}
+                  title={activeReason || ''}
+                >
+                  {confirmBtnText}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // v8.2: HORIZONTAL trade bar docked under the chart (TradingView-style).
   return (

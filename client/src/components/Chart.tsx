@@ -99,8 +99,20 @@ export function Chart() {
     return () => window.removeEventListener('resize', resize);
   }, []);
 
-  // Mouse handlers for crosshair + zoom/pan
-  const onMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+  // Manual non-passive wheel handler to prevent console warnings & default browser scroll/zoom behavior
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      setZoomLevel(z => Math.max(0.3, Math.min(4, z + (e.deltaY > 0 ? 0.15 : -0.15))));
+    };
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  // Pointer handlers for crosshair + zoom/pan (works for touch & mouse)
+  const onPointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current; if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -121,14 +133,17 @@ export function Chart() {
     }
   }, [zoomLevel]);
 
-  const onMouseLeave = useCallback(() => {
+  const onPointerLeave = useCallback(() => {
     setMousePos(null);
     isDragging.current = false;
     isDraggingY.current = false;
   }, []);
 
-  const onMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+  const onPointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current; if (!canvas) return;
+    try {
+      canvas.setPointerCapture(e.pointerId);
+    } catch (err) {}
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const w = rect.width;
@@ -143,14 +158,13 @@ export function Chart() {
     }
   }, [panOffset, yScale]);
 
-  const onMouseUp = useCallback(() => {
+  const onPointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current; if (!canvas) return;
+    try {
+      canvas.releasePointerCapture(e.pointerId);
+    } catch (err) {}
     isDragging.current = false;
     isDraggingY.current = false;
-  }, []);
-
-  const onWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    setZoomLevel(z => Math.max(0.3, Math.min(4, z + (e.deltaY > 0 ? 0.15 : -0.15))));
   }, []);
 
   const onDoubleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -699,14 +713,13 @@ export function Chart() {
               <canvas
                 id="chart"
                 ref={canvasRef}
-                onMouseMove={onMouseMove}
-                onMouseLeave={onMouseLeave}
-                onMouseDown={onMouseDown}
-                onMouseUp={onMouseUp}
-                onWheel={onWheel}
+                onPointerMove={onPointerMove}
+                onPointerLeave={onPointerLeave}
+                onPointerDown={onPointerDown}
+                onPointerUp={onPointerUp}
                 onDoubleClick={onDoubleClick}
                 onContextMenu={onContextMenu}
-                style={{ cursor: cursorStyle }}
+                style={{ cursor: cursorStyle, touchAction: 'none' }}
               />
               {contextMenu && (
                 <div className="chart-ctx-menu" style={{ left: contextMenu.x, top: contextMenu.y }} onClick={(e) => e.stopPropagation()}>
