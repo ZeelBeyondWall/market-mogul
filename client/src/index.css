@@ -2262,6 +2262,11 @@ main > .col:nth-child(3) {
 @media (max-width:820px){
   /* App becomes a single scrollable column; one pane visible at a time */
   #app{grid-template-rows:auto auto auto 1fr;height:100dvh;height:100vh}
+  
+  /* Hide market pills bar completely on Trade and Portfolio views to save space */
+  #app[data-mv="trade"] .mbar { display: none !important; }
+  #app[data-mv="panel"] .mbar { display: none !important; }
+  
   main{grid-template-columns:1fr !important;gap:0;padding:0;padding-bottom:84px;height:100%;overflow:hidden}
   .col{border-radius:0;border-left:none;border-right:none;max-height:none !important;height:100%;overflow:hidden}
 
@@ -2282,28 +2287,129 @@ main > .col:nth-child(3) {
   .tb-btn{padding:13px 6px}
   .tb-field input{width:64px}
 
-  /* header compacts */
-  .hdr-v8{display:flex !important;flex-wrap:wrap !important;height:auto !important;padding:6px 10px !important;gap:6px !important}
-  .hdr-brand{order:1;display:flex;align-items:center;gap:6px}
-  .hdr-name{font-size:11px !important}
-  .hdr-sub{font-size:8px !important}
-  .hdr-status-badge{font-size:6px !important;padding:0px 3px !important}
-  .hdr-lvl{order:2;min-width:0;padding:3px 6px !important;font-size:10px !important}
-  .hdr-lvl-num{font-size:9px !important}
-  .hdr-lvl-xp{font-size:7px !important}
-  .hdr-lvl-bar{width:45px !important;height:4px !important}
-  .hdr-stats{order:3;width:100%;display:grid !important;grid-template-columns:repeat(4,1fr) !important;gap:4px !important;margin-top:2px}
-  .hs{flex:1;min-width:0 !important;padding:4px 2px !important;text-align:center}
-  .hs-l{font-size:7px !important;letter-spacing:0.1px !important}
-  .hs-v{font-size:10.5px !important}
-  .hs-sub{font-size:8px !important}
+  /* Dynamic Header HUD on Mobile */
+  
+  /* 1. Market and Trade tabs: super compact single-row header */
+  #app[data-mv="market"] .hdr-v8,
+  #app[data-mv="trade"] .hdr-v8 {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    height: 48px !important;
+    padding: 0 12px !important;
+  }
+  #app[data-mv="market"] .hdr-lvl,
+  #app[data-mv="trade"] .hdr-lvl {
+    display: none !important;
+  }
+  #app[data-mv="market"] .hdr-stats,
+  #app[data-mv="trade"] .hdr-stats {
+    display: flex !important;
+    width: auto !important;
+    margin: 0 !important;
+    gap: 0 !important;
+  }
+  #app[data-mv="market"] .hs-port, #app[data-mv="market"] .hs-net, #app[data-mv="market"] .hs-rank, #app[data-mv="market"] .hs-bonus,
+  #app[data-mv="trade"] .hs-port, #app[data-mv="trade"] .hs-net, #app[data-mv="trade"] .hs-rank, #app[data-mv="trade"] .hs-bonus {
+    display: none !important;
+  }
+  #app[data-mv="market"] .hs-cash,
+  #app[data-mv="trade"] .hs-cash {
+    display: block !important;
+    min-width: 110px !important;
+    padding: 4px 8px !important;
+  }
+  #app[data-mv="market"] .hdr-brand,
+  #app[data-mv="trade"] .hdr-brand {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  #app[data-mv="market"] .hdr-name,
+  #app[data-mv="trade"] .hdr-name {
+    font-size: 11px !important;
+  }
+  #app[data-mv="market"] .hdr-sub,
+  #app[data-mv="trade"] .hdr-sub {
+    font-size: 8px !important;
+  }
+  #app[data-mv="market"] .hdr-status-badge,
+  #app[data-mv="trade"] .hdr-status-badge {
+    font-size: 6px !important;
+    padding: 0px 3px !important;
+  }
 
-  /* market bar scrolls horizontally, actions stay */
+  /* 2. Portfolio tab: full dashboard readout with 2x2 stats grid */
+  #app[data-mv="panel"] .hdr-v8 {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    height: auto !important;
+    padding: 8px 12px !important;
+    gap: 8px !important;
+  }
+  #app[data-mv="panel"] .hdr-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #app[data-mv="panel"] .hdr-name {
+    font-size: 13px !important;
+  }
+  #app[data-mv="panel"] .hdr-sub {
+    font-size: 10px !important;
+  }
+  #app[data-mv="panel"] .hdr-status-badge {
+    font-size: 7px !important;
+    padding: 1px 4px !important;
+  }
+  #app[data-mv="panel"] .hdr-lvl {
+    display: flex !important;
+    margin-left: auto;
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+  }
+  #app[data-mv="panel"] .hdr-lvl-num {
+    font-size: 10px !important;
+  }
+  #app[data-mv="panel"] .hdr-lvl-xp {
+    font-size: 8px !important;
+  }
+  #app[data-mv="panel"] .hdr-lvl-bar {
+    width: 60px !important;
+    height: 5px !important;
+  }
+  #app[data-mv="panel"] .hdr-stats {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+    width: 100% !important;
+    margin-top: 4px !important;
+  }
+  #app[data-mv="panel"] .hs {
+    display: block !important;
+    padding: 6px 8px !important;
+    min-width: 0 !important;
+    text-align: left !important;
+  }
+  #app[data-mv="panel"] .hs-l {
+    font-size: 7px !important;
+    letter-spacing: 0.2px !important;
+  }
+  #app[data-mv="panel"] .hs-v {
+    font-size: 11px !important;
+  }
+  #app[data-mv="panel"] .hs-sub {
+    font-size: 8px !important;
+  }
+
+  /* market bar scrolls horizontally on market tab */
   .mbar{height:48px !important;padding:0 10px;gap:6px;overflow-x:auto;scrollbar-width:none}
   .mbar::-webkit-scrollbar{display:none}
   .mbar-pills{flex-shrink:0;display:flex;gap:6px}
   .mbar-pill{padding:6px 14px !important;font-size:11px !important;border-radius:6px;border:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)}
-  .mbar-pill.active{background:rgba(223,166,55,0.12) !important;color:var(--accent) !important;border-color:var(--accent) !important;box-shadow:0 0 10px rgba(223,166,55,0.15) !important}
+  .mbar-pill.active{background:rgba(223,166,55,0.12) !important;color:var(--accent) !important;border-color:var(--accent) !important;box-shadow:0 0 10px rgba(223, 166, 55, 0.15) !important}
   .mbar-actions{display:none !important}
   .notif-wrap{flex-shrink:0}
 
