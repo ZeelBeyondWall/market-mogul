@@ -28,7 +28,10 @@ export function Header() {
         <svg className="hdr-logo"><use href="#logoMini"/></svg>
         <div>
           <div className="hdr-name">MARKETVERSEX</div>
-          <div className="hdr-sub">{p.name || 'Zeel'}</div>
+          <div className="hdr-sub-row">
+            <span className="hdr-sub">{p.name || 'Zeel'}</span>
+            <span className="hdr-status-badge">PILOT // ONLINE</span>
+          </div>
         </div>
       </div>
 
@@ -41,21 +44,21 @@ export function Header() {
       </div>
 
       <div className="hdr-stats">
-        <HStat label="💰 CASH" tone="cash">
+        <HStat label="⚡ SYS.CASH_BAL" tone="cash">
           <AnimatedNumber value={cash} format={n => fmt(n)} className="hs-v" />
         </HStat>
-        <HStat label="📦 HOLDINGS" tone="port">
+        <HStat label="🛡️ SYS.HOLD_VAL" tone="port">
           <AnimatedNumber value={port} format={n => fmt(n)} className="hs-v" />
         </HStat>
-        <HStat label="🏆 NET" tone="net">
+        <HStat label="💎 SYS.NET_WORTH" tone="net">
           <AnimatedNumber value={net} format={n => fmt(n)} className="hs-v" />
         </HStat>
         {bonus > 0 && (
-          <HStat label="🎁 BONUS" tone="bonus">
+          <HStat label="🎁 SYS.BONUS_CRD" tone="bonus">
             <AnimatedNumber value={bonus} format={n => fmt(n)} className="hs-v" />
           </HStat>
         )}
-        <HStat label="🥇 RANK" tone="rank">
+        <HStat label="🏆 SYS.GLOBAL_RANK" tone="rank">
           <span className="hs-v">{`#${rank}`}</span>
           <span className="hs-sub">/ {total || '—'}</span>
         </HStat>

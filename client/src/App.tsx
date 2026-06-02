@@ -48,7 +48,9 @@ export function App() {
                 <TradePanel />
               </div>
             </div>
-            <div className="col col-panel"><Tabs /></div>
+            <div className="col col-panel">
+              <Tabs />
+            </div>
           </main>
           <Ticker />
           <BottomNav />

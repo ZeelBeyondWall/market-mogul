@@ -169,9 +169,17 @@ export function TradePanel() {
             <input type="number" value={limitPx} step="0.01" onChange={e => setLimitPx(e.target.value)} />
           </div>
         )}
-        <div className="tb-field">
+        <div className="tb-field qty-field">
           <label>QTY</label>
-          <input type="number" value={qty} min={1} step={1} onChange={e => setQty(+e.target.value || 0)} />
+          <div className="tb-qty-input-wrap">
+            <input type="number" value={qty} min={1} step={1} onChange={e => setQty(+e.target.value || 0)} />
+            <div className="tb-qty-presets">
+              <button type="button" className="preset-btn" onClick={() => setQty(Math.max(1, Math.floor(Math.max(1, buyMax) * 0.1)))}>10%</button>
+              <button type="button" className="preset-btn" onClick={() => setQty(Math.max(1, Math.floor(Math.max(1, buyMax) * 0.25)))}>25%</button>
+              <button type="button" className="preset-btn" onClick={() => setQty(Math.max(1, Math.floor(Math.max(1, buyMax) * 0.5)))}>50%</button>
+              <button type="button" className="preset-btn" onClick={() => setQty(Math.max(1, Math.floor(buyMax)))}>MAX</button>
+            </div>
+          </div>
         </div>
         <div className="tb-field sl">
           <label>SL %</label>

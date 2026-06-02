@@ -42,14 +42,13 @@ export function Chart() {
     const cctx = canvas.getContext('2d'); if (!cctx) return;
     const w = canvas.width / devicePixelRatio;
     const h = canvas.height / devicePixelRatio;
-    if (w < 10 || h < 10) return;
     cctx.clearRect(0, 0, w, h);
     const bg = cctx.createLinearGradient(0, 0, 0, h);
-    bg.addColorStop(0, '#0a0f1d'); bg.addColorStop(1, '#020306');
+    bg.addColorStop(0, '#030816'); bg.addColorStop(1, '#020308');
     cctx.fillStyle = bg; cctx.fillRect(0, 0, w, h);
     const volH = chartVol ? Math.min(50, h * 0.15) : 0;
     const cyh = h - volH;
-    cctx.strokeStyle = 'rgba(255, 255, 255, 0.025)'; cctx.lineWidth = 1; cctx.beginPath();
+    cctx.strokeStyle = 'rgba(0, 240, 255, 0.035)'; cctx.lineWidth = 1; cctx.beginPath();
     for (let i = 1; i < 5; i++) { const y = Math.floor(cyh * i / 5) + 0.5; cctx.moveTo(0, y); cctx.lineTo(w, y); }
     for (let i = 1; i < 8; i++) { const x = Math.floor(w * i / 8) + 0.5; cctx.moveTo(x, 0); cctx.lineTo(x, cyh); }
     cctx.stroke();
@@ -109,13 +108,13 @@ export function Chart() {
         const y = padT + ch - (p - pMin) / range * ch;
         if (i === 0) cctx.moveTo(x, y); else cctx.lineTo(x, y);
       });
-      cctx.strokeStyle = up ? '#10b981' : '#f43f5e';
+      cctx.strokeStyle = up ? '#2fa874' : '#dd4f60';
       cctx.lineWidth = 1.5;
       cctx.stroke();
       cctx.lineTo(padL + cw, padT + ch); cctx.lineTo(padL, padT + ch); cctx.closePath();
       const fg = cctx.createLinearGradient(0, padT, 0, padT + ch);
-      if (up) { fg.addColorStop(0, 'rgba(16, 185, 129, 0.08)'); fg.addColorStop(1, 'rgba(16, 185, 129, 0)'); }
-      else { fg.addColorStop(0, 'rgba(244, 63, 94, 0.08)'); fg.addColorStop(1, 'rgba(244, 63, 94, 0)'); }
+      if (up) { fg.addColorStop(0, 'rgba(47, 168, 116, 0.08)'); fg.addColorStop(1, 'rgba(47, 168, 116, 0)'); }
+      else { fg.addColorStop(0, 'rgba(221, 79, 96, 0.08)'); fg.addColorStop(1, 'rgba(221, 79, 96, 0)'); }
       cctx.fillStyle = fg; cctx.fill();
     }
 
@@ -131,11 +130,11 @@ export function Chart() {
         const yH = padT + ch - (c.h - pMin) / range * ch;
         const yL = padT + ch - (c.l - pMin) / range * ch;
         const green = c.c >= c.o;
-        cctx.strokeStyle = green ? '#10b981' : '#f43f5e';
-        cctx.fillStyle = green ? 'rgba(16, 185, 129, 0.75)' : 'rgba(244, 63, 94, 0.75)';
+        cctx.strokeStyle = green ? '#2fa874' : '#dd4f60';
+        cctx.fillStyle = green ? 'rgba(47, 168, 116, 0.75)' : 'rgba(221, 79, 96, 0.75)';
         cctx.lineWidth = 1;
-        cctx.shadowColor = green ? '#10b981' : '#f43f5e';
-        cctx.shadowBlur = 3;
+        cctx.shadowColor = green ? '#2fa874' : '#dd4f60';
+        cctx.shadowBlur = 2;
         cctx.beginPath(); cctx.moveTo(x, yH); cctx.lineTo(x, yL); cctx.stroke();
         cctx.shadowBlur = 0;
         const top = Math.min(yO, yC); const bot = Math.max(yO, yC);
@@ -146,18 +145,18 @@ export function Chart() {
 
     cctx.restore();
 
-    cctx.fillStyle = '#94a3b8'; cctx.font = '10px "JetBrains Mono", monospace'; cctx.textAlign = 'left';
+    cctx.fillStyle = '#718096'; cctx.font = '10px "JetBrains Mono", monospace'; cctx.textAlign = 'left';
     for (let i = 0; i <= 5; i++) {
       const v = pMin + range * (1 - i / 5);
       const y = padT + ch * i / 5;
       cctx.fillText(fmt(v, v < 10 ? 3 : 2), w - padR + 6, y + 4);
     }
     const yNow = padT + ch - (ast.lastPrice - pMin) / range * ch;
-    cctx.strokeStyle = up ? '#10b981' : '#f43f5e';
+    cctx.strokeStyle = up ? '#2fa874' : '#dd4f60';
     cctx.setLineDash([4, 4]); cctx.lineWidth = 1;
     cctx.beginPath(); cctx.moveTo(0, yNow); cctx.lineTo(w - padR, yNow); cctx.stroke();
     cctx.setLineDash([]);
-    cctx.fillStyle = up ? '#10b981' : '#f43f5e';
+    cctx.fillStyle = up ? '#2fa874' : '#dd4f60';
     cctx.fillRect(w - padR + 2, yNow - 9, padR - 6, 18);
     cctx.fillStyle = '#000'; cctx.font = 'bold 11px "JetBrains Mono", monospace';
     cctx.fillText(fmt(ast.lastPrice, ast.lastPrice < 10 ? 3 : 2), w - padR + 6, yNow + 4);
@@ -178,7 +177,7 @@ export function Chart() {
         cctx.fillStyle = '#000'; cctx.font = 'bold 9px "JetBrains Mono", monospace'; cctx.textAlign = 'center';
         cctx.fillText(label, padL + lw / 2, y + 3); cctx.textAlign = 'left';
       };
-      draw(playerHold.avgCost, '#fbbf24', playerHold.shares > 0 ? 'LONG' : 'SHORT');
+      draw(playerHold.avgCost, '#dfa637', playerHold.shares > 0 ? 'LONG' : 'SHORT');
       // Convert % triggers to absolute prices for line drawing
       const isLong = playerHold.shares > 0;
       const slAbs = playerHold.slPct && playerHold.slPct > 0
@@ -187,19 +186,19 @@ export function Chart() {
       const tpAbs = playerHold.tpPct && playerHold.tpPct > 0
         ? (isLong ? playerHold.avgCost * (1 + playerHold.tpPct / 100) : playerHold.avgCost * (1 - playerHold.tpPct / 100))
         : (playerHold.tp || 0);
-      draw(slAbs, '#f43f5e', 'SL');
-      draw(tpAbs, '#10b981', 'TP');
+      draw(slAbs, '#dd4f60', 'SL');
+      draw(tpAbs, '#2fa874', 'TP');
     }
 
     const bb = bestBid(ast.book), ba = bestAsk(ast.book);
     if (bb > 0 && bb >= pMin && bb <= pMax) {
       const yb = padT + ch - (bb - pMin) / range * ch;
-      cctx.strokeStyle = 'rgba(16, 185, 129, 0.2)'; cctx.lineWidth = 1;
+      cctx.strokeStyle = 'rgba(47, 168, 116, 0.15)'; cctx.lineWidth = 1;
       cctx.beginPath(); cctx.moveTo(padL, yb); cctx.lineTo(w - padR, yb); cctx.stroke();
     }
     if (isFinite(ba) && ba >= pMin && ba <= pMax) {
       const ya = padT + ch - (ba - pMin) / range * ch;
-      cctx.strokeStyle = 'rgba(244, 63, 94, 0.2)'; cctx.lineWidth = 1;
+      cctx.strokeStyle = 'rgba(221, 79, 96, 0.15)'; cctx.lineWidth = 1;
       cctx.beginPath(); cctx.moveTo(padL, ya); cctx.lineTo(w - padR, ya); cctx.stroke();
     }
 
@@ -210,7 +209,7 @@ export function Chart() {
       const maxV = Math.max(1, ...vols.slice(-120));
       const showN = Math.min(120, vols.length);
       const bw = cw / showN;
-      cctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
+      cctx.fillStyle = 'rgba(91, 155, 213, 0.2)';
       for (let i = 0; i < showN; i++) {
         const v = vols[vols.length - showN + i] || 0;
         const bh2 = (v / maxV) * vh;
