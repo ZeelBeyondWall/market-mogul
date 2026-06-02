@@ -97,6 +97,9 @@ const PORT = Number(process.env.PORT) || 8788;
 const engine = new Engine();
 const loaded = diskLoad(engine.state);
 if (loaded) {
+  engine.houseId = (typeof engine.state.houseId === 'number' && engine.state.houseId >= 0)
+    ? engine.state.houseId
+    : engine.state.traders.findIndex(t => t.isHouse);
   engine.seedBooks();
   console.log('💾 state loaded');
 } else {

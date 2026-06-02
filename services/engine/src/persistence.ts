@@ -3,6 +3,7 @@ import fsp from 'fs/promises';
 import path from 'path';
 import { ASSETS } from '../../../shared/engine/constants';
 import { makeBook } from '../../../shared/engine/orderbook';
+import { makeTrader } from '../../../shared/engine/traders';
 import type { CandleSeries, GameState, Holding, TFKey, Trader } from '../../../shared/engine/types';
 import { TF_LIST } from '../../../shared/engine/types';
 
@@ -110,10 +111,11 @@ function loadFrom(target: GameState, file: string): boolean {
     if (d.v !== FORMAT_VERSION) console.log(`⚙ migrating v${d.v} → v${FORMAT_VERSION} save`);
     // Build valid-asset-id set once for stale pickedAssets filtering.
     const validAssetIds = new Set(ASSETS.map(a => a.id));
+    const newTraders: Trader[] = [];
     d.traders.forEach((td: Partial<Trader>, i: number) => {
-      if (!target.traders[i]) return;
-      const t = target.traders[i];
+      const t = td.isPlayer ? makeTrader(0, true) : makeTrader(i, false, td.strat);
       Object.assign(t, td);
+      t.id = i;
       // Drop pickedAssets entries that no longer exist (old asset universe).
       if (Array.isArray(t.pickedAssets)) {
         t.pickedAssets = t.pickedAssets.filter(id => validAssetIds.has(id));
@@ -121,10 +123,7 @@ function loadFrom(target: GameState, file: string): boolean {
       }
       t.cooldown = 0;
       t.openOrders = [];
-      // CRITICAL FIX: Object.assign(t, td) above replaced t.holdings with the
-      // SPARSE saved holdings (only non-zero). Rebuild a FULL holdings map so
-      // every current asset has an entry — otherwise trading a zero-held asset
-      // hits holdings[aid] === undefined and crashes executeTrade (.shares).
+      // CRITICAL FIX: Rebuild a FULL holdings map so every current asset has an entry
       const incoming = (td as any).holdings || {};
       const rebuilt: Record<string, Holding> = {};
       for (const a of ASSETS) {
@@ -138,7 +137,21 @@ function loadFrom(target: GameState, file: string): boolean {
         t.indicators = {};
         ASSETS.forEach(a => { t.indicators[a.id] = { emaFast: null, emaSlow: null }; });
       }
+      newTraders.push(t);
     });
+
+    // Recreate the House trader at the end of newTraders
+    const houseIndex = newTraders.length;
+    const house = makeTrader(houseIndex, false);
+    house.isHouse = true;
+    house.name = 'House Liquidity';
+    house.cash = 0;
+    house.activity = 0;
+    house.pickedAssets = [];
+    newTraders.push(house);
+
+    target.traders = newTraders;
+    target.houseId = houseIndex;
     ASSETS.forEach(a => {
       const sa = d.assets?.[a.id];
       if (sa) {

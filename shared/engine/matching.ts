@@ -36,6 +36,11 @@ export function executeTrade(
   const buyer = S.traders[buyerId];
   const seller = S.traders[sellerId];
 
+  if (!buyer || !seller) {
+    console.error(`Trade execution failed: buyer/seller undefined. buyerId=${buyerId}, sellerId=${sellerId}`);
+    return 0;
+  }
+
   // DEFENSIVE: ensure both sides have a holdings entry for this asset. A missing
   // entry (e.g. from a sparse save load) would crash the whole tick loop.
   if (!seller.holdings[assetId]) seller.holdings[assetId] = { shares: 0, avgCost: 0 };
@@ -201,6 +206,10 @@ export function placeOrder(
   cb?: OrderCallbacks,
 ): { filled: number; cost: number } {
   const t = S.traders[traderId];
+  if (!t) {
+    console.error(`placeOrder failed: trader undefined. traderId=${traderId}`);
+    return { filled: 0, cost: 0 };
+  }
   const ast = S.assets[assetId];
   const book = ast.book;
   qty = roundShares(qty);
