@@ -5598,623 +5598,429 @@ body[data-theme="game"] {
     flex-direction: column;
   }
 
-  /* 1. Mobile Hero section welcome banner + Live event combined */
-  .mmo-mobile-hero {
-    background-size: cover;
-    background-position: center;
-    border-radius: 16px;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    border: 1px solid rgba(124, 92, 255, 0.15);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
-    position: relative;
-    overflow: hidden;
+  /* Greeting */
+  .mobile-welcome-row {
+    margin: 4px 0 2px 0;
+    padding-left: 2px;
   }
 
-  .mobile-hero-welcome-area {
-    position: relative;
-    z-index: 2;
-  }
-
-  .mob-welcome-title {
+  .mob-greet-text {
     font-family: 'Inter', sans-serif;
-    font-weight: 900;
-    font-size: 19px;
-    color: #FFFFFF;
-    margin: 0;
+    font-weight: 800;
+    font-size: 11px;
     letter-spacing: 0.5px;
+    color: #A8B3CF;
   }
 
-  .mob-welcome-title .gold-text {
+  .mob-greet-text .gold-text {
     color: #FBBF24;
   }
 
-  .mob-welcome-sub {
-    font-family: 'Inter', sans-serif;
-    font-weight: 700;
-    font-size: 10px;
-    color: #A8B3CF;
-    margin-top: 4px;
-    margin-bottom: 0;
+  /* Progress Card */
+  .mmo-mobile-progress-card {
+    background: linear-gradient(135deg, #141B2D 0%, #1A2338 100%);
+    border: 1px solid rgba(124, 92, 255, 0.1);
   }
 
-  .mobile-hero-event-overlay {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.07) 0%, rgba(20, 27, 44, 0.96) 100%);
-    border: 1px solid rgba(239, 68, 68, 0.25);
-    border-radius: 10px;
-    padding: 10px 12px;
-    position: relative;
-    z-index: 2;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-  }
-
-  .mob-event-head-row {
+  .prog-card-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-  }
-
-  .mob-event-tag {
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    font-size: 8.5px;
-    color: #EF4444;
-    letter-spacing: 0.5px;
-  }
-
-  .mob-event-time {
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    font-size: 9.5px;
-    color: #EF4444;
-  }
-
-  .mob-event-title {
-    font-family: 'Inter', sans-serif;
-    font-weight: 900;
-    font-size: 14.5px;
-    color: #FFFFFF;
-    margin: 4px 0 0 0;
-  }
-
-  .mob-event-desc {
-    font-family: 'Inter', sans-serif;
-    font-weight: 700;
-    font-size: 9.5px;
-    color: #A8B3CF;
-    margin: 4px 0 0 0;
-    line-height: 1.3;
-  }
-
-  .mob-event-cta {
-    background-color: rgba(239, 68, 68, 0.12);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    border-radius: 4px;
-    color: #EF4444;
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    font-size: 8.5px;
-    padding: 5px 12px;
-    cursor: pointer;
-    margin-top: 10px;
-    align-self: flex-start;
-    transition: all 0.2s ease;
-  }
-
-  .mob-event-cta:hover {
-    background-color: #EF4444;
-    color: #FFFFFF;
-  }
-
-  /* 2. Progression mobile card */
-  .prog-mobile-card {
-    flex-direction: row !important;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .prog-mobile-left-badge {
-    width: 44px;
-    height: 44px;
-    flex-shrink: 0;
-    filter: drop-shadow(0 2px 6px rgba(124, 92, 255, 0.2));
-  }
-
-  .shield-svg-mob {
     width: 100%;
-    height: 100%;
   }
 
-  .prog-mobile-center-text {
+  .prog-level-badge {
+    background-color: rgba(34, 197, 94, 0.08);
+    border: 1.5px solid rgba(34, 197, 94, 0.25);
+    border-radius: 8px;
+    padding: 6px 12px;
     display: flex;
     flex-direction: column;
-    flex: 1;
-    align-items: flex-start;
-  }
-
-  .prog-mob-lbl {
-    font-family: 'Inter', sans-serif;
-    font-weight: 700;
-    font-size: 8.5px;
-    color: #A8B3CF;
-    letter-spacing: 0.5px;
-  }
-
-  .prog-mob-rank {
-    font-family: 'Inter', sans-serif;
-    font-weight: 900;
-    font-size: 19px;
-    color: #22C55E;
-    margin-top: 1px;
-  }
-
-  .prog-mob-sub {
-    font-family: 'Inter', sans-serif;
-    font-weight: 700;
-    font-size: 8px;
-    color: #A8B3CF;
-    margin-top: 1px;
-  }
-
-  .prog-mobile-right-spark {
-    display: flex;
     align-items: center;
-  }
-
-  /* 3. Financial Summary lists */
-  .mmo-mobile-financial-summary {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .summary-mobile-card {
-    flex-direction: row !important;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .sm-circle {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    font-size: 15px;
-    flex-shrink: 0;
-  }
-
-  .green-theme-circle {
-    background-color: rgba(34, 197, 94, 0.12);
-    color: #22C55E;
-    border: 1px solid rgba(34, 197, 94, 0.25);
-  }
-
-  .blue-theme-circle {
-    background-color: rgba(124, 92, 255, 0.12);
-    color: #7C5CFF;
-    border: 1px solid rgba(124, 92, 255, 0.25);
-  }
-
-  .dark-green-circle {
-    background-color: rgba(34, 197, 94, 0.12);
-    color: #22C55E;
-    border: 1px solid rgba(34, 197, 94, 0.25);
-  }
-
-  .sm-details {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-  }
-
-  .sm-label {
-    font-family: 'Inter', sans-serif;
-    font-weight: 700;
-    font-size: 8px;
-    color: #A8B3CF;
-    letter-spacing: 0.5px;
-  }
-
-  .sm-value {
-    font-family: 'Inter', sans-serif;
-    font-weight: 900;
-    font-size: 16px;
-    color: #FFFFFF;
-    margin-top: 1px;
-  }
-
-  .sm-delta {
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    font-size: 8.5px;
-    margin-top: 1px;
-  }
-
-  .sm-sparkline {
-    display: flex;
-    align-items: center;
-  }
-
-  /* 4. Rewards chest + streak row */
-  .mmo-mobile-rewards-row {
-    display: flex;
-    gap: 10px;
-  }
-
-  .reward-mob-card, .streak-mob-card {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    min-height: 100px;
+    min-width: 60px;
     box-sizing: border-box;
   }
 
-  .reward-mob-top, .streak-mob-top {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  .prog-level-lbl {
+    font-size: 7.5px;
+    font-weight: 800;
+    color: #22C55E;
+    letter-spacing: 0.5px;
+    line-height: 1;
   }
 
-  .chest-badge-icon, .streak-flame-icon {
+  .prog-level-val {
     font-size: 18px;
-    filter: drop-shadow(0 2px 4px rgba(251, 191, 36, 0.2));
+    font-weight: 950;
+    color: #FFFFFF;
+    margin-top: 3px;
+    line-height: 1;
   }
 
-  .reward-text-wrap, .streak-text-wrap {
+  .prog-rank-badge {
+    text-align: right;
     display: flex;
     flex-direction: column;
   }
 
-  .reward-main-lbl, .streak-main-lbl {
-    font-family: 'Inter', sans-serif;
+  .prog-rank-lbl {
+    font-size: 8px;
     font-weight: 800;
-    font-size: 9px;
-    color: #FFFFFF;
-  }
-
-  .reward-sub-lbl, .streak-sub-lbl {
-    font-family: 'Inter', sans-serif;
-    font-weight: 700;
-    font-size: 7.5px;
     color: #A8B3CF;
-    margin-top: 1px;
-  }
-
-  .streak-caption {
-    font-family: 'Inter', sans-serif;
-    font-weight: 700;
-    font-size: 7.5px;
-    color: #A8B3CF;
-  }
-
-  .claim-now-btn-mob {
-    width: 100%;
-    background: linear-gradient(90deg, #FBBF24 0%, #F59E0B 100%);
-    border: none;
-    border-radius: 5px;
-    color: #0B1020;
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    font-size: 9.5px;
-    padding: 6px 0;
-    cursor: pointer;
     letter-spacing: 0.5px;
-    margin-top: 10px;
+    line-height: 1;
   }
 
-  .streak-progress-container-mob {
+  .prog-rank-val {
+    font-size: 20px;
+    font-weight: 950;
+    color: #FBBF24;
+    text-shadow: 0 0 10px rgba(251, 191, 36, 0.35);
+    margin-top: 3px;
+    line-height: 1;
+  }
+
+  .prog-rank-sub {
+    font-size: 8px;
+    font-weight: 700;
+    color: #A8B3CF;
+    margin-top: 3px;
+    line-height: 1;
+  }
+
+  .prog-xp-section {
+    margin-top: 14px;
+    width: 100%;
+  }
+
+  .prog-xp-text-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 8.5px;
+    font-weight: 850;
+    color: #A8B3CF;
+    margin-bottom: 5px;
+    letter-spacing: 0.3px;
+  }
+
+  .prog-xp-lbl {
+    color: #A8B3CF;
+  }
+
+  .prog-xp-range {
+    color: #FFFFFF;
+    font-weight: 800;
+  }
+
+  .prog-xp-bar-outer {
+    width: 100%;
+    height: 6px;
+    background-color: #0B1020;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .prog-xp-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, #7C5CFF 0%, #3B82F6 100%);
+    border-radius: 3px;
+    box-shadow: 0 0 8px rgba(124, 92, 255, 0.5);
+  }
+
+  /* Wealth Card */
+  .mmo-mobile-wealth-card {
+    background: linear-gradient(135deg, #141B2D 0%, #1A2338 100%);
+    border: 1.5px solid rgba(124, 92, 255, 0.2);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 15px rgba(124, 92, 255, 0.05);
+    padding: 16px;
+  }
+
+  .wealth-main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    padding-bottom: 14px;
+  }
+
+  .wealth-lbl {
+    font-size: 8.5px;
+    font-weight: 850;
+    color: #7C5CFF;
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+
+  .wealth-val {
+    font-size: 28px;
+    font-weight: 950;
+    color: #FFFFFF;
+    margin: 6px 0;
+    letter-spacing: -0.5px;
+    line-height: 1;
+  }
+
+  .wealth-delta-badge {
+    font-size: 9px;
+    font-weight: 850;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    line-height: 1;
+  }
+
+  .wealth-sub-grid {
+    display: flex;
+    justify-content: space-around;
+    padding-top: 14px;
+    width: 100%;
+  }
+
+  .wealth-sub-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+  }
+
+  .wealth-sub-item:first-child {
+    border-right: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  .w-sub-lbl {
+    font-size: 8px;
+    font-weight: 850;
+    color: #A8B3CF;
+    letter-spacing: 0.5px;
+    line-height: 1;
+  }
+
+  .w-sub-val {
+    font-size: 13px;
+    font-weight: 900;
+    color: #FFFFFF;
+    margin-top: 3px;
+    line-height: 1;
+  }
+
+  /* START TRADING CTA Button */
+  .mmo-mobile-cta-btn {
     position: relative;
     width: 100%;
-    height: 14px;
+    background: linear-gradient(180deg, #8B5CF6 0%, #7C5CFF 50%, #6D28D9 100%);
+    border: 2px solid #C084FC;
+    border-radius: 14px;
+    padding: 16px 0;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(124, 92, 255, 0.45), inset 0 2px 4px rgba(255, 255, 255, 0.35);
+    outline: none;
     display: flex;
     align-items: center;
-    margin-top: 10px;
+    justify-content: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    overflow: hidden;
+    margin: 4px 0;
   }
 
-  .streak-line-bg-mob {
-    position: absolute;
-    left: 4px;
-    right: 4px;
-    height: 2px;
-    background-color: #1C2438;
-    z-index: 1;
+  .mmo-mobile-cta-btn:active {
+    transform: scale(0.97);
+    box-shadow: 0 3px 10px rgba(124, 92, 255, 0.3);
   }
 
-  .streak-line-fill-mob {
-    position: absolute;
-    left: 4px;
-    height: 2px;
-    background-color: #FBBF24;
-    box-shadow: 0 0 6px #FBBF24;
+  .cta-btn-text {
+    font-family: 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: 19px;
+    color: #FFFFFF;
+    letter-spacing: 1.5px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
     z-index: 2;
   }
 
-  .streak-dots-wrap-mob {
+  .cta-btn-glow {
     position: absolute;
-    left: 0;
-    right: 0;
-    display: flex;
-    justify-content: space-between;
-    z-index: 3;
+    top: 0;
+    left: -50%;
+    width: 200%;
+    height: 100%;
+    background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0) 100%);
+    transform: skewX(-20deg);
+    animation: ctaShimmer 2.5s infinite linear;
+    z-index: 1;
   }
 
-  .streak-dot-node-mob {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: #1C2438;
-    border: 1px solid #141B2D;
-    transition: all 0.3s ease;
+  @keyframes ctaShimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
   }
 
-  .streak-dot-node-mob.active {
-    background-color: #FBBF24;
-    box-shadow: 0 0 6px #FBBF24;
-    border-color: #FBBF24;
+  /* Mission Reward Card */
+  .mmo-mobile-mission-reward-card {
+    background: linear-gradient(135deg, #141B2D 0%, #1A2338 100%);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    padding: 14px;
+    gap: 0;
   }
 
-  /* 5. Movers mobile card */
-  .movers-mob-card {
-    min-height: 200px;
-  }
-
-  .movers-mob-head {
+  .chest-claim-row-mob {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    width: 100%;
   }
 
-  .movers-mob-title {
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    font-size: 10px;
-    color: #A8B3CF;
-    letter-spacing: 0.5px;
-  }
-
-  .movers-mob-view-all {
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    font-size: 9px;
-    color: #7C5CFF;
-    cursor: pointer;
-  }
-
-  .movers-mob-tabs {
-    display: flex;
-    background-color: #0B1020;
-    padding: 2px;
-    border-radius: 6px;
-    gap: 2px;
-    margin-bottom: 10px;
-  }
-
-  .movers-tab-btn-mob {
-    flex: 1;
-    background: transparent;
-    border: none;
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    font-size: 7.5px;
-    color: #A8B3CF;
-    padding: 5px 0;
-    border-radius: 4px;
-    cursor: pointer;
-    text-align: center;
-  }
-
-  .movers-tab-btn-mob.active {
-    background-color: #7C5CFF;
-    color: #FFFFFF;
-  }
-
-  .movers-mob-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .mover-mob-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: rgba(255, 255, 255, 0.01);
-    border: 1px solid rgba(255, 255, 255, 0.02);
-    border-radius: 8px;
-    padding: 6px 10px;
-    cursor: pointer;
-  }
-
-  .mover-mob-icon-wrap {
-    width: 28px;
-    height: 28px;
+  .chest-info {
     display: flex;
     align-items: center;
-    justify-content: center;
-    background-color: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 6px;
-    flex-shrink: 0;
-  }
-
-  .mover-mob-asset-info {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    margin-left: 10px;
-  }
-
-  .mover-mob-sym {
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    font-size: 11px;
-    color: #FFFFFF;
-  }
-
-  .mover-mob-name {
-    font-family: 'Inter', sans-serif;
-    font-weight: 700;
-    font-size: 8px;
-    color: #A8B3CF;
-    margin-top: 1px;
-  }
-
-  .mover-mob-price-col {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-  }
-
-  .mover-mob-price {
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    font-size: 11px;
-    color: #FFFFFF;
-  }
-
-  .mover-mob-chg {
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    font-size: 8.5px;
-    margin-top: 1px;
-  }
-
-  /* 6. Daily Missions mobile card */
-  .missions-mob-card {
-    min-height: 200px;
-    margin-bottom: 8px;
-  }
-
-  .missions-mob-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-  }
-
-  .missions-mob-title {
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    font-size: 10px;
-    color: #A8B3CF;
-    letter-spacing: 0.5px;
-  }
-
-  .missions-mob-countdown {
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    font-size: 8.5px;
-    color: #FBBF24;
-  }
-
-  .missions-mob-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 10px;
-  }
-
-  .mission-mob-row {
-    display: flex;
-    align-items: center;
-    background-color: rgba(255, 255, 255, 0.01);
-    border: 1px solid rgba(255, 255, 255, 0.02);
-    border-radius: 8px;
-    padding: 6px 10px;
     gap: 10px;
   }
 
-  .mission-mob-num {
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    font-size: 10px;
-    color: #7C5CFF;
-    width: 18px;
-    height: 18px;
-    background-color: rgba(124, 92, 255, 0.1);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid rgba(124, 92, 255, 0.2);
-    flex-shrink: 0;
+  .chest-emoji {
+    font-size: 24px;
+    filter: drop-shadow(0 2px 8px rgba(124, 92, 255, 0.3));
+    line-height: 1;
   }
 
-  .mission-mob-details {
+  .chest-texts {
     display: flex;
     flex-direction: column;
-    flex: 1;
   }
 
-  .mission-mob-title-text {
-    font-family: 'Inter', sans-serif;
-    font-weight: 700;
-    font-size: 10px;
+  .chest-main-title {
+    font-size: 11px;
+    font-weight: 850;
     color: #FFFFFF;
+    letter-spacing: 0.3px;
+    line-height: 1;
   }
 
-  .mission-mob-prog-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 4px;
-  }
-
-  .m-prog-count-mob {
-    font-family: 'Inter', sans-serif;
+  .chest-sub-title {
+    font-size: 8px;
     font-weight: 700;
-    font-size: 7.5px;
-    color: #A8B3CF;
+    color: #FBBF24;
+    margin-top: 3px;
+    line-height: 1;
   }
 
-  .mission-mob-rewards {
+  .chest-claim-btn-mob {
+    background: linear-gradient(180deg, #FBBF24 0%, #F59E0B 100%);
+    border: 1px solid #FDE047;
+    color: #0B1020;
+    font-family: 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: 9.5px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2);
+    transition: transform 0.1s ease;
+    line-height: 1;
+  }
+
+  .chest-claim-btn-mob:active {
+    transform: scale(0.95);
+  }
+
+  .divider-line-mob {
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.04);
+    margin: 12px 0;
+    width: 100%;
+  }
+
+  .mob-featured-mission {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
-    gap: 1px;
-    flex-shrink: 0;
+    width: 100%;
   }
 
-  .mob-rew-xp {
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
+  .mission-title-row-mob {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .mission-tag-mob {
     font-size: 8px;
+    font-weight: 850;
+    color: #7C5CFF;
+    letter-spacing: 0.5px;
+    line-height: 1;
+  }
+
+  .mission-countdown-mob {
+    font-size: 8px;
+    font-weight: 800;
+    color: #A8B3CF;
+    line-height: 1;
+  }
+
+  .mission-name-mob {
+    font-size: 13px;
+    font-weight: 850;
+    color: #FFFFFF;
+    margin: 6px 0 8px 0;
+    line-height: 1.2;
+  }
+
+  .mission-prog-row-mob {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .m-bar-outer-mob {
+    flex: 1;
+    height: 6px;
+    background-color: #0B1020;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .m-bar-inner-mob {
+    height: 100%;
+    background-color: #22C55E;
+    box-shadow: 0 0 6px rgba(34, 197, 94, 0.3);
+    border-radius: 3px;
+  }
+
+  .m-prog-text-mob {
+    font-size: 8px;
+    font-weight: 700;
+    color: #A8B3CF;
+    min-width: 28px;
+    text-align: right;
+    line-height: 1;
+  }
+
+  .mission-rewards-row-mob {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .rew-tag-xp-mob {
+    font-size: 8px;
+    font-weight: 850;
     color: #7C5CFF;
     background-color: rgba(124, 92, 255, 0.08);
-    border-radius: 2px;
-    padding: 1px 3px;
+    border-radius: 4px;
+    padding: 3px 6px;
+    line-height: 1;
   }
 
-  .mob-rew-cash {
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
+  .rew-tag-cash-mob {
     font-size: 8px;
+    font-weight: 850;
     color: #FBBF24;
     background-color: rgba(251, 191, 36, 0.08);
-    border-radius: 2px;
-    padding: 1px 3px;
-  }
-
-  .view-all-missions-btn-mob {
-    background-color: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    border-radius: 6px;
-    color: #A8B3CF;
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    font-size: 9px;
-    padding: 8px 0;
-    width: 100%;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    border-radius: 4px;
+    padding: 3px 6px;
+    line-height: 1;
   }
 
   /* Fixed Bottom Nav customized styling for mobile devices */
