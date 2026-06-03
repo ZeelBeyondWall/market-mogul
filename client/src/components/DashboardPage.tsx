@@ -434,7 +434,7 @@ export function DashboardPage() {
                     </div>
                     <div className="mission-mob-rewards">
                       <span className="mob-rew-xp">XP {m.def.reward * 5}</span>
-                      <span className="mob-rew-cash">${m.def.reward * 10}</span>
+                      <span className="mob-rew-cash">🪙 {m.def.reward * 10}</span>
                     </div>
                   </div>
                 );
@@ -452,7 +452,7 @@ export function DashboardPage() {
                   </div>
                   <div className="mission-mob-rewards">
                     <span className="mob-rew-xp">XP 250</span>
-                    <span className="mob-rew-cash">$500</span>
+                    <span className="mob-rew-cash">🪙 500</span>
                   </div>
                 </div>
                 <div className="mission-mob-row">
@@ -466,7 +466,21 @@ export function DashboardPage() {
                   </div>
                   <div className="mission-mob-rewards">
                     <span className="mob-rew-xp">XP 200</span>
-                    <span className="mob-rew-cash">$300</span>
+                    <span className="mob-rew-cash">🪙 300</span>
+                  </div>
+                </div>
+                <div className="mission-mob-row">
+                  <span className="mission-mob-num">3</span>
+                  <div className="mission-mob-details">
+                    <span className="mission-mob-title-text">Earn $5,000 Profit</span>
+                    <div className="mission-mob-prog-row">
+                      <div className="m-bar-outer"><div className="m-bar-inner" style={{ width: '25%' }} /></div>
+                      <span className="m-prog-count-mob">$1,245 / $5,000</span>
+                    </div>
+                  </div>
+                  <div className="mission-mob-rewards">
+                    <span className="mob-rew-xp">XP 500</span>
+                    <span className="mob-rew-cash">🪙 750</span>
                   </div>
                 </div>
               </>

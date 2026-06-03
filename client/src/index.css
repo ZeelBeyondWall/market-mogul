@@ -5990,30 +5990,30 @@ body[data-theme="game"] {
 
   .movers-mob-tabs {
     display: flex;
-    background-color: #0B1020;
-    padding: 2px;
-    border-radius: 6px;
-    gap: 2px;
-    margin-bottom: 10px;
+    gap: 8px;
+    margin-bottom: 12px;
   }
 
   .movers-tab-btn-mob {
     flex: 1;
-    background: transparent;
-    border: none;
+    background-color: rgba(255, 255, 255, 0.01);
+    border: 1px solid rgba(255, 255, 255, 0.04);
     font-family: 'Inter', sans-serif;
     font-weight: 800;
-    font-size: 7.5px;
+    font-size: 8px;
     color: #A8B3CF;
-    padding: 5px 0;
-    border-radius: 4px;
+    padding: 6px 0;
+    border-radius: 6px;
     cursor: pointer;
     text-align: center;
+    transition: all 0.15s ease;
   }
 
   .movers-tab-btn-mob.active {
-    background-color: #7C5CFF;
-    color: #FFFFFF;
+    background-color: rgba(251, 191, 36, 0.04);
+    border-color: #FBBF24;
+    color: #FBBF24;
+    box-shadow: 0 0 6px rgba(251, 191, 36, 0.12);
   }
 
   .movers-mob-list {
