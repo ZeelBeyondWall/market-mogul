@@ -7,6 +7,7 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { spawn } from 'child_process';
 import { WebSocketServer, WebSocket, type RawData } from 'ws';
+import { infoHtml } from './infoPage';
 
 const PORT = Number(process.env.PORT) || 8787;
 const ENGINE_HOST = process.env.ENGINE_HOST || 'localhost';
@@ -100,6 +101,14 @@ app.get('/health', async (_, res) => {
   } catch (e: any) {
     res.status(502).json({ gateway: { ok: true, port: PORT }, engine: { ok: false, error: String(e?.message || e) } });
   }
+});
+
+app.get('/info', (req, res) => {
+  res.send(infoHtml);
+});
+
+app.get('/guide', (req, res) => {
+  res.send(infoHtml);
 });
 
 app.all('/state', proxy);
