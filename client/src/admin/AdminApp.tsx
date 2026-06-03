@@ -154,7 +154,7 @@ export function AdminApp() {
         </div>
       </aside>
 
-      <header className="a-topbar">
+      <div className="a-topbar">
         {/* Mobile hamburger */}
         <button
           className="a-icon-btn a-mobile-menu-btn"
@@ -181,7 +181,7 @@ export function AdminApp() {
           <div className="a-profile-name">{getActor()}</div>
         </div>
         <a href="/" className="a-btn ghost">← Game</a>
-      </header>
+      </div>
 
       {/* Mobile nav overlay */}
       {mobileNavOpen && (
@@ -199,14 +199,14 @@ export function AdminApp() {
         </div>
       )}
 
-      <main className="a-main">
+      <div className="a-main">
         {economy?.flags?.broadcastBanner && (
           <div className="a-banner" style={{ marginBottom: 18, borderRadius: 'var(--a-radius)' }}>
             📢 {economy.flags.broadcastBanner}
           </div>
         )}
         {pageEl}
-      </main>
+      </div>
 
       {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       <ToastHost />
