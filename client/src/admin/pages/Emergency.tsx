@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { apiGet, apiPost } from '../api';
 import type { EconomyResp, HealthResp } from '../types';
 import {
@@ -22,6 +22,7 @@ export default function Emergency() {
   const [confirmCfg, setConfirmCfg] = useState<ConfirmCfg | null>(null);
   const [broadcastMsg, setBroadcastMsg] = useState('');
   const [resetTyped, setResetTyped] = useState('');
+  const resetTypedRef = useRef('');
 
   // Auto-refresh economy flags every 2s
   useEffect(() => {
@@ -53,7 +54,7 @@ export default function Emergency() {
   const flags = econ?.flags;
 
   const ask = (cfg: ConfirmCfg) => setConfirmCfg(cfg);
-  const closeConfirm = () => { setConfirmCfg(null); setResetTyped(''); };
+  const closeConfirm = () => { setConfirmCfg(null); setResetTyped(''); resetTypedRef.current = ''; };
 
   const runConfirmed = async () => {
     if (!confirmCfg) return;
@@ -194,14 +195,14 @@ export default function Emergency() {
             autoFocus
             placeholder="RESET"
             value={resetTyped}
-            onChange={e => setResetTyped(e.target.value)}
+            onChange={e => { setResetTyped(e.target.value); resetTypedRef.current = e.target.value; }}
           />
         </>
       ),
       danger: true,
       confirmLabel: 'RESET GAME',
       onConfirm: async () => {
-        if (resetTyped !== 'RESET') {
+        if (resetTypedRef.current !== 'RESET') {
           toast('You must type RESET exactly', 'err');
           throw new Error('confirm text mismatch');
         }
