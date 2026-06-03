@@ -115,7 +115,26 @@ export function takeProfitFor(s: StrategyId): number {
 export const STARTING_CASH = 1000;
 
 export function makeTrader(i: number, isPlayer: boolean, forcedStrat?: StrategyId): Trader {
-  const cash = STARTING_CASH;
+  let tier: 'retail' | 'whale' | 'institution' = 'retail';
+  let cash = STARTING_CASH;
+  let level = isPlayer ? 1 : randomBotLevel();
+
+  if (!isPlayer) {
+    const r = Math.random();
+    if (r < 0.05) {
+      tier = 'whale';
+      cash = Math.floor(rand(50000, 250000));
+      level = Math.max(level, 25 + Math.floor(Math.random() * 25));
+    } else if (r < 0.20) {
+      tier = 'institution';
+      cash = Math.floor(rand(10000, 50000));
+      level = Math.max(level, 10 + Math.floor(Math.random() * 15));
+    } else {
+      tier = 'retail';
+      cash = Math.floor(rand(500, 2500));
+    }
+  }
+
   const strat: StrategyId = isPlayer ? 'player' : (forcedStrat || getStratForBot());
   const holdings: Record<string, Holding> = {};
   const indicators: Record<string, { emaFast: number | null; emaSlow: number | null }> = {};
@@ -124,11 +143,16 @@ export function makeTrader(i: number, isPlayer: boolean, forcedStrat?: StrategyI
     holdings[a.id] = { shares: 0, avgCost: 0 };
     if (needIndicators) indicators[a.id] = { emaFast: null, emaSlow: null };
   });
-  // v5: progression. Player starts L1, bots roll random level + seeded XP.
-  const level = isPlayer ? 1 : randomBotLevel();
+
   const xp = isPlayer ? 0 : xpToReach(level);
   // v7.3: player name configurable via MM_PLAYER_NAME env var. Default 'Zeel'.
   const playerName = (typeof globalThis !== 'undefined' && (globalThis as any)?.process?.env?.MM_PLAYER_NAME) || 'Zeel';
+
+  let activity = isPlayer ? 0 : activityFor(strat);
+  if (!isPlayer && tier === 'whale') {
+    activity = activity * 0.4; // Whales are patient block traders
+  }
+
   return {
     id: i,
     name: isPlayer ? playerName : (BOT_NAMES[i - 1] || genName()),
@@ -136,7 +160,7 @@ export function makeTrader(i: number, isPlayer: boolean, forcedStrat?: StrategyI
     holdings,
     strat,
     isPlayer,
-    activity: isPlayer ? 0 : activityFor(strat),
+    activity,
     cooldown: isPlayer ? 0 : rand(0, 3),
     openOrders: [],
     pickedAssets: isPlayer ? null : pickAssetsFor(strat, level),
@@ -152,5 +176,9 @@ export function makeTrader(i: number, isPlayer: boolean, forcedStrat?: StrategyI
     closing: {},
     level,
     xp,
+    tier,
+    greed: 0.5,
+    fear: 0.5,
+    hype: 0.0,
   };
 }

@@ -124,6 +124,10 @@ export interface Trader {
   bornAt: number;
   rekt?: boolean;
   closing?: Record<string, boolean>;
+  tier?: 'retail' | 'whale' | 'institution';
+  greed?: number;
+  fear?: number;
+  hype?: number;
   // v8.9: House Market Maker — provides liquidity on every asset around fair
   // value. Excluded from bot ticking, rekt sweep, leaderboard, and economy
   // aggregates. In executeTrade its cash/holdings are NOT mutated (infinite

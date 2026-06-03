@@ -100,6 +100,12 @@ export function botDecide(t: Trader, S: GameState): void {
 
   if (t.cash < last && hold.shares <= 0) return;
 
+  // Fallbacks for emotions (handles old save games / initial loads)
+  if (t.greed === undefined) t.greed = 0.5;
+  if (t.fear === undefined) t.fear = 0.5;
+  if (t.hype === undefined) t.hype = 0.0;
+  if (t.tier === undefined) t.tier = 'retail';
+
   // 1. Cancel previous open orders for this asset before making a new decision.
   // This keeps the book clean and prevents stale order sniping by the player.
   const oldOrders = t.openOrders.filter(o => o.assetId === aid);
@@ -147,9 +153,37 @@ export function botDecide(t: Trader, S: GameState): void {
     }
   }
 
-  // Determine preferred order execution type based on degen strat or active news panics
+  // --- v11: AI EMOTIONS UPDATE ENGINE ---
+  // Hype decays 5% per step
+  t.hype = Math.max(0, (t.hype || 0.0) * 0.95 - 0.01);
+  if (newsType && newsAffectsMe && newsAge < 30) {
+    t.hype = Math.max(t.hype, 1.0 - (newsAge / 30));
+  }
+
+  // Greed and fear shift based on returns and momentum
+  const sentimentChange = (ret * 0.2) + (momentum * 0.8);
+  t.greed = Math.min(1.0, Math.max(0.0, (t.greed || 0.5) + sentimentChange));
+  t.fear = Math.min(1.0, Math.max(0.0, (t.fear || 0.5) - sentimentChange));
+
+  // News shock overrides
+  if (newsType === 'boom' && newsAffectsMe && newsAge < 30) {
+    t.greed = Math.min(1.0, t.greed + 0.25 * (1 - newsAge / 30));
+    t.fear = Math.max(0.0, t.fear - 0.25 * (1 - newsAge / 30));
+  } else if (newsType === 'crash' && newsAffectsMe && newsAge < 30) {
+    t.fear = Math.min(1.0, t.fear + 0.25 * (1 - newsAge / 30));
+    t.greed = Math.max(0.0, t.greed - 0.25 * (1 - newsAge / 30));
+  }
+
+  // Pull emotions back to baseline 0.5 slowly
+  t.greed = t.greed * 0.98 + 0.5 * 0.02;
+  t.fear = t.fear * 0.98 + 0.5 * 0.02;
+
+  const gVal = t.greed;
+  const fVal = t.fear;
+
+  // Determine preferred order execution type based on degen strat, active news panics, or high hype
   const isDegen = ['yolo', 'fomo', 'paper', 'gambler', 'copycat', 'revenge', 'newschase'].includes(t.strat);
-  const preferredType = (isDegen || (newsType && newsAffectsMe && newsAge < 15)) ? 'market' : 'limit';
+  const preferredType = (isDegen || (newsType && newsAffectsMe && newsAge < 15) || t.hype > 0.7) ? 'market' : 'limit';
 
   // Variance/sigma only when needed
   let sigma = 0;
@@ -165,7 +199,8 @@ export function botDecide(t: Trader, S: GameState): void {
   }
 
   const positionSize = (frac: number) => {
-    const budget = t.cash * frac;
+    const emotionMult = 1 + gVal - fVal * 0.5; // range: 0.5 to 2.0
+    const budget = t.cash * Math.min(0.99, frac * emotionMult);
     const px = Math.max(0.01, last);
     const raw = budget / px;
     const minQty = Math.min(1, 0.5 / px);
@@ -190,20 +225,42 @@ export function botDecide(t: Trader, S: GameState): void {
     placeOrder(S, t.id, aid, 'sell', qty, +(last * pxMult).toFixed(4), orderType);
   };
 
-  // SL/TP enforcement (SL always uses market order for quick panic exit)
+  // SL/TP enforcement with emotional scaling (SL always uses market order for quick panic exit)
   if (hold.shares > 0 && hold.avgCost > 0 && t.stopLoss > 0) {
     const pnl = (last - hold.avgCost) / hold.avgCost;
-    if (pnl < -t.stopLoss) { sellQty(hold.shares, 0.992, 'market'); return; }
-    if (t.takeProfit > 0 && pnl > t.takeProfit) {
+    const currentSL = t.stopLoss * (1 - fVal * 0.5); // fear tightens stop losses
+    const currentTP = t.takeProfit > 0 ? t.takeProfit * (1 + gVal) : 0; // greed widens take profits
+
+    if (pnl < -currentSL) { sellQty(hold.shares, 0.992, 'market'); return; }
+    if (currentTP > 0 && pnl > currentTP) {
       sellQty(Math.ceil(hold.shares * (t.strat === 'paper' ? 1 : 0.5)), 1.002, preferredType); return;
+    }
+    // Panic exit before SL if fear is high and losses are growing
+    if (fVal > 0.7) {
+      const panicThreshold = -currentSL * (1.2 - fVal);
+      if (pnl < panicThreshold) {
+        sellQty(hold.shares, 0.99, 'market');
+        return;
+      }
     }
   }
   if (hold.shares < 0 && hold.avgCost > 0 && t.stopLoss > 0) {
     const pnl = (hold.avgCost - last) / hold.avgCost;
-    if (pnl < -t.stopLoss) {
+    const currentSL = t.stopLoss * (1 - fVal * 0.5);
+
+    if (pnl < -currentSL) {
       const qty = -hold.shares;
       if (t.cash > qty * last * 0.95) buyQty(qty, 1.005, 'market');
       return;
+    }
+    // Panic cover before SL if fear is high
+    if (fVal > 0.7) {
+      const panicThreshold = -currentSL * (1.2 - fVal);
+      if (pnl < panicThreshold) {
+        const qty = -hold.shares;
+        if (t.cash > qty * last * 0.95) buyQty(qty, 1.005, 'market');
+        return;
+      }
     }
   }
 
@@ -457,7 +514,8 @@ export function tickBots(S: GameState, dt: number): void {
       if (t.cooldown <= 0) {
         // News acceleration: if an active event exists, scale cooldown by 2.5x to trade faster
         const hasActiveEvent = S.events.length > 0 && (Date.now() - S.events[0].t) / 1000 < 30;
-        const speedMult = hasActiveEvent ? 2.5 : 1.0;
+        const hype = t.hype || 0.0;
+        const speedMult = (hasActiveEvent ? 2.5 : 1.0) * (1 + hype);
         t.cooldown = (rand(0.5, 2) / Math.max(0.05, t.activity)) / speedMult;
         botDecide(t, S);
       }

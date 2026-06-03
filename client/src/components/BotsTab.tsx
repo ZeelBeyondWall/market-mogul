@@ -9,7 +9,7 @@ const FILTERS = ['all','yolo','fomo','gambler','diamond','paper','permabull','pe
 // v9: leaderboard split per spec — Bots (competition), You (player highlight),
 // All (combined, clearly labeled). Bots is default since the player is the only
 // human, so a "players only" board is just one row.
-type View = 'bots' | 'you' | 'all';
+type View = 'bots' | 'players';
 
 export function BotsTab() {
   useGame(s => s.dataTick);
@@ -20,31 +20,67 @@ export function BotsTab() {
   const setBotFilter = useGame(s => s.setBotFilter);
   const [view, setView] = useState<View>('bots');
 
-  // Apply view first, then strategy filter (strategy only meaningful on bots/all).
+  // Filter based on view
   const byView = leaderboard.filter(x => {
-    if (view === 'you') return x.isPlayer;
-    if (view === 'bots') return !x.isPlayer;
-    return true; // all
+    if (view === 'players') return x.isPlayer;
+    return !x.isPlayer; // bots
   });
-  const filtered = (view === 'you' || botFilter === 'all')
+
+  const filtered = (view === 'players' || botFilter === 'all')
     ? byView
-    : byView.filter(x => x.strat === botFilter); // player already excluded in 'bots' view
+    : byView.filter(x => x.strat === botFilter);
 
   const top = filtered.slice(0, 60);
   const playerIdx = filtered.findIndex(x => x.isPlayer);
-  const showPlayerFooter = view !== 'you' && playerIdx >= 60;
+  const showPlayerFooter = view === 'players' && playerIdx >= 60;
 
   const VIEWS: { id: View; label: string }[] = [
-    { id: 'bots', label: '🤖 Bots' },
-    { id: 'you',  label: '👤 You' },
-    { id: 'all',  label: '🌐 All' },
+    { id: 'bots', label: '🤖 Bots Leaderboard' },
+    { id: 'players', label: '👥 Players' },
   ];
+
+  const renderTierBadge = (tier?: string) => {
+    if (!tier) return null;
+    let color = '#a1a1aa'; // Muted grey
+    let label = 'RETAIL';
+    let bg = 'rgba(161, 161, 170, 0.1)';
+    let border = '1px solid rgba(161, 161, 170, 0.2)';
+    if (tier === 'whale') {
+      color = '#f59e0b'; // Gold / Amber
+      label = 'WHALE';
+      bg = 'rgba(245, 158, 11, 0.1)';
+      border = '1px solid rgba(245, 158, 11, 0.3)';
+    } else if (tier === 'institution') {
+      color = '#0ea5e9'; // Sky blue
+      label = 'INST';
+      bg = 'rgba(14, 165, 233, 0.1)';
+      border = '1px solid rgba(14, 165, 233, 0.3)';
+    }
+    return (
+      <span style={{
+        fontSize: '7.5px',
+        fontWeight: 800,
+        color,
+        background: bg,
+        border,
+        borderRadius: '3px',
+        padding: '1px 4px',
+        marginLeft: '6px',
+        letterSpacing: '0.5px',
+        display: 'inline-block',
+        verticalAlign: 'middle',
+        textTransform: 'uppercase'
+      }}>
+        {label}
+      </span>
+    );
+  };
 
   return (
     <div className="section">
       <h3>
         Leaderboard
-        <span className="badge">{view === 'you' ? '#' + playerRank : total}</span>
+        <span className="badge">{view === 'players' ? '#' + playerRank : total}</span>
       </h3>
 
       {/* View toggle */}
@@ -54,12 +90,13 @@ export function BotsTab() {
             key={v.id}
             className={'lb-view-btn' + (view === v.id ? ' on' : '')}
             onClick={() => { setView(v.id); Audio.click(); }}
+            style={{ flex: 1 }}
           >{v.label}</button>
         ))}
       </div>
 
-      {/* Strategy filter — hidden in "you" view */}
-      {view !== 'you' && (
+      {/* Strategy filter — hidden in "players" view */}
+      {view !== 'players' && (
         <div className="bot-filter">
           {FILTERS.map(s => (
             <button key={s} className={botFilter === s ? 'on' : ''} onClick={() => { setBotFilter(s); Audio.click(); }}>
@@ -86,6 +123,7 @@ export function BotsTab() {
                   {x.isPlayer ? 'YOU' : x.name}
                   <span className="bot-lvl">L{x.level || 1}</span>
                   {x.rekt && <span style={{ color: 'var(--red)', fontSize: 9, fontWeight: 700, marginLeft: 6 }}>REKT</span>}
+                  {!x.isPlayer && renderTierBadge(x.tier)}
                 </div>
                 <div className="bot-meta">{strat}</div>
               </div>
