@@ -20,13 +20,12 @@ export function Settings() {
   const beginnerMode = useGame(s => s.beginnerMode);
   const setBeginnerMode = useGame(s => s.setBeginnerMode);
   const setFeedbackOpen = useGame(s => s.setFeedbackOpen);
-
-  if (!open) return null;
-
   const session = useGame(s => s.session);
   const eng = useGame(s => s.engine);
   const p = eng.player();
   const username = session?.user?.user_metadata?.username || session?.user?.email?.split('@')[0] || p.name || 'Trader';
+
+  if (!open) return null;
 
   const onReset = async () => {
     const ok = await showModal('Reset everything?',
