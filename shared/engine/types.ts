@@ -141,6 +141,8 @@ export interface Trader {
   // v10: cumulative trading fees + short borrow costs paid by this trader.
   totalFeesPaid?: number;
   totalBorrowPaid?: number;
+  // v11: cumulative trade count for realistic leaderboard display.
+  totalTradeCount?: number;
 
   // v5: Progression. Bots + player both have it. Small int = cheap at 500K bots.
   level: number;

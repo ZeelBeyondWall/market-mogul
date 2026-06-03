@@ -202,6 +202,10 @@ export function executeTrade(
   buyer._netDirty = true;
   seller._netDirty = true;
 
+  // v11: increment real trade counters
+  if (!buyerHouse) buyer.totalTradeCount = (buyer.totalTradeCount || 0) + 1;
+  if (!sellerHouse) seller.totalTradeCount = (seller.totalTradeCount || 0) + 1;
+
   if (buyer.isPlayer && onPlayerBuy) onPlayerBuy(qty);
   else if (seller.isPlayer && onPlayerSellProfit) onPlayerSellProfit();
 

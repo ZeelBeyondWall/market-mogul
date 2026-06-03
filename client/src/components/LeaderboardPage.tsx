@@ -199,8 +199,8 @@ export function LeaderboardPage() {
       ? (((net - (p.dayStartNet || 10000)) / (p.dayStartNet || 10000)) * 100)
       : (entry.net / 10000);
     const trades = entry.isPlayer
-      ? (playerStats?.totalTrades || 28)
-      : Math.floor(500 + Math.log10(Math.max(1, entry.net)) * 40 + (entry.level * 5) + (entry.id % 200));
+      ? (playerStats?.totalTrades || 0)
+      : ((entry as any).trades || 0);
     
     return {
       ...entry,
@@ -212,7 +212,7 @@ export function LeaderboardPage() {
   });
 
   const playerLeague = getLeague(net, rank || 247);
-  const playerTrades = playerStats?.totalTrades || 28;
+  const playerTrades = playerStats?.totalTrades || 0;
   const playerReturnPct = (((net - (p.dayStartNet || 10000)) / (p.dayStartNet || 10000)) * 100);
 
   const getRankBadgeClass = (r: number) => {
