@@ -19,12 +19,11 @@ export function levelFromXp(xp: number): number {
   return lvl;
 }
 
-// Market unlock thresholds (per user spec).
 export const UNLOCK_LEVELS = {
   stocksBasic: 1,
   stocksAll: 5,
-  crypto: 10,
-  forex: 20,
+  crypto: 20,
+  forex: 30,
   advanced: 30,
   premium: 50,
 } as const;
@@ -116,28 +115,28 @@ export const ASSETS: AssetDef[] = [
   { id:'DRFG', name:'DreamForge',          icon:'t-blue', cat:'gaming', market:'stocks', minLevel:5, fairValue:155, div:0,      vol:0.018, float:3e8,  desc:'Indie publisher' },
 
   // ============ CRYPTO — LARGE CAP (10) ============
-  { id:'NOVA', name:'NovaCoin',     icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:650, div:0, vol:0.026, float:2.1e7, desc:'Reserve crypto' },
-  { id:'TTNC', name:'TitanCoin',    icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:420,  div:0, vol:0.028, float:1.2e8, desc:'Smart contracts' },
-  { id:'QTMC', name:'QuantumCoin',  icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:380,   div:0, vol:0.030, float:1.5e8, desc:'Privacy chain' },
-  { id:'APXC', name:'ApexChain',    icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:95,    div:0, vol:0.032, float:4e8,   desc:'L1 platform' },
-  { id:'SOLR', name:'SolarCoin',    icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:28,    div:0, vol:0.034, float:3.5e8, desc:'Energy chain' },
-  { id:'VTXC', name:'VertexCoin',   icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:18,    div:0, vol:0.031, float:8e8,   desc:'DeFi protocol' },
-  { id:'OMNT', name:'OmniToken',    icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:6.20,  div:0, vol:0.033, float:6e8,   desc:'Cross-chain' },
-  { id:'HYPC', name:'HyperCoin',    icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:1.25,  div:0, vol:0.030, float:2e10,  desc:'Payments coin' },
-  { id:'ZNTC', name:'ZenithCoin',   icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:14,    div:0, vol:0.029, float:5e8,   desc:'Oracle network' },
-  { id:'FSNC', name:'FusionCoin',   icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:10, fairValue:75,    div:0, vol:0.028, float:7e7,   desc:'Silver-tier crypto' },
+  { id:'NOVA', name:'NovaCoin',     icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:20, fairValue:650, div:0, vol:0.026, float:2.1e7, desc:'Reserve crypto' },
+  { id:'TTNC', name:'TitanCoin',    icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:20, fairValue:420,  div:0, vol:0.028, float:1.2e8, desc:'Smart contracts' },
+  { id:'QTMC', name:'QuantumCoin',  icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:20, fairValue:380,   div:0, vol:0.030, float:1.5e8, desc:'Privacy chain' },
+  { id:'APXC', name:'ApexChain',    icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:20, fairValue:95,    div:0, vol:0.032, float:4e8,   desc:'L1 platform' },
+  { id:'SOLR', name:'SolarCoin',    icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:20, fairValue:28,    div:0, vol:0.034, float:3.5e8, desc:'Energy chain' },
+  { id:'VTXC', name:'VertexCoin',   icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:20, fairValue:18,    div:0, vol:0.031, float:8e8,   desc:'DeFi protocol' },
+  { id:'OMNT', name:'OmniToken',    icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:20, fairValue:6.20,  div:0, vol:0.033, float:6e8,   desc:'Cross-chain' },
+  { id:'HYPC', name:'HyperCoin',    icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:20, fairValue:1.25,  div:0, vol:0.030, float:2e10,  desc:'Payments coin' },
+  { id:'ZNTC', name:'ZenithCoin',   icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:20, fairValue:14,    div:0, vol:0.029, float:5e8,   desc:'Oracle network' },
+  { id:'FSNC', name:'FusionCoin',   icon:'t-crypto', cat:'crypto_large', market:'crypto', minLevel:20, fairValue:75,    div:0, vol:0.028, float:7e7,   desc:'Silver-tier crypto' },
 
   // ============ CRYPTO — MID CAP (10) ============
-  { id:'PXLC', name:'PixelCoin',    icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:8.50,  div:0, vol:0.038, float:1.2e9, desc:'Gaming token' },
-  { id:'STRT', name:'StreamToken',  icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:0.85,  div:0, vol:0.040, float:9e9,   desc:'Streaming pay' },
-  { id:'CYBT', name:'CyberToken',   icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:4.20,  div:0, vol:0.042, float:1e9,   desc:'Security audit' },
-  { id:'GRDC', name:'GridCoin',     icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:0.55,  div:0, vol:0.038, float:3.5e10,desc:'Compute grid' },
-  { id:'VOLC', name:'VoltCoin',     icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:0.62,  div:0, vol:0.040, float:5e10,  desc:'Energy DAO' },
-  { id:'ARNT', name:'ArenaToken',   icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:10,    div:0, vol:0.042, float:3e8,   desc:'Esports stakes' },
-  { id:'LGCC', name:'LogicCoin',    icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:4.20,  div:0, vol:0.045, float:1e9,   desc:'AI compute' },
-  { id:'TRRT', name:'TerraToken',   icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:8.80,  div:0, vol:0.044, float:5e8,   desc:'Real-asset tokens' },
-  { id:'CORC', name:'CoreCoin',     icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:2.40,  div:0, vol:0.040, float:1.5e9, desc:'Base layer' },
-  { id:'ALFC', name:'AlphaChain',   icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:10, fairValue:6.50,  div:0, vol:0.041, float:8e8,   desc:'Hedge chain' },
+  { id:'PXLC', name:'PixelCoin',    icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:20, fairValue:8.50,  div:0, vol:0.038, float:1.2e9, desc:'Gaming token' },
+  { id:'STRT', name:'StreamToken',  icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:20, fairValue:0.85,  div:0, vol:0.040, float:9e9,   desc:'Streaming pay' },
+  { id:'CYBT', name:'CyberToken',   icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:20, fairValue:4.20,  div:0, vol:0.042, float:1e9,   desc:'Security audit' },
+  { id:'GRDC', name:'GridCoin',     icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:20, fairValue:0.55,  div:0, vol:0.038, float:3.5e10,desc:'Compute grid' },
+  { id:'VOLC', name:'VoltCoin',     icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:20, fairValue:0.62,  div:0, vol:0.040, float:5e10,  desc:'Energy DAO' },
+  { id:'ARNT', name:'ArenaToken',   icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:20, fairValue:10,    div:0, vol:0.042, float:3e8,   desc:'Esports stakes' },
+  { id:'LGCC', name:'LogicCoin',    icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:20, fairValue:4.20,  div:0, vol:0.045, float:1e9,   desc:'AI compute' },
+  { id:'TRRT', name:'TerraToken',   icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:20, fairValue:8.80,  div:0, vol:0.044, float:5e8,   desc:'Real-asset tokens' },
+  { id:'CORC', name:'CoreCoin',     icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:20, fairValue:2.40,  div:0, vol:0.040, float:1.5e9, desc:'Base layer' },
+  { id:'ALFC', name:'AlphaChain',   icon:'t-crypto', cat:'crypto_mid', market:'crypto', minLevel:20, fairValue:6.50,  div:0, vol:0.041, float:8e8,   desc:'Hedge chain' },
 
   // ============ CRYPTO — MEME COINS (5) — PREMIUM L50 ============
   { id:'DGNV', name:'DogeNova',    icon:'t-penny', cat:'crypto_meme', market:'crypto', minLevel:50, fairValue:0.18, div:0, vol:0.060, float:1.5e11, desc:'Dog-themed meme' },
@@ -147,26 +146,26 @@ export const ASSETS: AssetDef[] = [
   { id:'BNNT', name:'BananaToken', icon:'t-penny', cat:'crypto_meme', market:'crypto', minLevel:50, fairValue:0.06, div:0, vol:0.085, float:8e11,   desc:'Fruit meme' },
 
   // ============ FOREX — USD PAIRS (5) — major ============
-  { id:'USDNOVA', name:'USD/NOVA',  icon:'t-forex', cat:'forex_major', market:'forex', minLevel:20, fairValue:1.00,  div:0, vol:0.005, float:1e12, desc:'USD vs NOVA reserve' },
-  { id:'USDTTN',  name:'USD/TITAN', icon:'t-forex', cat:'forex_major', market:'forex', minLevel:20, fairValue:1.18,  div:0, vol:0.006, float:8e11, desc:'USD vs Titan zone' },
-  { id:'USDSLR',  name:'USD/SOLAR', icon:'t-forex', cat:'forex_major', market:'forex', minLevel:20, fairValue:0.92,  div:0, vol:0.007, float:6e11, desc:'USD vs Solar bloc' },
-  { id:'USDAPX',  name:'USD/APEX',  icon:'t-forex', cat:'forex_major', market:'forex', minLevel:20, fairValue:1.45,  div:0, vol:0.008, float:5e11, desc:'USD vs Apex' },
-  { id:'USDZTH',  name:'USD/ZENITH',icon:'t-forex', cat:'forex_major', market:'forex', minLevel:20, fairValue:0.74,  div:0, vol:0.007, float:4e11, desc:'USD vs Zenith' },
+  { id:'USDNOVA', name:'USD/NOVA',  icon:'t-forex', cat:'forex_major', market:'forex', minLevel:30, fairValue:1.00,  div:0, vol:0.005, float:1e12, desc:'USD vs NOVA reserve' },
+  { id:'USDTTN',  name:'USD/TITAN', icon:'t-forex', cat:'forex_major', market:'forex', minLevel:30, fairValue:1.18,  div:0, vol:0.006, float:8e11, desc:'USD vs Titan zone' },
+  { id:'USDSLR',  name:'USD/SOLAR', icon:'t-forex', cat:'forex_major', market:'forex', minLevel:30, fairValue:0.92,  div:0, vol:0.007, float:6e11, desc:'USD vs Solar bloc' },
+  { id:'USDAPX',  name:'USD/APEX',  icon:'t-forex', cat:'forex_major', market:'forex', minLevel:30, fairValue:1.45,  div:0, vol:0.008, float:5e11, desc:'USD vs Apex' },
+  { id:'USDZTH',  name:'USD/ZENITH',icon:'t-forex', cat:'forex_major', market:'forex', minLevel:30, fairValue:0.74,  div:0, vol:0.007, float:4e11, desc:'USD vs Zenith' },
 
   // ============ FOREX — NOVA CROSSES (4) ============
-  { id:'NVATTN', name:'NOVA/TITAN',  icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:20, fairValue:1.18, div:0, vol:0.008, float:3e11, desc:'NOVA crossed Titan' },
-  { id:'NVASLR', name:'NOVA/SOLAR',  icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:20, fairValue:0.92, div:0, vol:0.009, float:3e11, desc:'NOVA crossed Solar' },
-  { id:'NVAAPX', name:'NOVA/APEX',   icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:20, fairValue:1.45, div:0, vol:0.010, float:2e11, desc:'NOVA crossed Apex' },
-  { id:'NVAZTH', name:'NOVA/ZENITH', icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:20, fairValue:0.74, div:0, vol:0.009, float:2e11, desc:'NOVA crossed Zenith' },
+  { id:'NVATTN', name:'NOVA/TITAN',  icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:30, fairValue:1.18, div:0, vol:0.008, float:3e11, desc:'NOVA crossed Titan' },
+  { id:'NVASLR', name:'NOVA/SOLAR',  icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:30, fairValue:0.92, div:0, vol:0.009, float:3e11, desc:'NOVA crossed Solar' },
+  { id:'NVAAPX', name:'NOVA/APEX',   icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:30, fairValue:1.45, div:0, vol:0.010, float:2e11, desc:'NOVA crossed Apex' },
+  { id:'NVAZTH', name:'NOVA/ZENITH', icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:30, fairValue:0.74, div:0, vol:0.009, float:2e11, desc:'NOVA crossed Zenith' },
 
   // ============ FOREX — TITAN CROSSES (3) ============
-  { id:'TTNSLR', name:'TITAN/SOLAR',  icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:20, fairValue:0.78, div:0, vol:0.011, float:2e11, desc:'Titan crossed Solar' },
-  { id:'TTNAPX', name:'TITAN/APEX',   icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:20, fairValue:1.23, div:0, vol:0.012, float:2e11, desc:'Titan crossed Apex' },
-  { id:'TTNZTH', name:'TITAN/ZENITH', icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:20, fairValue:0.63, div:0, vol:0.010, float:2e11, desc:'Titan crossed Zenith' },
+  { id:'TTNSLR', name:'TITAN/SOLAR',  icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:30, fairValue:0.78, div:0, vol:0.011, float:2e11, desc:'Titan crossed Solar' },
+  { id:'TTNAPX', name:'TITAN/APEX',   icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:30, fairValue:1.23, div:0, vol:0.012, float:2e11, desc:'Titan crossed Apex' },
+  { id:'TTNZTH', name:'TITAN/ZENITH', icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:30, fairValue:0.63, div:0, vol:0.010, float:2e11, desc:'Titan crossed Zenith' },
 
   // ============ FOREX — SOLAR CROSSES (2) ============
-  { id:'SLRAPX', name:'SOLAR/APEX',   icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:20, fairValue:1.58, div:0, vol:0.013, float:1e11, desc:'Solar crossed Apex' },
-  { id:'SLRZTH', name:'SOLAR/ZENITH', icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:20, fairValue:0.80, div:0, vol:0.012, float:1e11, desc:'Solar crossed Zenith' },
+  { id:'SLRAPX', name:'SOLAR/APEX',   icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:30, fairValue:1.58, div:0, vol:0.013, float:1e11, desc:'Solar crossed Apex' },
+  { id:'SLRZTH', name:'SOLAR/ZENITH', icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:30, fairValue:0.80, div:0, vol:0.012, float:1e11, desc:'Solar crossed Zenith' },
 
   // ============ FOREX — APEX CROSS (1) — premium ============
   { id:'APXZTH', name:'APEX/ZENITH',  icon:'t-forex', cat:'forex_cross', market:'forex', minLevel:50, fairValue:0.51, div:0, vol:0.015, float:1e11, desc:'Apex crossed Zenith (exotic)' },

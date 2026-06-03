@@ -68,10 +68,11 @@ export function TradePanel() {
   useGame(s => s.dataTick);
   const orderType = useGame(s => s.orderType);
   const setOrderType = useGame(s => s.setOrderType);
+  const playerLevel = useGame(s => s.playerLevel);
   const aid = eng.state.active;
   const ast = eng.state.assets[aid];
   const hold = eng.player().holdings[aid];
-  const shortAllowed = true; // v8.10: shorting allowed on ALL markets (user choice)
+  const shortAllowed = playerLevel >= 10;
   const [qty, setQty] = useState(1);
   const [limitPx, setLimitPx] = useState('');
   const slRef = useRef<HTMLInputElement>(null);
@@ -137,7 +138,7 @@ export function TradePanel() {
 
   const buyMax   = modeMaxQty(eng, aid, 'buy', shortAllowed);
   const shortMax = modeMaxQty(eng, aid, 'short', shortAllowed);
-  const isLimit  = orderType === 'limit';
+  const isLimit  = orderType === 'limit' && playerLevel >= 5;
   const lpx      = +limitPx || ast.lastPrice;
 
   const bq = Math.max(0, Math.min(qty, buyMax));
@@ -172,7 +173,7 @@ export function TradePanel() {
     : null;
   const sellReason = shortMax === 0
     ? (isFlat
-        ? (!shortAllowed ? 'Nothing to sell — BUY first'
+        ? (!shortAllowed ? '🔒 Shorting (L10)'
            : !hasBids ? 'No buyers yet — building liquidity'
            : `Need $${Math.max(0, ast.lastPrice * 0.5 - eng.player().cash).toFixed(0)} more for margin`)
         : 'Nothing to sell')
@@ -266,7 +267,21 @@ export function TradePanel() {
                   <label className="mod-label">Order Type</label>
                   <div className="tb-ordertype">
                     <button className={!isLimit ? 'on' : ''} onClick={() => { setOrderType('market'); Audio.click(); }}>MKT</button>
-                    <button className={isLimit ? 'on' : ''} onClick={() => { setOrderType('limit'); Audio.click(); }}>LMT</button>
+                    <button
+                      className={(isLimit ? 'on' : '') + (playerLevel < 5 ? ' locked' : '')}
+                      onClick={() => {
+                        if (playerLevel < 5) {
+                          useGame.getState().pushToast('Limit orders unlock at Level 5', 'err');
+                          Audio.click();
+                          return;
+                        }
+                        setOrderType('limit');
+                        Audio.click();
+                      }}
+                      title={playerLevel < 5 ? 'Requires Level 5' : ''}
+                    >
+                      {playerLevel < 5 ? '🔒 LMT' : 'LMT'}
+                    </button>
                   </div>
                 </div>
 
@@ -360,7 +375,19 @@ export function TradePanel() {
       <div className="tb-inputs">
         <div className="tb-ordertype">
           <button className={!isLimit ? 'on' : ''} onClick={() => setOrderType('market')}>MKT</button>
-          <button className={isLimit ? 'on' : ''} onClick={() => setOrderType('limit')}>LMT</button>
+          <button
+            className={(isLimit ? 'on' : '') + (playerLevel < 5 ? ' locked' : '')}
+            onClick={() => {
+              if (playerLevel < 5) {
+                useGame.getState().pushToast('Limit orders unlock at Level 5', 'err');
+                return;
+              }
+              setOrderType('limit');
+            }}
+            title={playerLevel < 5 ? 'Requires Level 5' : ''}
+          >
+            {playerLevel < 5 ? '🔒 LMT' : 'LMT'}
+          </button>
         </div>
         {isLimit && (
           <div className="tb-field">

@@ -35,6 +35,7 @@ export interface UIPrefs extends ChartToggles {
   beginnerMode: boolean; // hides advanced UI when true (v7.2)
   priceAlerts: PriceAlert[]; // v9: persisted price alerts
   activeIndicators: IndicatorId[]; // v10: chart indicators
+  activeScreen: 'dashboard' | 'trading';
 }
 
 export interface LeaderboardEntry {
@@ -93,6 +94,7 @@ interface GameStore extends UIPrefs {
   addPriceAlert: (aid: string, price: number, dir: 'above' | 'below') => void;
   removePriceAlert: (id: number) => void;
   setMobileView: (v: 'market' | 'trade' | 'panel') => void;
+  setActiveScreen: (s: 'dashboard' | 'trading') => void;
   toggleChartLayer: (k: keyof ChartToggles) => void;
   toggleMute: () => void;
   hideSplash: () => void;
@@ -115,6 +117,7 @@ const STORAGE = 'mm_ui_prefs_v3';
 const UI_KEYS: (keyof UIPrefs)[] = [
   'muted','chartLine','chartCandles','chartVol','orderType','activeTab','activeMarket','botFilter','splashShown',
   'theme','reduceMotion','showParticles','autoConfirm','activeTF','watchlist','beginnerMode','priceAlerts','activeIndicators',
+  'activeScreen',
 ];
 function defaultPrefs(): UIPrefs {
   return {
@@ -127,6 +130,7 @@ function defaultPrefs(): UIPrefs {
     beginnerMode: true, // v7.2: default ON for new users
     priceAlerts: [],
     activeIndicators: [],
+    activeScreen: 'dashboard',
   };
 }
 function loadPrefs(): UIPrefs {
@@ -267,6 +271,7 @@ export const useGame = create<GameStore>((set, get) => {
     },
     removePriceAlert: (id) => { set(s => ({ priceAlerts: s.priceAlerts.filter(a => a.id !== id) })); persist(); },
     setMobileView: (v) => set({ mobileView: v }),
+    setActiveScreen: (s) => { set({ activeScreen: s }); persist(); },
     setTheme: (t) => { applyTheme(t); set({ theme: t }); persist(); },
     setReduceMotion: (v) => { set({ reduceMotion: v }); persist(); },
     setShowParticles: (v) => { set({ showParticles: v }); persist(); },

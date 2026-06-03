@@ -13,6 +13,8 @@ export function Header() {
   const xpAt = useGame(s => s.xpAtCurrent);
   const xpTo = useGame(s => s.xpToNext);
   const session = useGame(s => s.session);
+  const activeScreen = useGame(s => s.activeScreen);
+  const setActiveScreen = useGame(s => s.setActiveScreen);
 
   const p = eng.player();
   // v9.1: display short proceeds as a margin bet — cash never jumps up, P&L
@@ -36,6 +38,21 @@ export function Header() {
             <span className="hdr-status-badge">PILOT // ONLINE</span>
           </div>
         </div>
+      </div>
+
+      <div className="hdr-nav">
+        <button 
+          className={'hdr-nav-btn' + (activeScreen === 'dashboard' ? ' on' : '')} 
+          onClick={() => { setActiveScreen('dashboard'); }}
+        >
+          🏠 Home
+        </button>
+        <button 
+          className={'hdr-nav-btn' + (activeScreen === 'trading' ? ' on' : '')} 
+          onClick={() => { setActiveScreen('trading'); }}
+        >
+          📈 Trade
+        </button>
       </div>
 
       <div className="hdr-lvl">

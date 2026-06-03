@@ -9,13 +9,26 @@ export function BottomNav() {
   const setNotifOpen = useGame(s => s.setNotifOpen);
   const notifOpen = useGame(s => s.notifOpen);
   const setSettingsOpen = useGame(s => s.setSettingsOpen);
+  const activeScreen = useGame(s => s.activeScreen);
+  const setActiveScreen = useGame(s => s.setActiveScreen);
 
   return (
     <nav className="bnav">
+      {/* HOME */}
+      <button
+        className={'bnav-btn' + (activeScreen === 'dashboard' && !notifOpen ? ' on' : '')}
+        onClick={() => { setActiveScreen('dashboard'); setNotifOpen(false); Audio.click(); }}
+      >
+        <span className="bnav-icon">
+          <IconHome />
+        </span>
+        <span className="bnav-label">Home</span>
+      </button>
+
       {/* MARKETS */}
       <button
-        className={'bnav-btn' + (mv === 'market' ? ' on' : '')}
-        onClick={() => { setMv('market'); setNotifOpen(false); Audio.click(); }}
+        className={'bnav-btn' + (activeScreen === 'trading' && mv === 'market' && !notifOpen ? ' on' : '')}
+        onClick={() => { setActiveScreen('trading'); setMv('market'); setNotifOpen(false); Audio.click(); }}
       >
         <span className="bnav-icon">
           <IconMarkets />
@@ -25,8 +38,8 @@ export function BottomNav() {
 
       {/* TRADE */}
       <button
-        className={'bnav-btn' + (mv === 'trade' ? ' on' : '')}
-        onClick={() => { setMv('trade'); setNotifOpen(false); Audio.click(); }}
+        className={'bnav-btn' + (activeScreen === 'trading' && mv === 'trade' && !notifOpen ? ' on' : '')}
+        onClick={() => { setActiveScreen('trading'); setMv('trade'); setNotifOpen(false); Audio.click(); }}
       >
         <span className="bnav-icon">
           <IconTrade />
@@ -36,8 +49,8 @@ export function BottomNav() {
 
       {/* PORTFOLIO */}
       <button
-        className={'bnav-btn' + (mv === 'panel' ? ' on' : '')}
-        onClick={() => { setMv('panel'); setNotifOpen(false); Audio.click(); }}
+        className={'bnav-btn' + (activeScreen === 'trading' && mv === 'panel' && !notifOpen ? ' on' : '')}
+        onClick={() => { setActiveScreen('trading'); setMv('panel'); setNotifOpen(false); Audio.click(); }}
       >
         <span className="bnav-icon">
           <IconPortfolio />
@@ -118,6 +131,15 @@ function IconSystem() {
       <path d="M12 2L2 7v10l10 5 10-5V7L12 2z" stroke="currentColor" strokeOpacity="0.4" />
       <circle cx="12" cy="12" r="3" />
       <path d="M12 9V5M12 19v-4M9.4 10.5l-3.5-2M18.1 15.5l-3.5-2M14.6 10.5l3.5-2M5.9 15.5l3.5-2" />
+    </svg>
+  );
+}
+
+function IconHome() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="hud-svg">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
     </svg>
   );
 }

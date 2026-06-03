@@ -21,6 +21,7 @@ import { BottomNav } from './components/BottomNav';
 import { Auth } from './components/Auth';
 import { supabase } from './net/supabase';
 import { connect } from './net/wsClient';
+import { DashboardPage } from './components/DashboardPage';
 
 export function App() {
   useGameLoop();
@@ -29,6 +30,7 @@ export function App() {
   const splashShown = useGame(s => s.splashShown);
   const mobileView = useGame(s => s.mobileView);
   const engine = useGame(s => s.engine);
+  const activeScreen = useGame(s => s.activeScreen);
 
   // Initialize and listen to Auth changes
   useEffect(() => {
@@ -70,22 +72,26 @@ export function App() {
       <SvgDefs />
       <Splash />
       {splashShown && (
-        <div id="app" data-mv={mobileView}>
+        <div id="app" data-mv={mobileView} className={activeScreen}>
           <AdminBanner />
           <Header />
-          <MarketBar />
-          <main>
-            <div className="col col-market"><AssetList /></div>
-            <div className="col col-trade">
-              <div className="chart-wrap">
-                <Chart />
-                <TradePanel />
+          {activeScreen === 'trading' && <MarketBar />}
+          {activeScreen === 'dashboard' ? (
+            <DashboardPage />
+          ) : (
+            <main>
+              <div className="col col-market"><AssetList /></div>
+              <div className="col col-trade">
+                <div className="chart-wrap">
+                  <Chart />
+                  <TradePanel />
+                </div>
               </div>
-            </div>
-            <div className="col col-panel">
-              <Tabs />
-            </div>
-          </main>
+              <div className="col col-panel">
+                <Tabs />
+              </div>
+            </main>
+          )}
           <Ticker />
           <BottomNav />
         </div>
