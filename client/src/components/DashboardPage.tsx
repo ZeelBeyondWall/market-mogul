@@ -235,113 +235,247 @@ export function DashboardPage() {
   // MOBILE RENDER LAYOUT
   // ==========================================================================
   if (isMobile) {
-    const firstMission = daily.length > 0 ? daily[0] : null;
-    const missionPct = firstMission ? Math.min(100, (firstMission.progress / firstMission.def.goal.target) * 100) : 66;
-    const missionProgressText = firstMission 
-      ? `${Math.floor(firstMission.progress)} / ${firstMission.def.goal.target}`
-      : '2 / 3';
-    const missionTitle = firstMission ? firstMission.def.title : 'Make 3 Profitable Trades';
-    const missionXpReward = firstMission ? firstMission.def.reward * 5 : 250;
-    const missionCashReward = firstMission ? firstMission.def.reward * 10 : 500;
-
     return (
       <div className="mmo-mobile-dash-container">
         
-        {/* Simple Greeting line */}
-        <div className="mobile-welcome-row">
-          <span className="mob-greet-text">WELCOME BACK, <span className="gold-text">{username.toUpperCase()}</span></span>
-        </div>
+        {/* 1. Hero Card Welcome + Live Event combined */}
+        <section className="mmo-mobile-hero" style={{ backgroundImage: 'linear-gradient(rgba(11,16,32,0.4), rgba(11,16,32,0.9)), url(/cityscape_sunset.png)' }}>
+          <div className="mobile-hero-welcome-area">
+            <h1 className="mob-welcome-title">WELCOME BACK, <span className="gold-text">{username.toUpperCase()}</span>!</h1>
+            <p className="mob-welcome-sub">The market never sleeps. Opportunity is everywhere.</p>
+          </div>
 
-        {/* 1. Progress Card (Level, XP progress bar, Rank) */}
-        <section className="mmo-mobile-card mmo-mobile-progress-card">
-          <div className="prog-card-top">
-            <div className="prog-level-badge">
-              <span className="prog-level-lbl">LEVEL</span>
-              <span className="prog-level-val">{lvl}</span>
-            </div>
-            <div className="prog-rank-badge">
-              <span className="prog-rank-lbl">RANK</span>
-              <span className="prog-rank-val">#{rank || 247}</span>
-              <span className="prog-rank-sub">TOP 2% OF TRADERS</span>
-            </div>
-          </div>
-          <div className="prog-xp-section">
-            <div className="prog-xp-text-row">
-              <span className="prog-xp-lbl">XP PROGRESS</span>
-              <span className="prog-xp-range">{xp - xpAt} / {xpTo - xpAt} XP</span>
-            </div>
-            <div className="prog-xp-bar-outer">
-              <div className="prog-xp-bar-inner" style={{ width: `${xpProgress}%` }} />
-            </div>
-          </div>
-        </section>
-
-        {/* 2. Wealth Card (Net Worth, Cash, Today's Profit) */}
-        <section className="mmo-mobile-card mmo-mobile-wealth-card">
-          <div className="wealth-main">
-            <span className="wealth-lbl">TOTAL NET WORTH</span>
-            <h2 className="wealth-val"><AnimatedNumber value={net} format={n => fmt(n)} /></h2>
-            <div className={`wealth-delta-badge ${todayPnLPct >= 0 ? 'up-green' : 'dn-red'}`}>
-              {todayPnLPct >= 0 ? '▲' : '▼'} {Math.abs(todayPnLPct).toFixed(2)}% TODAY
-            </div>
-          </div>
-          
-          <div className="wealth-sub-grid">
-            <div className="wealth-sub-item">
-              <span className="w-sub-lbl">CASH BALANCE</span>
-              <span className="w-sub-val">{fmt(cash)}</span>
-            </div>
-            <div className="wealth-sub-item">
-              <span className="w-sub-lbl">TODAY'S PROFIT</span>
-              <span className={`w-sub-val ${todayPnL >= 0 ? 'up-green' : 'dn-red'}`}>
-                {todayPnL >= 0 ? '+' : ''}{fmt(todayPnL)}
+          <div className="mobile-hero-event-overlay">
+            <div className="mob-event-head-row">
+              <span className="mob-event-tag">LIVE EVENT</span>
+              <span className="mob-event-time">
+                {timeLeft.hours.toString().padStart(2, '0')}H : {timeLeft.minutes.toString().padStart(2, '0')}M : {timeLeft.seconds.toString().padStart(2, '0')}S
               </span>
             </div>
+            <h3 className="mob-event-title">{eventTitle}</h3>
+            <p className="mob-event-desc">{eventDesc}</p>
+            <button className="mob-event-cta" onClick={() => handleNavTab('news')}>
+              VIEW EVENT
+            </button>
           </div>
         </section>
 
-        {/* 3. Primary CTA Button: START TRADING */}
-        <button className="mmo-mobile-cta-btn" onClick={() => { setActiveScreen('trading'); useGame.getState().setMobileView('market'); Audio.click(); }}>
-          <div className="cta-btn-glow"></div>
-          <span className="cta-btn-text">START TRADING</span>
-        </button>
+        {/* 2. Player Progression Card */}
+        <section className="mmo-mobile-card prog-mobile-card">
+          <div className="prog-mobile-left-badge">
+            <svg viewBox="0 0 100 100" className="shield-svg-mob">
+              <path d="M50 10 L85 25 L85 60 C85 80 50 90 50 90 C50 90 15 80 15 60 L15 25 Z" fill="#7C5CFF" fillOpacity="0.1" stroke="#FBBF24" strokeWidth="3" />
+              <polygon points="50,22 58,40 77,40 62,52 68,70 50,60 32,70 38,52 23,40 42,40" fill="#FBBF24" />
+            </svg>
+          </div>
+          <div className="prog-mobile-center-text">
+            <span className="prog-mob-lbl">YOUR RANK</span>
+            <span className="prog-mob-rank">#{rank || 247}</span>
+            <span className="prog-mob-sub">TOP 2% OF TRADERS</span>
+          </div>
+          <div className="prog-mobile-right-spark">
+            <Sparkline points={[10, 12, 11, 14, 13, 16, 17, 16, 19, 18, 22]} color="#22C55E" />
+          </div>
+        </section>
 
-        {/* 4. Mission Card (Daily Mission, reward, progress) + Reward Claim */}
-        <section className="mmo-mobile-card mmo-mobile-mission-reward-card">
-          {/* Daily Chest reward embedded */}
-          <div className="chest-claim-row-mob">
-            <div className="chest-info">
-              <span className="chest-emoji">🎁</span>
-              <div className="chest-texts">
-                <span className="chest-main-title">DAILY REWARD CHEST</span>
-                <span className="chest-sub-title">STREAK: {streak || 7} DAYS</span>
+        {/* 3. Financial Summary full-width cards */}
+        <section className="mmo-mobile-financial-summary">
+          {/* Cash Balance */}
+          <div className="mmo-mobile-card summary-mobile-card">
+            <div className="sm-circle green-theme-circle">
+              <span>$</span>
+            </div>
+            <div className="sm-details">
+              <span className="sm-label">CASH BALANCE</span>
+              <span className="sm-value"><AnimatedNumber value={cash} format={n => fmt(n)} /></span>
+            </div>
+            <div className="sm-sparkline">
+              <Sparkline points={[100, 102, 101, 104, 103, 106, 105, 108]} color="#22C55E" />
+            </div>
+          </div>
+
+          {/* Net Worth */}
+          <div className="mmo-mobile-card summary-mobile-card">
+            <div className="sm-circle blue-theme-circle">
+              <span>💎</span>
+            </div>
+            <div className="sm-details">
+              <span className="sm-label">NET WORTH</span>
+              <span className="sm-value"><AnimatedNumber value={net} format={n => fmt(n)} /></span>
+              <span className={`sm-delta ${todayPnLPct >= 0 ? 'up-green' : 'dn-red'}`}>
+                {todayPnLPct >= 0 ? '▲' : '▼'} {Math.abs(todayPnLPct).toFixed(2)}% TODAY
+              </span>
+            </div>
+            <div className="sm-sparkline">
+              <Sparkline points={[200, 201, 203, 202, 205, 204, 208, 210]} color="#22C55E" />
+            </div>
+          </div>
+
+          {/* Today's Profit */}
+          <div className="mmo-mobile-card summary-mobile-card">
+            <div className="sm-circle dark-green-circle">
+              <span>📈</span>
+            </div>
+            <div className="sm-details">
+              <span className="sm-label">TODAY'S PROFIT</span>
+              <span className={`sm-value ${todayPnL >= 0 ? 'up-green' : 'dn-red'}`}>
+                {todayPnL >= 0 ? '+' : ''}<AnimatedNumber value={todayPnL} format={n => fmt(n)} />
+              </span>
+              <span className={`sm-delta ${todayPnL >= 0 ? 'up-green' : 'dn-red'}`}>
+                {todayPnL >= 0 ? '▲' : '▼'} {Math.abs(todayPnLPct).toFixed(2)}%
+              </span>
+            </div>
+            <div className="sm-sparkline">
+              <Sparkline points={todayPnL >= 0 ? [50, 52, 51, 55, 53, 58, 60] : [60, 58, 55, 52, 50]} color={todayPnL >= 0 ? '#22C55E' : '#EF4444'} />
+            </div>
+          </div>
+        </section>
+
+        {/* 4. Rewards chest + Streak row */}
+        <section className="mmo-mobile-rewards-row">
+          {/* Daily Reward */}
+          <div className="mmo-mobile-card reward-mob-card">
+            <div className="reward-mob-top">
+              <span className="chest-badge-icon">🎁</span>
+              <div className="reward-text-wrap">
+                <span className="reward-main-lbl">DAILY REWARD</span>
+                <span className="reward-sub-lbl">CLAIM YOUR REWARD</span>
               </div>
             </div>
-            <button className="chest-claim-btn-mob" onClick={handleClaimDailyReward}>
+            <button className="claim-now-btn-mob" onClick={handleClaimDailyReward}>
               CLAIM NOW
             </button>
           </div>
 
-          <div className="divider-line-mob"></div>
-
-          {/* Single clean mission tracker */}
-          <div className="mob-featured-mission">
-            <div className="mission-title-row-mob">
-              <span className="mission-tag-mob">ACTIVE DAILY MISSION</span>
-              <span className="mission-countdown-mob">RESETS IN {midnightTimeLeft}</span>
-            </div>
-            <h4 className="mission-name-mob">{missionTitle}</h4>
-            <div className="mission-prog-row-mob">
-              <div className="m-bar-outer-mob">
-                <div className="m-bar-inner-mob" style={{ width: `${missionPct}%` }} />
+          {/* Streak Card */}
+          <div className="mmo-mobile-card streak-mob-card">
+            <div className="streak-mob-top">
+              <span className="streak-flame-icon">🔥</span>
+              <div className="streak-text-wrap">
+                <span className="streak-main-lbl">STREAK</span>
+                <span className="streak-sub-lbl">{streak || 7} DAYS</span>
+                <span className="streak-caption">Keep it up!</span>
               </div>
-              <span className="m-prog-text-mob">{missionProgressText}</span>
             </div>
-            <div className="mission-rewards-row-mob">
-              <span className="rew-tag-xp-mob">XP {missionXpReward}</span>
-              <span className="rew-tag-cash-mob">${missionCashReward}</span>
+            <div className="streak-progress-container-mob">
+              <div className="streak-line-bg-mob"></div>
+              <div className="streak-line-fill-mob" style={{ width: `${((Math.min(7, streak || 7) - 1) / 6) * 100}%` }}></div>
+              <div className="streak-dots-wrap-mob">
+                {[1, 2, 3, 4, 5, 6, 7].map(day => {
+                  const active = day <= (streak || 7);
+                  return (
+                    <span key={day} className={`streak-dot-node-mob ${active ? 'active' : ''}`} />
+                  );
+                })}
+              </div>
             </div>
           </div>
+        </section>
+
+        {/* 5. Market Movers Card */}
+        <section className="mmo-mobile-card movers-mob-card">
+          <div className="movers-mob-head">
+            <span className="movers-mob-title">MARKET MOVERS</span>
+            <span className="movers-mob-view-all" onClick={() => handleNavTab('movers')}>VIEW ALL</span>
+          </div>
+
+          <div className="movers-mob-tabs">
+            <button className={`movers-tab-btn-mob ${moversTab === 'gainers' ? 'active' : ''}`} onClick={() => setMoversTab('gainers')}>TOP GAINERS</button>
+            <button className={`movers-tab-btn-mob ${moversTab === 'losers' ? 'active' : ''}`} onClick={() => setMoversTab('losers')}>TOP LOSERS</button>
+            <button className={`movers-tab-btn-mob ${moversTab === 'active' ? 'active' : ''}`} onClick={() => setMoversTab('active')}>MOST ACTIVE</button>
+          </div>
+
+          <div className="movers-mob-list">
+            {activeMovers.slice(0, 3).map(({ a, ast, chg }) => {
+              const isPositive = chg >= 0;
+              return (
+                <div key={a.id} className="mover-mob-row" onClick={() => navigateToTrade(a.id, a.market as Market)}>
+                  <div className="mover-mob-icon-wrap">
+                    <svg className="mover-mob-icon-svg" style={{ width: '18px', height: '18px', fill: isPositive ? '#22C55E' : '#EF4444' }}>
+                      <use href={`#${a.icon}`} />
+                    </svg>
+                  </div>
+                  <div className="mover-mob-asset-info">
+                    <span className="mover-mob-sym">{a.id}</span>
+                    <span className="mover-mob-name">{a.name}</span>
+                  </div>
+                  <div className="mover-mob-price-col">
+                    <span className="mover-mob-price">{fmt(ast.lastPrice)}</span>
+                    <span className={`mover-mob-chg ${isPositive ? 'up-green' : 'dn-red'}`}>
+                      {isPositive ? '▲' : '▼'} {Math.abs(chg).toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* 6. Daily Missions Card */}
+        <section className="mmo-mobile-card missions-mob-card">
+          <div className="missions-mob-head">
+            <span className="missions-mob-title">DAILY MISSIONS</span>
+            <span className="missions-mob-countdown">RESETS IN {midnightTimeLeft}</span>
+          </div>
+
+          <div className="missions-mob-list">
+            {daily.length > 0 ? (
+              daily.map((m, idx) => {
+                const pct = Math.min(100, (m.progress / m.def.goal.target) * 100);
+                return (
+                  <div key={m.def.id} className="mission-mob-row">
+                    <span className="mission-mob-num">{idx + 1}</span>
+                    <div className="mission-mob-details">
+                      <span className="mission-mob-title-text">{m.def.title}</span>
+                      <div className="mission-mob-prog-row">
+                        <div className="m-bar-outer"><div className="m-bar-inner" style={{ width: `${pct}%` }} /></div>
+                        <span className="m-prog-count-mob">{Math.floor(m.progress)} / {m.def.goal.target}</span>
+                      </div>
+                    </div>
+                    <div className="mission-mob-rewards">
+                      <span className="mob-rew-xp">XP {m.def.reward * 5}</span>
+                      <span className="mob-rew-cash">${m.def.reward * 10}</span>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <>
+                <div className="mission-mob-row">
+                  <span className="mission-mob-num">1</span>
+                  <div className="mission-mob-details">
+                    <span className="mission-mob-title-text">Make 3 Profitable Trades</span>
+                    <div className="mission-mob-prog-row">
+                      <div className="m-bar-outer"><div className="m-bar-inner" style={{ width: '66%' }} /></div>
+                      <span className="m-prog-count-mob">2 / 3</span>
+                    </div>
+                  </div>
+                  <div className="mission-mob-rewards">
+                    <span className="mob-rew-xp">XP 250</span>
+                    <span className="mob-rew-cash">$500</span>
+                  </div>
+                </div>
+                <div className="mission-mob-row">
+                  <span className="mission-mob-num">2</span>
+                  <div className="mission-mob-details">
+                    <span className="mission-mob-title-text">Trade in Crypto Market</span>
+                    <div className="mission-mob-prog-row">
+                      <div className="m-bar-outer"><div className="m-bar-inner" style={{ width: '0%' }} /></div>
+                      <span className="m-prog-count-mob">0 / 1</span>
+                    </div>
+                  </div>
+                  <div className="mission-mob-rewards">
+                    <span className="mob-rew-xp">XP 200</span>
+                    <span className="mob-rew-cash">$300</span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          <button className="view-all-missions-btn-mob" onClick={() => handleNavTab('missions')}>
+            VIEW ALL MISSIONS
+          </button>
         </section>
 
       </div>
