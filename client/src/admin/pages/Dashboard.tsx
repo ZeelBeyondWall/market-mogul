@@ -149,7 +149,7 @@ export default function Dashboard() {
       )}
 
       {eco && (
-        <div className="a-grid-3" style={{ marginBottom: 16 }}>
+        <div className="a-stats-grid" style={{ marginBottom: 16 }}>
           <StatCard
             label="Total Users"
             value={fmtNum(eco.totalRegistered)}
@@ -193,6 +193,12 @@ export default function Dashboard() {
             icon="👑"
             sub={eco.richest ? `${fmt(eco.richest.net)} · #${eco.richest.id}` : 'no traders'}
             tone="up"
+          />
+          <StatCard
+            label="System Uptime"
+            value={health ? fmtDuration(health.uptimeSec) : '—'}
+            icon="⏱"
+            sub="since last engine boot"
           />
         </div>
       )}
