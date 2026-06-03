@@ -49,8 +49,8 @@ export function BottomNav() {
 
       {/* PORTFOLIO */}
       <button
-        className={'bnav-btn' + (activeScreen === 'trading' && mv === 'panel' && !notifOpen && activeTab === 'positions' ? ' on' : '')}
-        onClick={() => { setActiveScreen('trading'); setMv('panel'); setActiveTab('positions'); setNotifOpen(false); Audio.click(); }}
+        className={'bnav-btn' + (activeScreen === 'portfolio' && !notifOpen ? ' on' : '')}
+        onClick={() => { setActiveScreen('portfolio'); setNotifOpen(false); Audio.click(); }}
       >
         <span className="bnav-icon">
           <IconPortfolio />

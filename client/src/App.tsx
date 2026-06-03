@@ -22,6 +22,8 @@ import { Auth } from './components/Auth';
 import { supabase } from './net/supabase';
 import { connect } from './net/wsClient';
 import { DashboardPage } from './components/DashboardPage';
+import { PortfolioPage } from './components/PortfolioPage';
+import { LeaderboardPage } from './components/LeaderboardPage';
 
 export function App() {
   useGameLoop();
@@ -78,6 +80,10 @@ export function App() {
           {activeScreen === 'trading' && <MarketBar />}
           {activeScreen === 'dashboard' ? (
             <DashboardPage />
+          ) : activeScreen === 'portfolio' ? (
+            <PortfolioPage />
+          ) : activeScreen === 'leaderboard' ? (
+            <LeaderboardPage />
           ) : (
             <main>
               <div className="col col-market"><AssetList /></div>

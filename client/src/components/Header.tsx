@@ -39,7 +39,7 @@ export function Header() {
     return '👑';
   };
 
-  const handleNav = (screen: 'dashboard' | 'trading', tab?: any) => {
+  const handleNav = (screen: 'dashboard' | 'trading' | 'portfolio' | 'leaderboard', tab?: any) => {
     Audio.click();
     setActiveScreen(screen);
     if (tab) {
@@ -146,14 +146,20 @@ export function Header() {
           Markets
         </button>
         <button
-          className={`nav-link-btn ${activeScreen === 'trading' && activeTab === 'positions' ? 'active' : ''}`}
+          className={`nav-link-btn ${activeScreen === 'trading' && activeTab !== 'movers' && activeTab !== 'missions' && activeTab !== 'news' ? 'active' : ''}`}
           onClick={() => handleNav('trading', 'positions')}
+        >
+          Trade
+        </button>
+        <button
+          className={`nav-link-btn ${activeScreen === 'portfolio' ? 'active' : ''}`}
+          onClick={() => handleNav('portfolio')}
         >
           Portfolio
         </button>
         <button
-          className={`nav-link-btn ${activeScreen === 'trading' && activeTab === 'stats' ? 'active' : ''}`}
-          onClick={() => handleNav('trading', 'stats')}
+          className={`nav-link-btn ${activeScreen === 'leaderboard' ? 'active' : ''}`}
+          onClick={() => handleNav('leaderboard')}
         >
           Leaderboard
         </button>
