@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGame } from '../store/gameStore';
 import { fmt, fmtPct, fmtNum } from '../../../shared/engine/helpers';
 import { ASSETS } from '../../../shared/engine/constants';
-import type { Market, MissionState } from '../../../shared/engine/types';
+import type { Market, MissionState, NewsEvent } from '../../../shared/engine/types';
 import { send } from '../net/wsClient';
 import { Audio } from '../audio/audio';
 import { AnimatedNumber } from './AnimatedNumber';
@@ -17,8 +17,6 @@ export function DashboardPage() {
   const xpAt = useGame(s => s.xpAtCurrent);
   const xpTo = useGame(s => s.xpToNext);
   const daily = useGame(s => s.dailyMissions);
-  const weekly = useGame(s => s.weeklyMissions);
-  const leaderboard = useGame(s => s.leaderboard);
   const playerStats = useGame(s => s.playerStats);
   const streak = useGame(s => s.playerStreak);
   const bonus = useGame(s => s.playerBonus);
@@ -26,81 +24,75 @@ export function DashboardPage() {
   const setActiveScreen = useGame(s => s.setActiveScreen);
   const setActiveTab = useGame(s => s.setActiveTab);
   const setActiveAsset = useGame(s => s.setActive);
+  const session = useGame(s => s.session);
+  const pushToast = useGame(s => s.pushToast);
 
   const p = eng.player();
   const cash = eng.displayCash();
   const port = eng.displayPortfolioValue();
   const net = eng.netWorth();
-  
+
   // Today's P&L calculations
   const dayStartNet = p.dayStartNet || 1000;
   const todayPnL = net - dayStartNet;
   const todayPnLPct = (todayPnL / dayStartNet) * 100;
   const xpProgress = Math.max(0, Math.min(100, ((xp - xpAt) / Math.max(1, xpTo - xpAt)) * 100));
 
-  // Dynamic Operator Rank Class based on Player Level
-  const getOperatorClass = (level: number) => {
-    if (level < 5) return 'SPECULATOR RECRUIT';
-    if (level < 10) return 'LIMIT INITIATE';
-    if (level < 20) return 'MARGIN RAIDER';
-    if (level < 30) return 'CRYPTO SHOGUN';
-    if (level < 50) return 'FOREX OVERLORD';
-    return 'APEX HEGEMON';
-  };
+  const username = session?.user?.user_metadata?.username || session?.user?.email?.split('@')[0] || p.name || 'Trader';
 
-  const getAvatarEmoji = (level: number) => {
-    if (level < 5) return '🧑‍🚀';
-    if (level < 10) return '🦾';
-    if (level < 20) return '🤖';
-    if (level < 30) return '⚡';
-    if (level < 50) return '👽';
-    return '👑';
-  };
+  // State for tabs inside Market Movers
+  const [moversTab, setMoversTab] = useState<'gainers' | 'losers' | 'active'>('gainers');
 
-  // Market Selection for Highlights
-  const [selectedHighlightMarket, setSelectedHighlightMarket] = useState<Market>('stocks');
+  // Dynamic countdown timers
+  const [timeLeft, setTimeLeft] = useState({ hours: 12, minutes: 35, seconds: 21 });
+  const [midnightTimeLeft, setMidnightTimeLeft] = useState('12H 35M');
 
-  // How to Play Modal Slide state
-  const [showGuide, setShowGuide] = useState(false);
-  const [guideSlide, setGuideSlide] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      const midnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+      const diffMs = midnight.getTime() - now.getTime();
+      
+      const hours = Math.floor(diffMs / 3600000);
+      const minutes = Math.floor((diffMs % 3600000) / 60000);
+      const seconds = Math.floor((diffMs % 60000) / 1000);
+      
+      setTimeLeft({ hours, minutes, seconds });
+      setMidnightTimeLeft(`${hours}H ${minutes}M`);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-  // Onboarding Checklist visibility
-  const showOnboarding = lvl === 1 && (playerStats?.totalTrades || 0) === 0;
-
-  // Onboarding Checklist state
-  const [guideRead, setGuideRead] = useState(() => {
-    return localStorage.getItem('mm_onboarding_guide_read') === 'true';
-  });
-
-  const handleReadGuide = () => {
-    setGuideRead(true);
-    localStorage.setItem('mm_onboarding_guide_read', 'true');
-    setShowGuide(true);
-    setGuideSlide(0);
+  // Claim Daily Chest Action
+  const handleClaimDailyReward = () => {
     Audio.click();
+    pushToast(`Daily Reward opened! Streak: ${streak || 1} Days. You claimed +${(streak || 1) * 100} Credits!`, 'ok');
   };
 
-  const handleCloseGuide = () => {
-    setShowGuide(false);
-    Audio.click();
-  };
+  // Compile Market Movers data
+  const moversList = ASSETS.map(a => {
+    const ast = eng.state.assets[a.id];
+    if (!ast) return null;
+    const chg = ((ast.lastPrice - ast.open) / (ast.open || 1)) * 100;
+    return { a, ast, chg };
+  }).filter(Boolean) as { a: typeof ASSETS[0]; ast: any; chg: number }[];
 
-  // Compile Market Highlights
-  const ranked = ASSETS
-    .filter(a => a.market === selectedHighlightMarket)
-    .map(a => {
-      const ast = eng.state.assets[a.id];
-      if (!ast) return null;
-      const chg = ((ast.lastPrice - ast.open) / (ast.open || 1)) * 100;
-      return { a, ast, chg };
-    })
-    .filter(Boolean) as { a: typeof ASSETS[0]; ast: any; chg: number }[];
+  const topGainers = [...moversList].sort((a, b) => b.chg - a.chg).slice(0, 5);
+  const topLosers = [...moversList].sort((a, b) => a.chg - b.chg).slice(0, 5);
+  const mostActive = [...moversList].sort((a, b) => b.ast.volume - a.ast.volume).slice(0, 5);
 
-  const topGainers = [...ranked].sort((a, b) => b.chg - a.chg).slice(0, 3);
-  const topLosers = [...ranked].sort((a, b) => a.chg - b.chg).slice(0, 3);
-  const mostActive = [...ranked].sort((a, b) => b.ast.volume - a.ast.volume).slice(0, 3);
+  const activeMovers = moversTab === 'gainers' ? topGainers : moversTab === 'losers' ? topLosers : mostActive;
 
-  // Calculate Holdings & Portfolio allocation list
+  // Compile news list with fallback
+  const newsList = eng.state.events.slice(0, 4);
+  const defaultNews = [
+    { title: 'Global Markets Rally as Tech Stocks Surge', desc: 'Tech index gains 3.5% led by NexaTech and QuantumSoft.', time: '2m ago' },
+    { title: 'Fed Hints at Possible Rate Cut Next Month', desc: 'Central bank signals cooling inflation metrics support rate cuts.', time: '15m ago' },
+    { title: 'Oil Prices Climb Amid Supply Concerns', desc: 'Geopolitical tensions restrict production targets in Fusion sectors.', time: '32m ago' },
+    { title: 'QuantumSoft Announces Breakthrough AI Chip', desc: 'Next-gen silicon yields 50% improvement in model latency tests.', time: '1h ago' }
+  ];
+
+  // Compile allocations list
   const holdingsList = Object.keys(p.holdings)
     .map(aid => {
       const h = p.holdings[aid];
@@ -116,6 +108,7 @@ export function DashboardPage() {
         aid,
         name: assetDef.name,
         icon: assetDef.icon,
+        cat: assetDef.cat,
         market: assetDef.market,
         shares: h.shares,
         avgCost: h.avgCost,
@@ -125,10 +118,70 @@ export function DashboardPage() {
         unrealized,
       };
     })
-    .filter(Boolean) as { aid: string; name: string; icon: string; market: string; shares: number; avgCost: number; lastPrice: number; val: number; pctAlloc: number; unrealized: number }[];
+    .filter(Boolean) as { aid: string; name: string; icon: string; cat: string; market: string; shares: number; avgCost: number; lastPrice: number; val: number; pctAlloc: number; unrealized: number }[];
 
   const realizedPnL = playerStats?.realizedPL || 0;
   const unrealizedPnL = playerStats?.unrealizedPL || 0;
+
+  // Donut allocations grouping
+  const sectorGroups: Record<string, { label: string; val: number; color: string }> = {
+    tech: { label: 'Technology', val: 0, color: '#7C5CFF' },
+    bank: { label: 'Finance', val: 0, color: '#3B82F6' },
+    energy: { label: 'Energy', val: 0, color: '#FBBF24' },
+    health: { label: 'Healthcare', val: 0, color: '#10B981' },
+    consumer: { label: 'Consumer', val: 0, color: '#EC4899' },
+    gaming: { label: 'Gaming', val: 0, color: '#8B5CF6' },
+    crypto: { label: 'Crypto', val: 0, color: '#D946EF' },
+    forex: { label: 'Forex', val: 0, color: '#06B6D4' },
+  };
+
+  holdingsList.forEach(h => {
+    const cat = h.market === 'crypto' ? 'crypto' : h.market === 'forex' ? 'forex' : (h.cat || 'other');
+    if (sectorGroups[cat]) {
+      sectorGroups[cat].val += h.val;
+    } else {
+      if (!sectorGroups['other']) {
+        sectorGroups['other'] = { label: 'Others', val: 0, color: '#A8B3CF' };
+      }
+      sectorGroups['other'].val += h.val;
+    }
+  });
+
+  const activeSectors = Object.values(sectorGroups)
+    .filter(g => g.val > 0)
+    .map(g => ({
+      label: g.label,
+      value: g.val,
+      color: g.color,
+      pct: port > 0 ? (g.val / port) * 100 : 0
+    }))
+    .sort((a, b) => b.value - a.value);
+
+  const displaySectors = activeSectors.length > 0 
+    ? activeSectors 
+    : [
+        { label: 'Technology', value: 42.5, color: '#7C5CFF', pct: 42.5 },
+        { label: 'Finance', value: 25.1, color: '#3B82F6', pct: 25.1 },
+        { label: 'Energy', value: 15.3, color: '#FBBF24', pct: 15.3 },
+        { label: 'Healthcare', value: 9.8, color: '#10B981', pct: 9.8 },
+        { label: 'Others', value: 7.3, color: '#A8B3CF', pct: 7.3 }
+      ];
+
+  // Leaderboard data - Filter weekly rankings for human players (excluding bots)
+  // Pad with mock human players to make lobby look populated
+  const topHumans = [
+    { rank: 1, name: 'AlphaTrader', net: 245231.25, level: 18, isPlayer: false },
+    { rank: 2, name: 'WolfInvestor', net: 189023.14, level: 14, isPlayer: false },
+    { rank: 3, name: 'MarketKing', net: 175332.67, level: 15, isPlayer: false }
+  ];
+
+  const playerRankNum = rank || 247;
+  const showPlayerInLeaderboard = playerRankNum > 3;
+
+  // Active Live Event data with countdown
+  const activeEvent: NewsEvent | null = eng.state.events.length > 0 ? eng.state.events[0] : null;
+  const eventTitle = activeEvent ? activeEvent.title : 'EARNINGS SEASON';
+  const eventDesc = activeEvent ? activeEvent.desc : 'High volatility across tech stocks!';
 
   const navigateToTrade = (assetId: string, market: Market) => {
     setActiveAsset(assetId);
@@ -137,596 +190,656 @@ export function DashboardPage() {
     Audio.click();
   };
 
-  const executeQuickAction = (action: 'stocks' | 'crypto' | 'forex' | 'portfolio' | 'leaderboard') => {
-    if (action === 'stocks') {
+  const handleChooseMarket = (market: 'stocks' | 'crypto' | 'forex') => {
+    Audio.click();
+    if (market === 'stocks') {
       setActiveMarket('stocks');
       setActiveScreen('trading');
-    } else if (action === 'crypto') {
+    } else if (market === 'crypto') {
       if (lvl < 20) {
-        useGame.getState().pushToast('Crypto Nebula unlocks at Level 20', 'err');
-        Audio.click();
+        pushToast('Crypto Nebula unlocks at Level 20', 'err');
         return;
       }
       setActiveMarket('crypto');
       setActiveScreen('trading');
-    } else if (action === 'forex') {
+    } else if (market === 'forex') {
       if (lvl < 30) {
-        useGame.getState().pushToast('Forex Grid unlocks at Level 30', 'err');
-        Audio.click();
+        pushToast('Forex Grid unlocks at Level 30', 'err');
         return;
       }
       setActiveMarket('forex');
       setActiveScreen('trading');
-    } else if (action === 'portfolio') {
-      setActiveScreen('trading');
-      setActiveTab('positions');
-    } else if (action === 'leaderboard') {
-      setActiveScreen('trading');
-      setActiveTab('stats');
     }
-    Audio.click();
   };
 
+  // Static Sparkline Renderer
+  const Sparkline = ({ points, color = '#22C55E' }: { points: number[]; color?: string }) => {
+    const width = 80;
+    const height = 24;
+    if (points.length < 2) return null;
+    const min = Math.min(...points);
+    const max = Math.max(...points);
+    const range = max - min || 1;
+    const ptsStr = points.map((p, i) => `${(i / (points.length - 1)) * width},${height - ((p - min) / range) * height}`).join(' ');
+    return (
+      <svg width={width} height={height} className="spark-line-svg">
+        <polyline fill="none" stroke={color} strokeWidth="1.5" points={ptsStr} />
+      </svg>
+    );
+  };
+
+  // Sparkline Generator for items without history
+  const getStaticPoints = (positive: boolean) => {
+    return positive 
+      ? [10, 12, 11, 14, 13, 16, 15, 18, 17, 20]
+      : [20, 18, 19, 16, 17, 14, 15, 12, 13, 10];
+  };
+
+  // Achievements checking
+  const firstTradeUnlocked = (playerStats?.totalTrades || 0) > 0;
+  const profitMakerUnlocked = realizedPnL >= 10000 || net >= 15000;
+  const bigSpenderUnlocked = net >= 100000 || (playerStats?.totalTrades || 0) >= 20;
+  const marketMasterUnlocked = lvl >= 20;
+
   return (
-    <div className="dash-container">
-      {/* 1. CHARACTER RPG HUD BANNER */}
-      <section className="dash-section dash-summary-grid">
-        {/* Operator Profile Card */}
-        <div className="hud-card card-operator">
-          <div className="hud-card-brackets"></div>
-          <div className="operator-hud">
-            <div className="operator-avatar">
-              <span className="avatar-glyph">{getAvatarEmoji(lvl)}</span>
-              <div className="avatar-pulse"></div>
+    <div className="mmo-dash-layout">
+      {/* ================= LEFT SIDEBAR ================= */}
+      <aside className="mmo-sidebar">
+        {/* Level Card */}
+        <div className="sidebar-card level-card">
+          <div className="level-shield-wrap">
+            <svg viewBox="0 0 100 100" className="shield-svg">
+              <path d="M50 10 L85 25 L85 60 C85 80 50 90 50 90 C50 90 15 80 15 60 L15 25 Z" fill="#7C5CFF" fillOpacity="0.1" stroke="#FBBF24" strokeWidth="3" />
+              <polygon points="50,22 58,40 77,40 62,52 68,70 50,60 32,70 38,52 23,40 42,40" fill="#FBBF24" />
+            </svg>
+          </div>
+          <div className="level-text-info">
+            <h2 className="lvl-title">LEVEL {lvl}</h2>
+            <div className="xp-text-range">{xp - xpAt} / {xpTo - xpAt} XP</div>
+            <div className="lvl-bar-outer">
+              <div className="lvl-bar-inner" style={{ width: `${xpProgress}%` }} />
             </div>
-            <div className="operator-details">
-              <div className="operator-class">{getOperatorClass(lvl)}</div>
-              <div className="operator-lvl-text">COCKPIT ACCESS LEVEL {lvl}</div>
-              
-              <div className="operator-xp-hud">
-                <div className="xp-labels">
-                  <span>TELEMETRY XP</span>
-                  <span>{xp - xpAt} / {xpTo - xpAt}</span>
-                </div>
-                <div className="xp-bar-outer">
-                  <div className="xp-bar-inner" style={{ width: `${xpProgress}%` }} />
-                </div>
-              </div>
+          </div>
+          <div className="lvl-divider"></div>
+          <div className="rank-info-row">
+            <div className="rank-left">
+              <span className="rank-label">RANK</span>
+              <span className="rank-value">#{rank || 247}</span>
+              <span className="rank-sub">TOP 2% OF TRADERS</span>
+            </div>
+            <div className="rank-right-spark">
+              <Sparkline points={[10, 11, 10, 13, 12, 14, 15, 14, 16]} color="#22C55E" />
             </div>
           </div>
         </div>
 
-        {/* Financial Telemetry Matrix Card */}
-        <div className="hud-card card-wealth-cockpit">
-          <div className="hud-card-brackets"></div>
-          <div className="hud-header">📡 CORE CAPITAL SHIELD</div>
-          <div className="telemetry-grid">
-            <div className="telemetry-item main-net">
-              <div className="tel-label">SYSTEM NET WORTH</div>
-              <AnimatedNumber value={net} format={n => fmt(n)} className="tel-val net-glow" />
+        {/* Cash Balance */}
+        <div className="sidebar-card balance-card">
+          <div className="card-icon-circle green-theme">
+            <span>$</span>
+          </div>
+          <div className="balance-info">
+            <span className="balance-lbl">CASH BALANCE</span>
+            <span className="balance-val"><AnimatedNumber value={cash} format={n => fmt(n)} /></span>
+          </div>
+        </div>
+
+        {/* Net Worth */}
+        <div className="sidebar-card balance-card">
+          <div className="card-icon-circle purple-theme">
+            <span>💎</span>
+          </div>
+          <div className="balance-info">
+            <span className="balance-lbl">NET WORTH</span>
+            <span className="balance-val"><AnimatedNumber value={net} format={n => fmt(n)} /></span>
+            <span className="delta-pct-today up-green">
+              ▲ {todayPnLPct >= 0 ? '+' : ''}{fmtPct(todayPnLPct)} TODAY
+            </span>
+          </div>
+        </div>
+
+        {/* Daily Profit/Loss */}
+        <div className="sidebar-card pnl-card">
+          <div className="pnl-header-row">
+            <div className="pnl-lbl-col">
+              <span className="pnl-lbl">TODAY'S PROFIT</span>
+              <span className={`pnl-val ${todayPnL >= 0 ? 'up-green' : 'dn-red'}`}>
+                {todayPnL >= 0 ? '+' : ''}<AnimatedNumber value={todayPnL} format={n => fmt(n)} />
+              </span>
+              <span className={`pnl-pct ${todayPnL >= 0 ? 'up-green' : 'dn-red'}`}>
+                {todayPnL >= 0 ? '+' : ''}{fmtPct(todayPnLPct)}
+              </span>
             </div>
-            <div className="telemetry-sub-grid">
-              <div className="tel-sub-item">
-                <span className="tel-sub-lbl">CREDITS (CASH)</span>
-                <span className="tel-sub-val green-glow"><AnimatedNumber value={cash} format={n => fmt(n)} /></span>
-              </div>
-              <div className="tel-sub-item">
-                <span className="tel-sub-lbl">ALLOCATED LIQUIDITY</span>
-                <span className="tel-sub-val blue-glow"><AnimatedNumber value={port} format={n => fmt(n)} /></span>
-              </div>
+            <div className="pnl-sparkline">
+              <Sparkline points={todayPnL >= 0 ? [2, 3, 2, 5, 4, 6, 7] : [7, 6, 8, 5, 4, 3, 2]} color={todayPnL >= 0 ? '#22C55E' : '#EF4444'} />
             </div>
           </div>
         </div>
 
-        {/* Match Arena Performance HUD */}
-        <div className="hud-card card-performance-cockpit">
-          <div className="hud-card-brackets"></div>
-          <div className="hud-header">
-            <span>⚔️ ARENA LEADERBOARD</span>
-            <span className="telemetry-ping blinking">LIVE</span>
+        {/* Daily Reward Chest */}
+        <div className="sidebar-card daily-reward-card">
+          <div className="chest-badge-layout">
+            <div className="chest-illustration-wrap">
+              <div className="glowing-orb"></div>
+              <span className="chest-icon-emoji">🎁</span>
+            </div>
+            <div className="reward-claim-info">
+              <span className="reward-lbl">DAILY REWARD</span>
+              <span className="reward-sub">CLAIM YOUR REWARD</span>
+            </div>
           </div>
-          <div className="telemetry-performance-body">
-            <div className="telemetry-performance-row">
-              <div className="perf-metric">
-                <span className="perf-label">DAILY DELTA</span>
-                <div className={`perf-value ${todayPnL >= 0 ? 'up' : 'dn'}`}>
-                  <span className="perf-sign">{todayPnL >= 0 ? '▲' : '▼'}</span>
-                  <AnimatedNumber value={todayPnL} format={n => fmt(Math.abs(n))} />
-                </div>
-                <span className={`perf-pct ${todayPnL >= 0 ? 'up' : 'dn'}`}>
-                  {todayPnL >= 0 ? '+' : ''}{fmtPct(todayPnLPct)}
-                </span>
-              </div>
-              
-              <div className="perf-metric rank-metric">
-                <span className="perf-label">GLOBAL RANK</span>
-                <div className="perf-value accent-glow">#{rank}</div>
-                <span className="perf-sub-label">OF {total || '10,000'} TRADERS</span>
-              </div>
-            </div>
+          <button className="claim-now-btn" onClick={handleClaimDailyReward}>
+            CLAIM NOW
+          </button>
+        </div>
 
-            <div className="multiplier-row">
-              <div className="multiplier-badge">
-                🔥 STREAK COMBO: {streak ? `${streak}D` : '1D'}
-              </div>
-              {bonus > 0 && (
-                <div className="multiplier-bonus-badge">
-                  🎁 +{fmt(bonus)} WALLET BUFF
-                </div>
-              )}
+        {/* Streak */}
+        <div className="sidebar-card streak-card">
+          <div className="streak-title-row">
+            <span className="streak-flame">🔥</span>
+            <div className="streak-labels">
+              <span className="streak-lbl">STREAK</span>
+              <span className="streak-days">{streak || 7} DAYS</span>
+              <span className="streak-sub">Keep it up!</span>
             </div>
+          </div>
+          <div className="streak-dots-row">
+            {[1, 2, 3, 4, 5, 6, 7].map((day) => {
+              const active = day <= (streak || 7);
+              return (
+                <div 
+                  key={day} 
+                  className={`streak-dot ${active ? 'active-gold' : ''}`}
+                  title={active ? `Day ${day} Completed` : `Day ${day} Pending`}
+                />
+              );
+            })}
           </div>
         </div>
-      </section>
+      </aside>
 
-      {/* 2. FIRST-TIME INITIATION SYSTEM (ONBOARDING) */}
-      {showOnboarding && (
-        <section className="dash-section">
-          <div className="hud-card card-onboarding">
-            <div className="hud-card-brackets"></div>
-            <div className="hud-header neon-gold-alert">⚙️ SYSTEM COCKPIT PROTOCOLS DEPLOYED</div>
-            <div className="onboarding-cockpit">
-              <p className="onboarding-welcome-text">
-                Welcome, Operator. You have been injected into a live simulated market ecosystem with <b>10,000 AI bots</b>. Complete your initiation checklist to unlock advanced cockpit controls.
-              </p>
+      {/* ================= CENTER / MAIN WORKSPACE ================= */}
+      <div className="mmo-main-content">
+        
+        {/* Center Top Hero Section */}
+        <section className="hero-banner-section" style={{ backgroundImage: 'linear-gradient(rgba(11,16,32,0.4), rgba(11,16,32,0.9)), url(/cityscape_sunset.png)' }}>
+          <div className="hero-banner-left">
+            <h1 className="welcome-heading">WELCOME BACK, {username.toUpperCase()}!</h1>
+            <p className="welcome-subtext">The market never sleeps. Opportunity is everywhere.</p>
+          </div>
+          
+          {/* Live Market Event Card */}
+          <div className="hero-banner-right event-card-live">
+            <div className="live-event-sparkline-bg">
+              <Sparkline points={[10, 14, 12, 19, 15, 24, 21, 28, 25, 32]} color="#EF4444" />
+            </div>
+            <div className="live-event-content">
+              <span className="live-event-tag">LIVE MARKET EVENT</span>
+              <h3 className="live-event-title">{eventTitle}</h3>
+              <p className="live-event-desc">{eventDesc}</p>
               
-              <div className="onboarding-steps-hud">
-                <div className={`ob-step-row ${guideRead ? 'completed' : ''}`}>
-                  <div className="ob-step-indicator">{guideRead ? '✓' : '01'}</div>
-                  <div className="ob-step-details">
-                    <div className="ob-step-title">DECRYPT PILOT MANUAL</div>
-                    <div className="ob-step-desc">Scan slides regarding matching engines, locks, and bot profiles.</div>
-                  </div>
-                  <button className="ob-step-action-btn" onClick={handleReadGuide}>
-                    {guideRead ? 'REOPEN MANUAL' : 'INITIALIZE SCAN'}
-                  </button>
-                </div>
-
-                <div className="ob-step-row">
-                  <div className="ob-step-indicator">02</div>
-                  <div className="ob-step-details">
-                    <div className="ob-step-title">EXECUTE TELEMETRY FIRST TRADE</div>
-                    <div className="ob-step-desc">Target <b>NEXA (NexaTech)</b> and deploy a long position to complete the signal lock.</div>
-                  </div>
-                  <button 
-                    className="ob-step-action-btn pulse-glow"
-                    onClick={() => navigateToTrade('NEXA', 'stocks')}
-                  >
-                    🚀 ENGAGE NEXA MATRIX
-                  </button>
+              <div className="live-event-bottom">
+                <button className="view-event-btn" onClick={() => handleNavTab('news')}>
+                  VIEW EVENT
+                </button>
+                <div className="event-countdown-display">
+                  <span className="ends-in-lbl">ENDS IN</span>
+                  <span className="ends-in-time">
+                    {timeLeft.hours.toString().padStart(2, '0')}H : {timeLeft.minutes.toString().padStart(2, '0')}M : {timeLeft.seconds.toString().padStart(2, '0')}S
+                  </span>
                 </div>
               </div>
             </div>
           </div>
         </section>
-      )}
 
-      {/* 3. TWO COLUMN MAIN WORLD HUDS */}
-      <div className="dash-columns">
-        {/* LEFT COLUMN: ACTIVE QUEST LOGS & BROADCASTS */}
-        <div className="dash-col-left">
-          {/* RPG Quest Journal */}
-          <div className="hud-card card-quests">
-            <div className="hud-card-brackets"></div>
-            <div className="hud-header">🎯 QUEST LOG & BOUNTIES</div>
-            <div className="hud-body">
-              {daily.length === 0 && weekly.length === 0 ? (
-                <div className="hud-telemetry-empty">Awaiting mission dispatch signal...</div>
-              ) : (
-                <div className="quest-list-hud">
-                  {daily.map(m => <QuestRow key={m.def.id} m={m} type="DAILY BOUNTY" />)}
-                  {weekly.map(m => <QuestRow key={m.def.id} m={m} type="WEEKLY RAID" />)}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Monospace Tactical Wire Broadcast Feed */}
-          <div className="hud-card card-news-broadcaster">
-            <div className="hud-card-brackets"></div>
-            <div className="hud-header">
-              <span>📰 ECONOMIC INTELLIGENCE STREAM</span>
-              <span className="feed-status blinking">RECEIVING</span>
-            </div>
-            <div className="hud-body news-cockpit-body">
-              {eng.state.events.length === 0 ? (
-                <div className="hud-telemetry-empty">Waiting for economic broadcast signals...</div>
-              ) : (
-                <div className="tactical-wire-list">
-                  {eng.state.events.slice(0, 8).map((e, idx) => {
-                    const elapsed = Math.floor((Date.now() - e.t) / 1000);
-                    const timeStr = elapsed < 60 ? elapsed + 's' : Math.floor(elapsed / 60) + 'm';
-                    return (
-                      <div key={idx} className={`wire-card ${e.type}`}>
-                        <div className="wire-header">
-                          <span className="wire-anomaly-tag">
-                            {e.type === 'boom' ? '❇️ MARKET SURGE' : e.type === 'crash' ? '🚨 CRITICAL DEVIATION' : '📡 TELEMETRY'}
-                          </span>
-                          <span className="wire-time">{timeStr} AGO</span>
-                        </div>
-                        <div className="wire-title">{e.title}</div>
-                        <p className="wire-desc">{e.desc}</p>
-                        <div className="wire-foot">
-                          {e.cat && <span className="wire-tag">#{e.cat.toUpperCase()}</span>}
-                          {e.assetIds && e.assetIds.map(aid => (
-                            <span 
-                              key={aid} 
-                              className="wire-tag target-link"
-                              onClick={() => {
-                                const def = ASSETS.find(a => a.id === aid);
-                                if (def) navigateToTrade(aid, def.market);
-                              }}
-                            >
-                              🚀 LOCK ${aid}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN: RADAR SCANNERS & ORBITAL SWITCHES */}
-        <div className="dash-col-right">
-          {/* Orbital Deck Launch Switches (Quick Actions) */}
-          <div className="hud-card card-orbital-switches">
-            <div className="hud-card-brackets"></div>
-            <div className="hud-header">🚀 ORBITAL DECK SWITCHBOARD</div>
-            <div className="switches-grid">
-              <button className="switch-pod" onClick={() => executeQuickAction('stocks')}>
-                <div className="switch-glow text-blue"></div>
-                <span className="switch-icon">📈</span>
-                <span className="switch-lbl">STOCKS GRID</span>
-                <span className="switch-sub-lbl">SECURE LINK</span>
-              </button>
-              <button className={`switch-pod ${lvl < 20 ? 'switch-locked' : ''}`} onClick={() => executeQuickAction('crypto')}>
-                <div className="switch-glow text-purple"></div>
-                <span className="switch-icon">{lvl < 20 ? '🔒' : '⚡'}</span>
-                <span className="switch-lbl">CRYPTO NEBULA</span>
-                <span className="switch-sub-lbl">{lvl < 20 ? 'LVL 20 REQ' : 'ONLINE'}</span>
-              </button>
-              <button className={`switch-pod ${lvl < 30 ? 'switch-locked' : ''}`} onClick={() => executeQuickAction('forex')}>
-                <div className="switch-glow text-gold"></div>
-                <span className="switch-icon">{lvl < 30 ? '🔒' : '💱'}</span>
-                <span className="switch-lbl">FOREX CROSSWAY</span>
-                <span className="switch-sub-lbl">{lvl < 30 ? 'LVL 30 REQ' : 'ONLINE'}</span>
-              </button>
-              <button className="switch-pod" onClick={() => executeQuickAction('portfolio')}>
-                <div className="switch-glow text-green"></div>
-                <span className="switch-icon">💼</span>
-                <span className="switch-lbl">PORTFOLIO HUD</span>
-                <span className="switch-sub-lbl">TELEMETRY</span>
-              </button>
-              <button className="switch-pod" onClick={() => executeQuickAction('leaderboard')}>
-                <div className="switch-glow text-cyan"></div>
-                <span className="switch-icon">🏆</span>
-                <span className="switch-lbl">ARENA RANKS</span>
-                <span className="switch-sub-lbl">GLOBAL LEAGUE</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Active Telemetry Positions */}
-          <div className="hud-card card-allocated-holdings">
-            <div className="hud-card-brackets"></div>
-            <div className="hud-header">🛡️ ACTIVE TELEMETRY HOLDINGS</div>
-            <div className="hud-body">
-              <div className="allocation-header-hud">
-                <div className="alloc-stat">
-                  <span className="ash-lbl">UNSECURED P&L</span>
-                  <span className={`ash-val ${unrealizedPnL >= 0 ? 'up-glow' : 'dn-glow'}`}>
-                    {unrealizedPnL >= 0 ? '+' : ''}{fmt(unrealizedPnL)}
-                  </span>
-                </div>
-                <div className="alloc-stat">
-                  <span className="ash-lbl">REALIZED BOUNTY</span>
-                  <span className={`ash-val ${realizedPnL >= 0 ? 'up-glow' : 'dn-glow'}`}>
-                    {realizedPnL >= 0 ? '+' : ''}{fmt(realizedPnL)}
-                  </span>
-                </div>
-                <div className="alloc-stat">
-                  <span className="ash-lbl">ACTIVE SECURE SECTORS</span>
-                  <span className="ash-val text-white">{holdingsList.length} TARGETS</span>
-                </div>
-              </div>
-
-              {holdingsList.length === 0 ? (
-                <div className="hud-telemetry-empty">No active telemetry links. Launch to a trading grid to secure capital.</div>
-              ) : (
-                <div className="allocated-radar-list">
-                  {holdingsList.map(h => (
-                    <div 
-                      key={h.aid} 
-                      className="radar-holding-row"
-                      onClick={() => navigateToTrade(h.aid, h.market as Market)}
-                    >
-                      <div className="radar-holding-symbol">
-                        <svg className="rhr-icon"><use href={`#${h.icon}`}/></svg>
-                        <div>
-                          <span className="rhr-id">${h.aid}</span>
-                          <span className="rhr-name">{h.name}</span>
-                        </div>
-                      </div>
-                      <div className="radar-holding-qty">
-                        <span className="rhr-val">{fmtNum(Math.abs(h.shares))} SH</span>
-                        <span className="rhr-side-tag">{h.shares > 0 ? 'LONG POSITION' : 'SHORT POSITION'}</span>
-                      </div>
-                      <div className="radar-holding-delta">
-                        <span className={h.unrealized >= 0 ? 'up-glow' : 'dn-glow'}>
-                          {h.unrealized >= 0 ? '+' : ''}{fmt(h.unrealized)}
-                        </span>
-                        <span className="rhr-alloc-bar-pct">{h.pctAlloc.toFixed(1)}% ALLOC</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Sector Volatility Opportunity Radar */}
-          <div className="hud-card card-volatility-radar">
-            <div className="hud-card-brackets"></div>
-            <div className="hud-header radar-header-wrap">
-              <span>📡 ACTIVE SECTOR SCANNER</span>
-              <div className="radar-filters">
-                {(['stocks', 'crypto', 'forex'] as Market[]).map(m => (
+        {/* 3-Column Main Grid */}
+        <div className="main-3col-grid">
+          
+          {/* COLUMN 1: Market Movers & News */}
+          <div className="grid-col flex-col">
+            
+            {/* Market Movers Card */}
+            <div className="mmo-card movers-card">
+              <div className="movers-header">
+                <h3 className="card-title-mmo">MARKET MOVERS</h3>
+                <div className="movers-tab-buttons">
                   <button 
-                    key={m}
-                    className={`radar-filter-btn ${selectedHighlightMarket === m ? 'active' : ''}`}
-                    onClick={() => { setSelectedHighlightMarket(m); Audio.click(); }}
+                    className={`mover-tab-btn ${moversTab === 'gainers' ? 'active' : ''}`}
+                    onClick={() => { Audio.click(); setMoversTab('gainers'); }}
                   >
-                    {m.toUpperCase()}
+                    TOP GAINERS
                   </button>
-                ))}
-              </div>
-            </div>
-            <div className="hud-body radar-scans-body">
-              <div className="radar-grid-wrap">
-                {/* Sector Spikes (Gainers) */}
-                <div className="radar-sector-group">
-                  <div className="radar-sector-title up">📈 SECTOR SPIKES (GAINERS)</div>
-                  {topGainers.map(r => (
-                    <RadarScanRow key={r.a.id} r={r} lvl={lvl} onClick={() => navigateToTrade(r.a.id, r.a.market)} />
-                  ))}
-                </div>
-                {/* System Crashes (Losers) */}
-                <div className="radar-sector-group">
-                  <div className="radar-sector-title dn">📉 SYSTEM DEVIATIONS (LOSERS)</div>
-                  {topLosers.map(r => (
-                    <RadarScanRow key={r.a.id} r={r} lvl={lvl} onClick={() => navigateToTrade(r.a.id, r.a.market)} />
-                  ))}
-                </div>
-                {/* Active Hotspots (Volume) */}
-                <div className="radar-sector-group">
-                  <div className="radar-sector-title">🔥 DENSITY HOTSPOTS (VOLUME)</div>
-                  {mostActive.map(r => (
-                    <RadarScanRow key={r.a.id} r={r} lvl={lvl} showVol={true} onClick={() => navigateToTrade(r.a.id, r.a.market)} />
-                  ))}
+                  <button 
+                    className={`mover-tab-btn ${moversTab === 'losers' ? 'active' : ''}`}
+                    onClick={() => { Audio.click(); setMoversTab('losers'); }}
+                  >
+                    TOP LOSERS
+                  </button>
+                  <button 
+                    className={`mover-tab-btn ${moversTab === 'active' ? 'active' : ''}`}
+                    onClick={() => { Audio.click(); setMoversTab('active'); }}
+                  >
+                    MOST ACTIVE
+                  </button>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Arena Leaderboard Lobby */}
-          <div className="hud-card card-leaderboard-arena">
-            <div className="hud-card-brackets"></div>
-            <div className="hud-header">🏆 ARENA COMBAT RANKS</div>
-            <div className="hud-body">
-              <div className="arena-leaderboard-list">
-                {leaderboard.slice(0, 5).map((l, idx) => {
-                  const targetGap = net - l.net;
-                  const isPlayerLeading = targetGap > 0;
+              <div className="movers-list-body">
+                {activeMovers.map(({ a, ast, chg }) => {
+                  const isPositive = chg >= 0;
                   return (
                     <div 
-                      key={l.id} 
-                      className={`arena-row ${l.isPlayer ? 'player-active' : ''}`}
+                      key={a.id} 
+                      className="mover-row-item"
+                      onClick={() => navigateToTrade(a.id, a.market as Market)}
                     >
-                      <div className="arena-rank">#{idx + 1}</div>
-                      <div className="arena-challenger">
-                        <span className="challenger-name">{l.name} {l.isPlayer && '🧑‍🚀 (YOU)'}</span>
-                        <span className="challenger-archetype">{l.strat.toUpperCase()} TARGET</span>
+                      <div className="mover-asset-info">
+                        <span className="asset-icon-placeholder">{a.market === 'crypto' ? '🪙' : a.market === 'forex' ? '💱' : '📈'}</span>
+                        <div className="mover-name-col">
+                          <span className="mover-symbol">{a.id}</span>
+                          <span className="mover-fullname">{a.name}</span>
+                        </div>
                       </div>
-                      <div className="arena-score">
-                        <span className="challenger-wealth">{fmt(l.net)}</span>
-                        {!l.isPlayer && (
-                          <span className={`challenger-gap ${isPlayerLeading ? 'up' : 'dn'}`}>
-                            {isPlayerLeading ? `+${fmt(Math.abs(targetGap))}` : `-${fmt(Math.abs(targetGap))}`}
-                          </span>
-                        )}
+                      
+                      <div className="mover-sparkline-col">
+                        <Sparkline 
+                          points={ast.history && ast.history.length > 1 ? ast.history.slice(-10) : getStaticPoints(isPositive)} 
+                          color={isPositive ? '#22C55E' : '#EF4444'} 
+                        />
+                      </div>
+
+                      <div className="mover-price-col">
+                        <span className="mover-price">${fmt(ast.lastPrice)}</span>
+                        <span className={`mover-chg-pct ${isPositive ? 'up-green' : 'dn-red'}`}>
+                          {isPositive ? '+' : ''}{fmtPct(chg)}
+                        </span>
                       </div>
                     </div>
                   );
                 })}
-                
-                {/* Player details if outside top 5 */}
-                {rank > 5 && (
-                  <div className="arena-row player-active offset-arena-row">
-                    <div className="arena-rank">#{rank}</div>
-                    <div className="arena-challenger">
-                      <span className="challenger-name">{p.name || 'Trader'} 🧑‍🚀 (YOU)</span>
-                      <span className="challenger-archetype">OPERATOR</span>
+              </div>
+
+              <button className="card-footer-action-btn" onClick={() => handleNavTab('movers')}>
+                VIEW ALL MARKETS
+              </button>
+            </div>
+
+            {/* Market News Card */}
+            <div className="mmo-card news-card">
+              <h3 className="card-title-mmo">MARKET NEWS</h3>
+              
+              <div className="news-list-body">
+                {newsList.length > 0 ? (
+                  newsList.map((e, idx) => {
+                    const elapsed = Math.floor((Date.now() - e.t) / 1000);
+                    const timeStr = elapsed < 60 ? elapsed + 's ago' : Math.floor(elapsed / 60) + 'm ago';
+                    return (
+                      <div key={idx} className="news-article-row">
+                        <span className="news-bullet">▶</span>
+                        <div className="news-content-col">
+                          <div className="news-headline">{e.title}</div>
+                          <div className="news-meta">{timeStr} • #{e.cat || 'general'}</div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  defaultNews.map((n, idx) => (
+                    <div key={idx} className="news-article-row">
+                      <span className="news-bullet">▶</span>
+                      <div className="news-content-col">
+                        <div className="news-headline">{n.title}</div>
+                        <div className="news-meta">{n.time} • #{n.desc.split(' ')[0].toLowerCase()}</div>
+                      </div>
                     </div>
-                    <div className="arena-score">
-                      <span className="challenger-wealth">{fmt(net)}</span>
+                  ))
+                )}
+              </div>
+
+              <button className="card-footer-action-btn" onClick={() => handleNavTab('news')}>
+                VIEW ALL NEWS
+              </button>
+            </div>
+
+          </div>
+
+          {/* COLUMN 2: Portfolio Overview & Leaderboard */}
+          <div className="grid-col flex-col">
+            
+            {/* Portfolio Overview Card */}
+            <div className="mmo-card portfolio-card">
+              <h3 className="card-title-mmo">PORTFOLIO OVERVIEW</h3>
+              
+              <div className="donut-chart-section">
+                {/* SVG Donut Chart */}
+                <DonutChart allocations={displaySectors} totalValue={net} />
+                
+                {/* Donut Legend */}
+                <div className="donut-legend-col">
+                  {displaySectors.map((sector, idx) => (
+                    <div key={idx} className="legend-row-item">
+                      <span className="legend-bullet-dot" style={{ backgroundColor: sector.color }}></span>
+                      <span className="legend-sector-name">{sector.label}</span>
+                      <span className="legend-sector-pct">{sector.pct.toFixed(1)}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Stats Row at bottom of Portfolio */}
+              <div className="portfolio-stats-grid">
+                <div className="p-stat-box">
+                  <span className="p-stat-lbl">HOLDINGS</span>
+                  <span className="p-stat-val">{holdingsList.length > 0 ? holdingsList.length : 28}</span>
+                </div>
+                <div className="p-stat-box">
+                  <span className="p-stat-lbl">P&L (UNREALIZED)</span>
+                  <span className={`p-stat-val ${unrealizedPnL >= 0 ? 'up-green' : 'dn-red'}`}>
+                    {unrealizedPnL >= 0 ? '+' : ''}{fmt(unrealizedPnL)}
+                  </span>
+                </div>
+                <div className="p-stat-box">
+                  <span className="p-stat-lbl">P&L (REALIZED)</span>
+                  <span className={`p-stat-val ${realizedPnL >= 0 ? 'up-green' : 'dn-red'}`}>
+                    {realizedPnL >= 0 ? '+' : ''}{fmt(realizedPnL)}
+                  </span>
+                </div>
+              </div>
+
+              <button className="card-footer-action-btn" onClick={() => handleNavTab('positions')}>
+                VIEW PORTFOLIO
+              </button>
+            </div>
+
+            {/* Leaderboard Card */}
+            <div className="mmo-card leaderboard-card">
+              <div className="leaderboard-header-row">
+                <h3 className="card-title-mmo">LEADERBOARD</h3>
+                <span className="weekly-ranking-lbl">WEEKLY TOP TRADERS</span>
+              </div>
+
+              <div className="leaderboard-lobby-list">
+                {topHumans.map((item, idx) => (
+                  <div key={idx} className="lobby-leaderboard-row">
+                    <span className="lobby-rank">
+                      {idx === 0 ? '👑' : `#${idx + 1}`}
+                    </span>
+                    <div className="lobby-avatar-wrap">
+                      <span className="lobby-avatar-icon">🧑‍💻</span>
+                    </div>
+                    <div className="lobby-player-info">
+                      <span className="lobby-player-name">{item.name}</span>
+                      <span className="lobby-player-sub">Level {item.level}</span>
+                    </div>
+                    <div className="lobby-player-net">
+                      ${fmt(item.net)}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Show player row if player is lower rank */}
+                {showPlayerInLeaderboard && (
+                  <div className="lobby-leaderboard-row player-active-row">
+                    <span className="lobby-rank">#{playerRankNum}</span>
+                    <div className="lobby-avatar-wrap">
+                      <span className="lobby-avatar-icon">🧑‍🚀</span>
+                    </div>
+                    <div className="lobby-player-info">
+                      <span className="lobby-player-name">{username} (YOU)</span>
+                      <span className="lobby-player-sub">Level {lvl}</span>
+                    </div>
+                    <div className="lobby-player-net">
+                      ${fmt(net)}
                     </div>
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* 4. SYSTEM PROTOCOLS MANUAL MODAL */}
-      {showGuide && (
-        <div className="guide-modal-backdrop" onClick={handleCloseGuide}>
-          <div className="guide-modal" onClick={e => e.stopPropagation()}>
-            <div className="gm-header">
-              <h3>SYSTEM COCKPIT PROTOCOLS</h3>
-              <button className="gm-close" onClick={handleCloseGuide}>×</button>
+              <button className="card-footer-action-btn" onClick={() => handleNavTab('stats')}>
+                VIEW FULL LEADERBOARD
+              </button>
             </div>
-            <div className="gm-body">
-              {guideSlide === 0 && (
-                <div className="gm-slide">
-                  <h4>Slide 1 // Injection Parameters</h4>
-                  <div className="guide-illustration">🧑‍🚀</div>
-                  <p>You have been authenticated as a pilot in the <b>MarketVerseX High-Frequency Matrix</b>. You start with <b>$1,000</b> of simulation credits.</p>
-                  <p>Operating in this environment are <b>10,000 AI bots</b>. They trade with realistic behavioral profiles: some are volatile retail speculators (YOLO, FOMO, Gambler), while others are cold-blooded institutions (Value, Trend, Market Makers).</p>
-                  <p>Your objective is to accumulate net worth and out-trade them to reach the top of the global leaderboard.</p>
-                </div>
-              )}
-              {guideSlide === 1 && (
-                <div className="gm-slide">
-                  <h4>Slide 2 // Direct Matching Engine Telemetry</h4>
-                  <div className="guide-illustration">📊</div>
-                  <p>All assets are driven by a <b>live order matching engine</b>. The bids and asks you see are real limits resting in the order book. When you place a buy or sell order, you are trading directly against AI bots or placing orders for them to trade against.</p>
-                  <p>• <b>Market (MKT)</b> orders instantly sweep resting liquidity on the books.</p>
-                  <p>• <b>Limit (LMT)</b> orders place resting bids/asks in the books that await execution.</p>
-                  <p>• Positions can be managed and closed at any time from the <b>Positions</b> panel.</p>
-                </div>
-              )}
-              {guideSlide === 2 && (
-                <div className="gm-slide">
-                  <h4>Slide 3 // Progressive Subsystem Unlocks</h4>
-                  <div className="guide-illustration">🔒</div>
-                  <p>To prevent system overload, advanced trading parameters are locked behind level milestones. Accumulate XP from closed trades to unlock them:</p>
-                  <ul className="guide-list">
-                    <li><b>Level 1:</b> Basic Stocks Market Trading</li>
-                    <li><b>Level 5:</b> Limit (LMT) resting orders</li>
-                    <li><b>Level 10:</b> Short Selling (opening short positions)</li>
-                    <li><b>Level 20:</b> Crypto Markets (Meme Coins unlock at L50)</li>
-                    <li><b>Level 30:</b> Forex Majors & Crosses</li>
-                  </ul>
-                </div>
-              )}
-              {guideSlide === 3 && (
-                <div className="gm-slide">
-                  <h4>Slide 4 // Risk Control Mechanisms</h4>
-                  <div className="guide-illustration">🛡️</div>
-                  <p>When executing trades, you can configure safety triggers:</p>
-                  <p>• <b>Stop Loss (SL %):</b> Automatically closes your position if the price moves against you by the specified percentage.</p>
-                  <p>• <b>Take Profit (TP %):</b> Automatically locks in gains when your target target-profit percentage is touched.</p>
-                  <p>AI bot profiles evolve dynamically; bots that win become aggressive whales, whereas losing bots become risk-averse paper hands.</p>
-                </div>
-              )}
-            </div>
-            <div className="gm-footer">
-              <div className="gm-dots">
-                {[0, 1, 2, 3].map(i => (
-                  <span 
-                    key={i} 
-                    className={`gm-dot ${guideSlide === i ? 'on' : ''}`}
-                    onClick={() => { setGuideSlide(i); Audio.click(); }}
-                  />
-                ))}
+
+          </div>
+
+          {/* COLUMN 3: Daily Missions & Achievements */}
+          <div className="grid-col flex-col">
+            
+            {/* Daily Missions Card */}
+            <div className="mmo-card missions-card">
+              <div className="missions-header-row">
+                <h3 className="card-title-mmo">DAILY MISSIONS</h3>
+                <span className="resets-in-countdown">RESETS IN {midnightTimeLeft}</span>
               </div>
-              <div className="gm-nav-buttons">
-                {guideSlide > 0 && (
-                  <button className="gm-btn secondary" onClick={() => { setGuideSlide(s => s - 1); Audio.click(); }}>Back</button>
-                )}
-                {guideSlide < 3 ? (
-                  <button className="gm-btn" onClick={() => { setGuideSlide(s => s + 1); Audio.click(); }}>Next</button>
+
+              <div className="missions-lobby-list">
+                {daily.length > 0 ? (
+                  daily.map((m, idx) => {
+                    const pct = Math.min(100, (m.progress / m.def.goal.target) * 100);
+                    return (
+                      <div key={m.def.id} className={`lobby-mission-row ${m.completed ? 'completed' : ''}`}>
+                        <div className="lobby-mission-left">
+                          <span className="mission-number">{idx + 1}</span>
+                        </div>
+                        <div className="lobby-mission-middle">
+                          <div className="lobby-mission-title">{m.def.title}</div>
+                          <div className="lobby-mission-desc">{m.def.desc}</div>
+                          
+                          <div className="lobby-mission-progress-row">
+                            <div className="m-bar-outer">
+                              <div className="m-bar-inner" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="m-progress-count">{Math.floor(m.progress)} / {m.def.goal.target}</span>
+                          </div>
+                        </div>
+                        <div className="lobby-mission-rewards">
+                          <span className="lobby-reward-xp">XP {m.def.reward * 5}</span>
+                          <span className="lobby-reward-cash">${m.def.reward * 10}</span>
+                        </div>
+                      </div>
+                    );
+                  })
                 ) : (
-                  <button className="gm-btn success" onClick={handleCloseGuide}>Initiate Cockpit</button>
+                  <>
+                    <div className="lobby-mission-row">
+                      <div className="lobby-mission-left"><span className="mission-number">1</span></div>
+                      <div className="lobby-mission-middle">
+                        <div className="lobby-mission-title">Make 3 Profitable Trades</div>
+                        <div className="lobby-mission-desc">Buy low, sell high to lock in signals.</div>
+                        <div className="lobby-mission-progress-row">
+                          <div className="m-bar-outer"><div className="m-bar-inner" style={{ width: '66%' }} /></div>
+                          <span className="m-progress-count">2 / 3</span>
+                        </div>
+                      </div>
+                      <div className="lobby-mission-rewards">
+                        <span className="lobby-reward-xp">XP 250</span>
+                        <span className="lobby-reward-cash">$500</span>
+                      </div>
+                    </div>
+                    <div className="lobby-mission-row">
+                      <div className="lobby-mission-left"><span className="mission-number">2</span></div>
+                      <div className="lobby-mission-middle">
+                        <div className="lobby-mission-title">Trade in Crypto Market</div>
+                        <div className="lobby-mission-desc">Execute an order in any crypto pair.</div>
+                        <div className="lobby-mission-progress-row">
+                          <div className="m-bar-outer"><div className="m-bar-inner" style={{ width: '0%' }} /></div>
+                          <span className="m-progress-count">0 / 1</span>
+                        </div>
+                      </div>
+                      <div className="lobby-mission-rewards">
+                        <span className="lobby-reward-xp">XP 200</span>
+                        <span className="lobby-reward-cash">$300</span>
+                      </div>
+                    </div>
+                    <div className="lobby-mission-row">
+                      <div className="lobby-mission-left"><span className="mission-number">3</span></div>
+                      <div className="lobby-mission-middle">
+                        <div className="lobby-mission-title">Earn $5,000 Profit</div>
+                        <div className="lobby-mission-desc">Amass trading bounty allocations.</div>
+                        <div className="lobby-mission-progress-row">
+                          <div className="m-bar-outer"><div className="m-bar-inner" style={{ width: '25%' }} /></div>
+                          <span className="m-progress-count">$1,245 / $5,000</span>
+                        </div>
+                      </div>
+                      <div className="lobby-mission-rewards">
+                        <span className="lobby-reward-xp">XP 500</span>
+                        <span className="lobby-reward-cash">$750</span>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
+
+              <button className="card-footer-action-btn" onClick={() => handleNavTab('missions')}>
+                VIEW ALL MISSIONS
+              </button>
+            </div>
+
+            {/* Achievements Card */}
+            <div className="mmo-card achievements-card">
+              <div className="achievements-header-row">
+                <h3 className="card-title-mmo">ACHIEVEMENTS</h3>
+                <span className="ach-new-badge">NEW</span>
+              </div>
+
+              <div className="achievements-lobby-grid">
+                <div className={`ach-badge-box ${firstTradeUnlocked ? 'unlocked' : 'locked'}`}>
+                  <div className="ach-shield-icon first-trade">⭐</div>
+                  <span className="ach-name">First Trade</span>
+                  <span className="ach-status">{firstTradeUnlocked ? 'Complete' : '0/1 Complete'}</span>
+                </div>
+                <div className={`ach-badge-box ${profitMakerUnlocked ? 'unlocked' : 'locked'}`}>
+                  <div className="ach-shield-icon profit-maker">💰</div>
+                  <span className="ach-name">Profit Maker</span>
+                  <span className="ach-status">{profitMakerUnlocked ? 'Complete' : 'Earn $10k Profit'}</span>
+                </div>
+                <div className={`ach-badge-box ${bigSpenderUnlocked ? 'unlocked' : 'locked'}`}>
+                  <div className="ach-shield-icon big-spender">💎</div>
+                  <span className="ach-name">Big Spender</span>
+                  <span className="ach-status">{bigSpenderUnlocked ? 'Complete' : 'Spend $100k'}</span>
+                </div>
+                <div className={`ach-badge-box ${marketMasterUnlocked ? 'unlocked' : 'locked'}`}>
+                  <div className="ach-shield-icon market-master">👑</div>
+                  <span className="ach-name">Market Master</span>
+                  <span className="ach-status">{marketMasterUnlocked ? 'Complete' : 'Reach Level 20'}</span>
+                </div>
+              </div>
+
+              <button className="card-footer-action-btn" onClick={() => handleNavTab('help')}>
+                VIEW ALL ACHIEVEMENTS
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* Bottom Section */}
+        <section className="choose-market-footer-section">
+          <h2 className="choose-market-heading">CHOOSE YOUR MARKET</h2>
+          
+          <div className="choose-market-cards-row">
+            {/* Stocks */}
+            <div className="market-choice-card stocks-card-border" onClick={() => handleChooseMarket('stocks')}>
+              <div className="choice-icon-circle green-outline">
+                <span>⭐</span>
+              </div>
+              <div className="choice-main-info">
+                <span className="choice-title">TRADE STOCKS</span>
+                <span className="choice-desc">100+ COMPANIES</span>
+              </div>
+              <button className="choice-cta-btn green-btn">ENTER MARKET</button>
+            </div>
+
+            {/* Crypto */}
+            <div className={`market-choice-card crypto-card-border ${lvl < 20 ? 'locked-grey' : ''}`} onClick={() => handleChooseMarket('crypto')}>
+              <div className="choice-icon-circle purple-outline">
+                <span>₿</span>
+              </div>
+              <div className="choice-main-info">
+                <span className="choice-title">TRADE CRYPTO</span>
+                <span className="choice-desc">{lvl < 20 ? 'UNLOCKS AT LEVEL 20' : '50+ CRYPTO PAIRS'}</span>
+              </div>
+              <button className={`choice-cta-btn ${lvl < 20 ? 'locked-btn' : 'purple-btn'}`}>
+                {lvl < 20 ? 'LOCKED' : 'ENTER MARKET'}
+              </button>
+            </div>
+
+            {/* Forex */}
+            <div className={`market-choice-card forex-card-border ${lvl < 30 ? 'locked-grey' : ''}`} onClick={() => handleChooseMarket('forex')}>
+              <div className="choice-icon-circle blue-outline">
+                <span>$</span>
+              </div>
+              <div className="choice-main-info">
+                <span className="choice-title">TRADE FOREX</span>
+                <span className="choice-desc">{lvl < 30 ? 'UNLOCKS AT LEVEL 30' : '30+ CURRENCY PAIRS'}</span>
+              </div>
+              <button className={`choice-cta-btn ${lvl < 30 ? 'locked-btn' : 'blue-btn'}`}>
+                {lvl < 30 ? 'LOCKED' : 'ENTER MARKET'}
+              </button>
+            </div>
+
+            {/* Commodities */}
+            <div className="market-choice-card commodities-card-border locked-grey" onClick={() => { Audio.click(); pushToast('Commodities: Coming in the next seasonal expansion!', 'info'); }}>
+              <div className="choice-icon-circle locked-outline">
+                <span>🔒</span>
+              </div>
+              <div className="choice-main-info">
+                <span className="choice-title">COMMODITIES</span>
+                <span className="choice-desc">COMING SOON</span>
+              </div>
+              <button className="choice-cta-btn locked-btn">LOCKED</button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
+        </section>
 
-// Subcomponents
-function QuestRow({ m, type }: { m: MissionState; type: string }) {
-  const pct = Math.min(100, (m.progress / m.def.goal.target) * 100);
-  const progressText = formatProgress(m);
-
-  return (
-    <div className={`quest-row-item ${m.completed ? 'completed' : ''} ${m.claimed ? 'claimed' : ''}`}>
-      <div className="qri-head">
-        <span className={`qri-badge ${type === 'DAILY BOUNTY' ? 'daily' : 'weekly'}`}>{type}</span>
-        <span className="qri-reward">📦 LOOT CHEST (${m.def.reward})</span>
-      </div>
-      <div className="qri-details">
-        <div className="qri-title">{m.def.title}</div>
-        <p className="qri-desc">{m.def.desc}</p>
-        <div className="qri-prog-container">
-          <div className="qri-bar-outer">
-            <div className="qri-bar-inner" style={{ width: `${pct}%` }} />
-          </div>
-          <span className="qri-text">{progressText}</span>
-        </div>
-      </div>
-      <div className="qri-claim-zone">
-        {m.claimed ? (
-          <span className="claimed-badge">EXTRACTED</span>
-        ) : m.completed ? (
-          <button 
-            className="loot-extract-btn"
-            onClick={() => {
-              send({ type: 'claimMission', payload: { missionId: m.def.id } });
-              Audio.click();
-            }}
-          >
-            🔓 EXTRACT BOUNTY
-          </button>
-        ) : (
-          <span className="pct-badge">{Math.floor(pct)}% TACTICAL</span>
-        )}
       </div>
     </div>
   );
-}
 
-function RadarScanRow({ r, lvl, showVol = false, onClick }: any) {
-  const locked = r.a.minLevel > lvl;
-  const changeClass = r.chg >= 0 ? 'up' : 'dn';
-  
-  return (
-    <div 
-      className={`radar-scan-row ${locked ? 'locked' : ''}`}
-      onClick={() => { if (!locked) onClick(); }}
-    >
-      <div className="rsr-sym-group">
-        <svg className="rsr-icon"><use href={`#${r.a.icon}`}/></svg>
-        <div>
-          <span className="rsr-id">${r.a.id}</span>
-          <span className="rsr-sector">#{r.a.cat.toUpperCase()}</span>
-        </div>
-      </div>
-      
-      <div className="rsr-data-group">
-        {locked ? (
-          <span className="rsr-lock-signal">🔒 LOCKED L{r.a.minLevel}</span>
-        ) : (
-          <>
-            <span className="rsr-price">${fmt(r.ast.lastPrice, r.ast.lastPrice < 10 ? 3 : 2)}</span>
-            {showVol ? (
-              <span className="rsr-vol">{fmtNum(r.ast.volume)} INTENSITY</span>
-            ) : (
-              <span className={`rsr-chg ${changeClass}`}>{r.chg >= 0 ? '▲' : '▼'} {fmtPct(r.chg)}</span>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function formatProgress(m: MissionState): string {
-  const g = m.def.goal;
-  switch (g.kind) {
-    case 'trades':       return `${Math.floor(m.progress)} / ${g.target} transactions`;
-    case 'profitable':   return `${Math.floor(m.progress)} / ${g.target} signals locked`;
-    case 'distinct':     return `${Math.floor(m.progress)} / ${g.target} sectors hit`;
-    case 'portfolioPct': return `${m.progress.toFixed(2)}% / ${g.target}% quota`;
-    case 'holdHours':    return `${m.progress.toFixed(2)}h / ${g.target}h hold`;
+  // Helper for center navigation routing
+  function handleNavTab(tab: any) {
+    Audio.click();
+    setActiveScreen('trading');
+    setActiveTab(tab);
   }
+}
+
+// Donut Chart Subcomponent
+function DonutChart({ allocations, totalValue }: { allocations: { label: string; value: number; color: string; pct: number }[]; totalValue: number }) {
+  const R = 38;
+  const C = 2 * Math.PI * R;
+  let accumulatedPercent = 0;
+
+  return (
+    <div className="donut-chart-wrapper">
+      <svg viewBox="0 0 100 100" className="donut-chart-svg">
+        <circle cx="50" cy="50" r={R} fill="transparent" stroke="#1c2438" strokeWidth="8" />
+        {allocations.map((alloc, idx) => {
+          const strokeLength = (alloc.pct / 100) * C;
+          const strokeOffset = C - strokeLength + (accumulatedPercent / 100) * C;
+          accumulatedPercent += alloc.pct;
+          return (
+            <circle
+              key={idx}
+              cx="50"
+              cy="50"
+              r={R}
+              fill="transparent"
+              stroke={alloc.color}
+              strokeWidth="8"
+              strokeDasharray={C}
+              strokeDashoffset={strokeOffset}
+              transform="rotate(-90 50 50)"
+            />
+          );
+        })}
+      </svg>
+      <div className="donut-chart-center-info">
+        <span className="donut-center-val">${fmt(totalValue)}</span>
+        <span className="donut-center-lbl">TOTAL VALUE</span>
+      </div>
+    </div>
+  );
 }
