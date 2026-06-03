@@ -1,7 +1,7 @@
 import { ASSETS, ASSET_BY_ID, TRANSITIONS } from './constants';
 import { calcEMA, calcRSI, rand, roundShares } from './helpers';
 import { cullStaleOrders, placeOrder } from './matching';
-import { bestBid, bestAsk, insertOrder, midPrice } from './orderbook';
+import { bestBid, bestAsk, insertOrder, midPrice, removeOrder } from './orderbook';
 import { activityFor, pickAssetsFor, stopLossFor, takeProfitFor } from './traders';
 import type { GameState, StrategyId, Trader } from './types';
 
@@ -100,6 +100,16 @@ export function botDecide(t: Trader, S: GameState): void {
 
   if (t.cash < last && hold.shares <= 0) return;
 
+  // 1. Cancel previous open orders for this asset before making a new decision.
+  // This keeps the book clean and prevents stale order sniping by the player.
+  const oldOrders = t.openOrders.filter(o => o.assetId === aid);
+  if (oldOrders.length > 0) {
+    oldOrders.forEach(o => {
+      removeOrder(ast.book, o.side, o.id);
+    });
+    t.openOrders = t.openOrders.filter(o => o.assetId !== aid);
+  }
+
   // === v10: SMART BOT — Technical Analysis for ALL strategies ===
   const hist = ast.history;
   const histLen = hist.length;
@@ -137,6 +147,10 @@ export function botDecide(t: Trader, S: GameState): void {
     }
   }
 
+  // Determine preferred order execution type based on degen strat or active news panics
+  const isDegen = ['yolo', 'fomo', 'paper', 'gambler', 'copycat', 'revenge', 'newschase'].includes(t.strat);
+  const preferredType = (isDegen || (newsType && newsAffectsMe && newsAge < 15)) ? 'market' : 'limit';
+
   // Variance/sigma only when needed
   let sigma = 0;
   if (NEEDS_VARIANCE.has(t.strat as string)) {
@@ -157,38 +171,38 @@ export function botDecide(t: Trader, S: GameState): void {
     const minQty = Math.min(1, 0.5 / px);
     return roundShares(Math.max(minQty, raw));
   };
-  const sellQty = (qty: number, pxMult = 0.998) => {
+  const sellQty = (qty: number, pxMult = 0.998, orderType: 'market' | 'limit' = preferredType) => {
     qty = Math.min(qty, hold.shares);
     if (qty <= 0) return;
-    placeOrder(S, t.id, aid, 'sell', qty, +(last * pxMult).toFixed(4), 'limit');
+    placeOrder(S, t.id, aid, 'sell', qty, +(last * pxMult).toFixed(4), orderType);
   };
-  const buyQty = (qty: number, pxMult = 1.002) => {
+  const buyQty = (qty: number, pxMult = 1.002, orderType: 'market' | 'limit' = preferredType) => {
     if (qty <= 0) return;
     if (t.cash < last * qty) qty = roundShares(t.cash / last);
     if (qty <= 0) return;
-    placeOrder(S, t.id, aid, 'buy', qty, +(last * pxMult).toFixed(4), 'limit');
+    placeOrder(S, t.id, aid, 'buy', qty, +(last * pxMult).toFixed(4), orderType);
   };
-  const openShort = (qty: number, pxMult = 0.998) => {
+  const openShort = (qty: number, pxMult = 0.998, orderType: 'market' | 'limit' = preferredType) => {
     if (qty <= 0) return;
     if (hold.shares > 0) return;
     if (t.cash < last * qty * 0.5) qty = roundShares((t.cash * 2) / last);
     if (qty <= 0) return;
-    placeOrder(S, t.id, aid, 'sell', qty, +(last * pxMult).toFixed(4), 'limit');
+    placeOrder(S, t.id, aid, 'sell', qty, +(last * pxMult).toFixed(4), orderType);
   };
 
-  // SL/TP enforcement (unchanged logic)
+  // SL/TP enforcement (SL always uses market order for quick panic exit)
   if (hold.shares > 0 && hold.avgCost > 0 && t.stopLoss > 0) {
     const pnl = (last - hold.avgCost) / hold.avgCost;
-    if (pnl < -t.stopLoss) { sellQty(hold.shares, 0.992); return; }
+    if (pnl < -t.stopLoss) { sellQty(hold.shares, 0.992, 'market'); return; }
     if (t.takeProfit > 0 && pnl > t.takeProfit) {
-      sellQty(Math.ceil(hold.shares * (t.strat === 'paper' ? 1 : 0.5)), 1.002); return;
+      sellQty(Math.ceil(hold.shares * (t.strat === 'paper' ? 1 : 0.5)), 1.002, preferredType); return;
     }
   }
   if (hold.shares < 0 && hold.avgCost > 0 && t.stopLoss > 0) {
     const pnl = (hold.avgCost - last) / hold.avgCost;
     if (pnl < -t.stopLoss) {
       const qty = -hold.shares;
-      if (t.cash > qty * last * 0.95) buyQty(qty, 1.005);
+      if (t.cash > qty * last * 0.95) buyQty(qty, 1.005, 'market');
       return;
     }
   }
@@ -441,7 +455,10 @@ export function tickBots(S: GameState, dt: number): void {
     if (!t.rekt && !t.isHouse) { // v8.9: House never acts as a bot
       t.cooldown -= effectiveDt;
       if (t.cooldown <= 0) {
-        t.cooldown = rand(0.5, 2) / Math.max(0.05, t.activity);
+        // News acceleration: if an active event exists, scale cooldown by 2.5x to trade faster
+        const hasActiveEvent = S.events.length > 0 && (Date.now() - S.events[0].t) / 1000 < 30;
+        const speedMult = hasActiveEvent ? 2.5 : 1.0;
+        t.cooldown = (rand(0.5, 2) / Math.max(0.05, t.activity)) / speedMult;
         botDecide(t, S);
       }
     }
