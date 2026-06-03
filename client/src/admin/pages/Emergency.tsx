@@ -258,7 +258,7 @@ export default function Emergency() {
           autoFocus
           placeholder="RESET"
           value={resetTyped}
-          onChange={e => setResetTyped(e.target.value)}
+          onChange={e => { setResetTyped(e.target.value); resetTypedRef.current = e.target.value; }}
         />
       </>
     ),
