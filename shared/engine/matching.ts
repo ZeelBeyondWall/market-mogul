@@ -10,15 +10,36 @@ export function setFeeRate(r: number) { TRADE_FEE_RATE = r; }
 // v7.3: player + bots both enforce 50% margin collateral for shorts.
 // Previously player was trusted blindly — letting them short unlimited shares
 // regardless of cash. Now the same rule applies to everyone.
-export function sellableQty(t: Trader, assetId: string, qty: number, px: number): number {
+export function sellableQty(S: GameState, t: Trader, assetId: string, qty: number, px: number): number {
   const sh = t.holdings[assetId]?.shares || 0;
   const longPart = Math.max(0, sh);
   const uncovered = Math.max(0, qty - longPart);
   if (uncovered === 0) return qty;                // entirely covered by long position
-  const needed = uncovered * px * 0.5;
-  if (t.cash >= needed) return qty;               // enough collateral
-  const allowedShort = roundShares((t.cash * 2) / Math.max(0.01, px));
-  return longPart + Math.max(0, allowedShort);
+
+  // Calculate current short liabilities value across all assets
+  let shortLiabilitiesValue = 0;
+  for (const aid of Object.keys(t.holdings)) {
+    const h = t.holdings[aid];
+    if (h && h.shares < 0) {
+      const lastPrice = S.assets[aid]?.lastPrice || S.assets[aid]?.fv || 0;
+      shortLiabilitiesValue += (-h.shares) * lastPrice;
+    }
+  }
+
+  // Margin equity: Cash - Short Market Value
+  const marginEquity = t.cash - shortLiabilitiesValue;
+  
+  // Total short maintenance margin required (50% of short market value)
+  const currentMarginRequired = shortLiabilitiesValue * 0.5;
+  const newShortMarginRequired = uncovered * px * 0.5;
+  
+  // Available margin for new short positions
+  const availableMargin = marginEquity - currentMarginRequired;
+
+  if (availableMargin >= newShortMarginRequired) return qty;
+
+  const allowedShort = roundShares(Math.max(0, availableMargin * 2) / Math.max(0.01, px));
+  return longPart + allowedShort;
 }
 
 export function executeTrade(
@@ -255,7 +276,7 @@ export function placeOrder(
         remaining -= actual;
         if (top.qty <= 0 || actual < fillQty) opp.shift();
       } else {
-        const allowed = sellableQty(t, assetId, fillQty, fillPx);
+        const allowed = sellableQty(S, t, assetId, fillQty, fillPx);
         if (allowed <= 0) break;
         const sellQ = Math.min(fillQty, allowed);
         const actual = trigger(top.ownerId, traderId, sellQ, fillPx);
@@ -285,7 +306,7 @@ export function placeOrder(
           }
         } else {
           const fillPx = +(mid * (1 - spread)).toFixed(dec);
-          const q = Math.min(remaining, sellableQty(t, assetId, remaining, fillPx));
+          const q = Math.min(remaining, sellableQty(S, t, assetId, remaining, fillPx));
           if (q > 0) {
             const actual = trigger(S.houseId, traderId, q, fillPx);
             totalCost += fillPx * actual; totalQty += actual; remaining -= actual;
@@ -323,7 +344,7 @@ export function placeOrder(
       remaining -= actual;
       if (top.qty <= 0 || actual < fillQty) opp.shift();
     } else {
-      const allowed = sellableQty(t, assetId, fillQty, fillPx);
+      const allowed = sellableQty(S, t, assetId, fillQty, fillPx);
       if (allowed <= 0) break;
       const sellQ = Math.min(fillQty, allowed);
       const actual = trigger(top.ownerId, traderId, sellQ, fillPx);
