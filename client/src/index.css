@@ -5413,21 +5413,28 @@ body[data-theme="game"] {
 
   /* Compact Mobile Header (Top Sticky) */
   .mmo-mobile-header {
-    background-color: #141B2D;
-    border-bottom: 1.5px solid #7C5CFF;
-    display: flex;
-    flex-direction: column;
-    z-index: 100;
-    position: relative;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+    background-color: #141B2D !important;
+    border-bottom: 1.5px solid #7C5CFF !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    z-index: 100 !important;
+    position: relative !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4) !important;
+    height: auto !important;
+    width: 100% !important;
   }
 
   .mobile-header-top-row {
-    height: 52px;
-    padding: 0 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    height: 52px !important;
+    padding: 0 16px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .mobile-hdr-logo {
@@ -5584,6 +5591,8 @@ body[data-theme="game"] {
     height: 100%;
     min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden !important;
+    width: 100% !important;
     box-sizing: border-box;
     scrollbar-width: none;
     padding-bottom: 24px;
@@ -5619,6 +5628,9 @@ body[data-theme="game"] {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
     position: relative;
     overflow: hidden;
+    min-width: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .mobile-hero-welcome-area {
@@ -5628,6 +5640,7 @@ body[data-theme="game"] {
     justify-content: center;
     position: relative;
     z-index: 2;
+    min-width: 0 !important;
   }
 
   .mob-welcome-title {
@@ -5638,6 +5651,9 @@ body[data-theme="game"] {
     margin: 0;
     letter-spacing: 0.5px;
     line-height: 1.2;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    word-break: break-word !important;
   }
 
   .mob-welcome-title .gold-text {
@@ -5652,6 +5668,9 @@ body[data-theme="game"] {
     margin-top: 4px;
     margin-bottom: 0;
     line-height: 1.2;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    word-break: break-word !important;
   }
 
   .mobile-hero-event-overlay {
@@ -5666,6 +5685,7 @@ body[data-theme="game"] {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    min-width: 0 !important;
   }
 
   .mob-event-head-row {
@@ -5869,6 +5889,8 @@ body[data-theme="game"] {
   .mmo-mobile-rewards-row {
     display: flex;
     gap: 10px;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .reward-mob-card, .streak-mob-card {
@@ -5878,6 +5900,7 @@ body[data-theme="game"] {
     justify-content: space-between;
     min-height: 100px;
     box-sizing: border-box;
+    min-width: 0 !important;
   }
 
   .reward-mob-top, .streak-mob-top {
@@ -5919,18 +5942,19 @@ body[data-theme="game"] {
   }
 
   .claim-now-btn-mob {
-    width: 100%;
-    background: linear-gradient(90deg, #FBBF24 0%, #F59E0B 100%);
-    border: none;
-    border-radius: 5px;
-    color: #0B1020;
-    font-family: 'Inter', sans-serif;
-    font-weight: 800;
-    font-size: 9.5px;
-    padding: 6px 0;
-    cursor: pointer;
-    letter-spacing: 0.5px;
-    margin-top: 10px;
+    width: 100% !important;
+    background: linear-gradient(90deg, #FBBF24 0%, #F59E0B 100%) !important;
+    border: none !important;
+    border-radius: 5px !important;
+    color: #0B1020 !important;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 800 !important;
+    font-size: 9.5px !important;
+    padding: 6px 0 !important;
+    cursor: pointer !important;
+    letter-spacing: 0.5px !important;
+    margin-top: 10px !important;
+    display: block !important;
   }
 
   .streak-progress-container-mob {
