@@ -12,6 +12,7 @@ export function Header() {
   const xp = useGame(s => s.playerXp);
   const xpAt = useGame(s => s.xpAtCurrent);
   const xpTo = useGame(s => s.xpToNext);
+  const session = useGame(s => s.session);
 
   const p = eng.player();
   // v9.1: display short proceeds as a margin bet — cash never jumps up, P&L
@@ -22,6 +23,8 @@ export function Header() {
   const bonus = p.bonus || 0;
   const xpProgress = Math.max(0, Math.min(100, ((xp - xpAt) / Math.max(1, xpTo - xpAt)) * 100));
 
+  const username = session?.user?.user_metadata?.username || session?.user?.email?.split('@')[0] || p.name || 'Trader';
+
   return (
     <header className="hdr-v8">
       <div className="hdr-brand">
@@ -29,7 +32,7 @@ export function Header() {
         <div>
           <div className="hdr-name">MARKETVERSEX</div>
           <div className="hdr-sub-row">
-            <span className="hdr-sub">{p.name || 'Zeel'}</span>
+            <span className="hdr-sub">{username}</span>
             <span className="hdr-status-badge">PILOT // ONLINE</span>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useGame, type Theme } from '../store/gameStore';
 import { Audio, setMuted } from '../audio/audio';
 import { showModal } from './Modal';
+import { supabase } from '../net/supabase';
 
 export function Settings() {
   const open = useGame(s => s.settingsOpen);
@@ -22,12 +23,25 @@ export function Settings() {
 
   if (!open) return null;
 
+  const session = useGame(s => s.session);
+  const eng = useGame(s => s.engine);
+  const p = eng.player();
+  const username = session?.user?.user_metadata?.username || session?.user?.email?.split('@')[0] || p.name || 'Trader';
+
   const onReset = async () => {
     const ok = await showModal('Reset everything?',
       'Wipes server state (state.json) AND local prefs. Server must be restarted via start.bat.', true);
     if (!ok) return;
     try { await fetch(`http://${location.hostname}:8787/admin/reset`, { method: 'POST' }); } catch { /* server gone */ }
     localStorage.removeItem('mm_ui_prefs_v2');
+    location.reload();
+  };
+
+  const onLogout = async () => {
+    Audio.click();
+    const ok = await showModal('Confirm Logout?', 'Are you sure you want to disconnect from this live trading environment?', true);
+    if (!ok) return;
+    await supabase.auth.signOut();
     location.reload();
   };
 
@@ -72,6 +86,17 @@ export function Settings() {
           <button className="settings-danger" style={{ background: 'linear-gradient(180deg, var(--blue) 0%, #0369a1 100%)', color: '#fff', border: 'none' }} onClick={() => { setOpen(false); setFeedbackOpen(true); Audio.click(); }}>
             💬 Report Bug / Send Feedback
           </button>
+        </Section>
+
+        <Section title="Account">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.7)', letterSpacing: '0.5px' }}>
+              Logged in as: <strong style={{ color: 'var(--cyan)' }}>{username}</strong>
+            </div>
+            <button className="settings-danger" style={{ background: 'linear-gradient(180deg, #ec4899 0%, #be185d 100%)', color: '#fff', border: 'none' }} onClick={onLogout}>
+              🚪 Log Out
+            </button>
+          </div>
         </Section>
 
         <Section title="Danger">

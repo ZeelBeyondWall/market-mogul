@@ -5,10 +5,12 @@ import { connect } from '../net/wsClient';
 // Connects WS on mount + drives render-only RAF loop for chart smoothness.
 // Engine is hydrated by snapshots/ticks coming from the server.
 export function useGameLoop(): void {
+  const session = useGame(s => s.session);
   const engine = useGame.getState().engine;
   const notifyTick = useGame.getState().notifyTick;
 
   useEffect(() => {
+    if (!session) return;
     connect(engine);
     let raf = 0;
     let lastNotify = 0;
@@ -21,5 +23,5 @@ export function useGameLoop(): void {
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [engine, notifyTick]);
+  }, [engine, notifyTick, session]);
 }

@@ -18,6 +18,11 @@ import { diskLoad, diskSave } from './persistence';
 import { registerAdminApi } from './admin/api';
 import { ENGINE_FLAGS } from './admin/flags';
 import { recordTrade as recordAnalyticsTrade, sample as sampleAnalytics } from './admin/analytics';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://ymtccjfbcfogkplisjhr.supabase.co';
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltdGNjamZiY2ZvZ2twbGlzamhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NTg2MTcsImV4cCI6MjA5NjAzNDYxN30.tWU3xu-UodQvt9-P2TIOy0xsyNtJ9fvB_WJFfClWwaU';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Per-WS state — each connected client has its own active asset + TF.
 // (engine.state.active retained for snapshot fallback when no per-ws state.)
@@ -26,12 +31,15 @@ interface ClientState {
   activeTF: TFKey;
   lastOrderT: number; // ms timestamp of last accepted order (rate-limit)
   orderInFlight: boolean;
+  traderId: number;
+  userId?: string;
+  authenticated: boolean;
 }
 const clientState: WeakMap<WebSocket, ClientState> = new WeakMap();
 function getCS(ws: WebSocket): ClientState {
   let c = clientState.get(ws);
   if (!c) {
-    c = { activeAsset: engine.state.active, activeTF: '5s', lastOrderT: 0, orderInFlight: false };
+    c = { activeAsset: engine.state.active, activeTF: '5s', lastOrderT: 0, orderInFlight: false, traderId: 0, authenticated: false };
     clientState.set(ws, c);
   }
   return c;
@@ -44,42 +52,45 @@ const closeProgress: Map<string, { lastShares: number; stuckTicks: number; warne
 const STUCK_TICKS_LIMIT = 600; // 60s at 10Hz
 
 function drainCloses(): void {
-  const p = engine.player();
-  if (!p.closing) return;
-  for (const aid of Object.keys(p.closing)) {
-    if (!p.closing[aid]) continue;
-    const h = p.holdings[aid];
-    if (!h || h.shares === 0) {
-      delete p.closing[aid];
-      closeProgress.delete(aid);
-      if (h) { h.sl = 0; h.tp = 0; h.slPct = 0; h.tpPct = 0; }
-      continue;
+  engine.state.traders.forEach(p => {
+    if (!p.isPlayer || p.isHouse || p.rekt) return;
+    if (!p.closing) return;
+    for (const aid of Object.keys(p.closing)) {
+      if (!p.closing[aid]) continue;
+      const h = p.holdings[aid];
+      if (!h || h.shares === 0) {
+        delete p.closing[aid];
+        closeProgress.delete(`${p.id}:${aid}`);
+        if (h) { h.sl = 0; h.tp = 0; h.slPct = 0; h.tpPct = 0; }
+        continue;
+      }
+      const before = h.shares;
+      if (h.shares > 0) placeOrder(engine.state, p.id, aid, 'sell', h.shares, 0, 'market', engine.callbacks(p.id));
+      else placeOrder(engine.state, p.id, aid, 'buy', -h.shares, 0, 'market', engine.callbacks(p.id));
+      const h2 = p.holdings[aid];
+      if (!h2 || h2.shares === 0) {
+        delete p.closing[aid];
+        closeProgress.delete(`${p.id}:${aid}`);
+        if (h2) { h2.sl = 0; h2.tp = 0; h2.slPct = 0; h2.tpPct = 0; }
+        continue;
+      }
+      const key = `${p.id}:${aid}`;
+      const prog = closeProgress.get(key) || { lastShares: before, stuckTicks: 0, warned: false };
+      if (h2.shares === prog.lastShares) prog.stuckTicks++;
+      else { prog.stuckTicks = 0; prog.lastShares = h2.shares; }
+      closeProgress.set(key, prog);
+      // Early warn at 200 ticks (~20s) so user knows it's struggling.
+      if (prog.stuckTicks === 200 && !prog.warned) {
+        prog.warned = true;
+        console.warn(`drainCloses slow on ${aid} for trader ${p.id} (${p.name}): ${h2.shares} sh remain, retrying for 40 more seconds`);
+      }
+      if (prog.stuckTicks >= STUCK_TICKS_LIMIT) {
+        console.warn(`drainCloses giving up on ${aid} for trader ${p.id} (${p.name}) (${h2.shares} sh stuck)`);
+        delete p.closing[aid];
+        closeProgress.delete(key);
+      }
     }
-    const before = h.shares;
-    if (h.shares > 0) placeOrder(engine.state, 0, aid, 'sell', h.shares, 0, 'market', engine.callbacks());
-    else placeOrder(engine.state, 0, aid, 'buy', -h.shares, 0, 'market', engine.callbacks());
-    const h2 = engine.player().holdings[aid];
-    if (!h2 || h2.shares === 0) {
-      delete p.closing[aid];
-      closeProgress.delete(aid);
-      if (h2) { h2.sl = 0; h2.tp = 0; h2.slPct = 0; h2.tpPct = 0; }
-      continue;
-    }
-    const prog = closeProgress.get(aid) || { lastShares: before, stuckTicks: 0, warned: false };
-    if (h2.shares === prog.lastShares) prog.stuckTicks++;
-    else { prog.stuckTicks = 0; prog.lastShares = h2.shares; }
-    closeProgress.set(aid, prog);
-    // Early warn at 200 ticks (~20s) so user knows it's struggling.
-    if (prog.stuckTicks === 200 && !prog.warned) {
-      prog.warned = true;
-      console.warn(`drainCloses slow on ${aid}: ${h2.shares} sh remain, retrying for 40 more seconds`);
-    }
-    if (prog.stuckTicks >= STUCK_TICKS_LIMIT) {
-      console.warn(`drainCloses giving up on ${aid} (${h2.shares} sh stuck — no liquidity / insufficient cash)`);
-      delete p.closing[aid];
-      closeProgress.delete(aid);
-    }
-  }
+  });
 }
 
 // Process-level safety nets so any uncaught throw doesn't kill the engine silently.
@@ -106,7 +117,7 @@ if (loaded) {
   console.log('🆕 fresh state');
 }
 // v7.3: always sync player name from env (overrides stale 'YOU' in old saves).
-engine.player().name = process.env.MM_PLAYER_NAME || 'Zeel';
+engine.player().name = process.env.MM_PLAYER_NAME || 'Trader';
 
 // ---- HTTP + WS ----
 const app = express();
@@ -346,20 +357,17 @@ function broadcast(msg: S2C) {
 const LEADERBOARD_TTL_MS = 1500;
 const TOP_N = 200;
 interface LbEntry { id: number; name: string; net: number; strat: string; rekt: boolean; level: number; isPlayer: boolean; tier?: string }
-let lbCache: { top: LbEntry[]; playerRank: number; ts: number } | null = null;
+let lbCache: { top: LbEntry[]; ts: number } | null = null;
 
-function computeLeaderboard(): { top: LbEntry[]; playerRank: number } {
+function computeLeaderboard(): LbEntry[] {
   const traders = engine.state.traders;
   // Heap-light: insertion-sort against top-N min element. O(N) avg, no full sort.
   const top: LbEntry[] = [];
   let minNet = -Infinity;
-  let playerNet = 0;
-  let playerRank = 1;
   for (let i = 0; i < traders.length; i++) {
     const t = traders[i];
     if (t.isHouse) continue; // v8.9: House excluded from leaderboard
     const net = traderNet(t, engine.state);
-    if (t.id === 0) playerNet = net;
     if (top.length < TOP_N) {
       top.push({ id: t.id, name: t.name, net, strat: t.strat as string, rekt: !!t.rekt, level: t.level || 1, isPlayer: !!t.isPlayer, tier: t.tier });
       if (top.length === TOP_N) {
@@ -379,25 +387,15 @@ function computeLeaderboard(): { top: LbEntry[]; playerRank: number } {
   // Now top is ascending — reverse for descending display.
   if (top.length < TOP_N) top.sort((a, b) => a.net - b.net);
   top.reverse();
-  // Player rank scan — single pass over already-cached nets.
-  for (let i = 0; i < traders.length; i++) {
-    if (traders[i].id === 0 || traders[i].isHouse) continue;
-    if (traderNet(traders[i], engine.state) > playerNet) playerRank++;
-  }
-  // Ensure player present in returned top list.
-  if (!top.some(b => b.id === 0)) {
-    const p = traders[0];
-    top.push({ id: 0, name: p.name, net: playerNet, strat: p.strat as string, rekt: !!p.rekt, level: p.level || 1, isPlayer: true, tier: p.tier });
-  }
-  return { top, playerRank };
+  return top;
 }
 
-function getLeaderboard(): { top: LbEntry[]; playerRank: number } {
+function getLeaderboard(): LbEntry[] {
   const now = Date.now();
-  if (lbCache && now - lbCache.ts < LEADERBOARD_TTL_MS) return lbCache;
+  if (lbCache && now - lbCache.ts < LEADERBOARD_TTL_MS) return lbCache.top;
   const fresh = computeLeaderboard();
-  lbCache = { ...fresh, ts: now };
-  return lbCache;
+  lbCache = { top: fresh, ts: now };
+  return lbCache.top;
 }
 
 // v9: holders-per-asset count, cached once per ~1.5s (shared across all clients).
@@ -427,15 +425,33 @@ function refreshHoldersCache() {
 function sendSnapshot(ws: WebSocket) {
   refreshHoldersCache(); // cheap after first call within TTL window
   const cs = getCS(ws);
-  const { top, playerRank } = getLeaderboard();
-  const snap = buildSnapshot(engine.state, cs.activeAsset, playerRank, cs.activeTF);
+  const rank = engine.playerRank(cs.traderId);
+  const snap = buildSnapshot(engine.state, cs.activeAsset, rank, cs.activeTF, cs.traderId);
+  
+  // Clone global leaderboard top 200
+  const top = getLeaderboard().slice();
+  // If player isn't in top 200, append them to the leaderboard array
+  if (!top.some(entry => entry.id === cs.traderId)) {
+    const p = engine.player(cs.traderId);
+    top.push({
+      id: cs.traderId,
+      name: p.name,
+      net: traderNet(p, engine.state),
+      strat: p.strat as string,
+      rekt: !!p.rekt,
+      level: p.level || 1,
+      isPlayer: true,
+      tier: p.tier
+    });
+  }
   snap.leaderboard = top;
+  
   // Player extras — stats + missions + bonus + streak.
-  const stats = engine.getPlayerStats();
-  stats.rank = playerRank;
+  const stats = engine.getPlayerStats(cs.traderId);
+  stats.rank = rank;
   stats.total = Math.max(0, engine.state.traders.length - 1); // v8.9: exclude House
   snap.playerStats = stats;
-  const p = engine.player();
+  const p = engine.player(cs.traderId);
   snap.playerBonus = p.bonus || 0;
   snap.playerStreak = p.loginStreak || 0;
   snap.dailyMissions = p.dailyMissions || [];
@@ -459,8 +475,15 @@ function sendSnapshot(ws: WebSocket) {
 
 // hooks for event/SL-TP broadcast
 engine.hooks.onEvent = (ev) => broadcast({ type: 'event', payload: { kind: ev.type, title: ev.title, desc: ev.desc } });
-engine.hooks.onSLTPHit = (aid, kind, ref, px) =>
-  broadcast({ type: 'sltp_hit', payload: { aid, kind, ref, px } });
+engine.hooks.onSLTPHit = (aid, kind, ref, px, traderId) => {
+  const data = JSON.stringify({ type: 'sltp_hit', payload: { aid, kind, ref, px } });
+  for (const ws of clients) {
+    const cs = getCS(ws);
+    if (cs.traderId === traderId && ws.readyState === WebSocket.OPEN) {
+      try { ws.send(data); } catch {}
+    }
+  }
+};
 
 wss.on('connection', (ws) => {
   clients.add(ws);
@@ -485,7 +508,90 @@ const ORDER_MIN_INTERVAL_MS = 50; // per-WS rate limit
 
 function handleClientMessage(ws: WebSocket, msg: C2S) {
   const cs = getCS(ws);
+
+  // Auth guard: block all actions except auth, setActive, and setTF if not authenticated.
+  if (!cs.authenticated && msg.type !== 'auth' && msg.type !== 'setActive' && msg.type !== 'setTF') {
+    ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: 'Authentication required' } } satisfies S2C));
+    return;
+  }
+
   switch (msg.type) {
+    case 'auth': {
+      const { token } = msg.payload || {};
+      if (!token) return;
+      
+      (async () => {
+        try {
+          const { data, error } = await supabase.auth.getUser(token);
+          if (error || !data?.user) {
+            ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: 'Authentication failed' } } satisfies S2C));
+            return;
+          }
+          const user = data.user;
+          const uuid = user.id;
+          const username = user.user_metadata?.username || user.email?.split('@')[0] || 'Trader';
+          
+          let traderId = 0;
+          const { data: profile, error: dbErr } = await supabase
+            .from('profiles')
+            .select('trader_id')
+            .eq('id', uuid)
+            .maybeSingle();
+            
+          if (dbErr) {
+            console.error('DB query error:', dbErr.message);
+            ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: 'Database error' } } satisfies S2C));
+            return;
+          }
+          
+          if (profile) {
+            traderId = profile.trader_id;
+            const t = engine.state.traders[traderId];
+            if (!t || !t.isPlayer || t.isHouse) {
+              traderId = engine.state.traders.length;
+              const newTrader = makeTrader(traderId, true);
+              newTrader.name = username;
+              engine.state.traders.push(newTrader);
+              
+              await supabase
+                .from('profiles')
+                .update({ trader_id: traderId, username })
+                .eq('id', uuid);
+                
+              diskSave(engine.state);
+            } else {
+              t.name = username;
+            }
+          } else {
+            traderId = engine.state.traders.length;
+            const newTrader = makeTrader(traderId, true);
+            newTrader.name = username;
+            engine.state.traders.push(newTrader);
+            
+            const { error: insErr } = await supabase
+              .from('profiles')
+              .insert({ id: uuid, username, trader_id: traderId });
+              
+            if (insErr) {
+              console.error('DB insert error:', insErr.message);
+            }
+            
+            diskSave(engine.state);
+          }
+          
+          cs.traderId = traderId;
+          cs.userId = uuid;
+          cs.authenticated = true;
+          
+          console.log(`🔑 Client authenticated: username=${username}, traderId=${traderId}, uuid=${uuid}`);
+          sendSnapshot(ws);
+        } catch (err: any) {
+          console.error('Authentication exception:', err.message);
+          ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: 'Internal auth error' } } satisfies S2C));
+        }
+      })();
+      return;
+    }
     case 'setActive': {
       if (typeof msg.payload?.aid !== 'string') return;
       if (engine.state.assets[msg.payload.aid]) cs.activeAsset = msg.payload.aid;
@@ -510,7 +616,7 @@ function handleClientMessage(ws: WebSocket, msg: C2S) {
       const ast = engine.state.assets[p.aid];
       if (!ast) return;
       const def = ASSETS.find(a => a.id === p.aid);
-      const playerLvl = engine.player().level || 1;
+      const playerLvl = engine.player(cs.traderId).level || 1;
       if (def && def.minLevel > playerLvl) {
         ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: `Requires Level ${def.minLevel}` } } satisfies S2C));
         return;
@@ -532,13 +638,13 @@ function handleClientMessage(ws: WebSocket, msg: C2S) {
       }
       cs.orderInFlight = true;
       try {
-        const hold = engine.player().holdings[p.aid];
+        const hold = engine.player(cs.traderId).holdings[p.aid];
         if (!hold) return;
         // v8.10: shorting allowed on all markets. BUY opens/extends long or
         // covers short; SELL closes long or opens/extends short. No special cap.
         const lpx = p.orderType === 'market' ? 0 : (p.limitPx ?? ast.lastPrice);
-        const res = placeOrder(engine.state, 0, p.aid, p.side, p.qty, lpx, p.orderType, engine.callbacks());
-        const h = engine.player().holdings[p.aid];
+        const res = placeOrder(engine.state, cs.traderId, p.aid, p.side, p.qty, lpx, p.orderType, engine.callbacks(cs.traderId));
+        const h = engine.player(cs.traderId).holdings[p.aid];
         if (h) {
           // Allow explicit 0 to CLEAR — only check undefined.
           if (p.slPct !== undefined) { h.slPct = Math.max(0, Math.min(1000, +p.slPct || 0)); h.sl = 0; }
@@ -554,7 +660,7 @@ function handleClientMessage(ws: WebSocket, msg: C2S) {
     }
     case 'close': {
       if (typeof msg.payload?.aid !== 'string') return;
-      const p = engine.player();
+      const p = engine.player(cs.traderId);
       if (!p.closing) p.closing = {};
       p.closing[msg.payload.aid] = true;
       drainCloses();
@@ -563,14 +669,14 @@ function handleClientMessage(ws: WebSocket, msg: C2S) {
     }
     case 'cancelClose': {
       if (typeof msg.payload?.aid !== 'string') return;
-      const p = engine.player();
+      const p = engine.player(cs.traderId);
       if (p.closing) delete p.closing[msg.payload.aid];
       broadcastTickNow();
       return;
     }
     case 'setSLTP': {
       if (typeof msg.payload?.aid !== 'string') return;
-      const h = engine.player().holdings[msg.payload.aid];
+      const h = engine.player(cs.traderId).holdings[msg.payload.aid];
       if (h) {
         if (msg.payload.slPct !== undefined) { h.slPct = Math.max(0, Math.min(1000, +msg.payload.slPct || 0)); h.sl = 0; }
         if (msg.payload.tpPct !== undefined) { h.tpPct = Math.max(0, Math.min(10000, +msg.payload.tpPct || 0)); h.tp = 0; }
@@ -580,7 +686,7 @@ function handleClientMessage(ws: WebSocket, msg: C2S) {
     }
     case 'claimMission': {
       if (typeof msg.payload?.missionId !== 'string') return;
-      const reward = claimMission(engine.player(), msg.payload.missionId);
+      const reward = claimMission(engine.player(cs.traderId), msg.payload.missionId);
       if (reward > 0) sendSnapshot(ws);
       return;
     }
@@ -599,7 +705,7 @@ function buildTickFor(ws: WebSocket): TickPayload {
   const ast = engine.state.assets[active] || engine.state.assets[engine.state.active];
   const tf = cs.activeTF;
   const series = ast.series[tf];
-  const p = engine.player();
+  const p = engine.player(cs.traderId);
   const playerHoldings: Record<string, any> = {};
   for (const aid of Object.keys(p.holdings)) {
     const h = p.holdings[aid];

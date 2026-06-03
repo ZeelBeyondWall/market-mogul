@@ -4,6 +4,7 @@ import { ASSETS } from '../../../shared/engine/constants';
 import type { Market, MissionState, PlayerStats, TFKey, Trade } from '../../../shared/engine/types';
 import { setMuted } from '../audio/audio';
 import type { IndicatorId } from '../utils/indicators';
+import type { Session } from '@supabase/supabase-js';
 
 export type Theme = 'game' | 'pro';
 
@@ -45,6 +46,7 @@ interface GameStore extends UIPrefs {
   tick: number;
   dataTick: number;
   connected: boolean;
+  session: Session | null;
   leaderboard: LeaderboardEntry[];
   totalTraders: number;
   playerRank: number;
@@ -97,6 +99,7 @@ interface GameStore extends UIPrefs {
   notifyDataTick: () => void;
   notifyTick: () => void;
   setConnected: (v: boolean) => void;
+  setSession: (s: Session | null) => void;
   setLeaderboard: (lb: LeaderboardEntry[], total: number, rank: number) => void;
   setTheme: (t: Theme) => void;
   setReduceMotion: (v: boolean) => void;
@@ -166,6 +169,7 @@ export const useGame = create<GameStore>((set, get) => {
     tick: 0,
     dataTick: 0,
     connected: false,
+    session: null,
     leaderboard: [],
     totalTraders: 0,
     playerRank: 1,
@@ -222,6 +226,7 @@ export const useGame = create<GameStore>((set, get) => {
     notifyTick: () => set(s => ({ tick: s.tick + 1 })),
     notifyDataTick: () => set(s => ({ dataTick: s.dataTick + 1 })),
     setConnected: (v) => set({ connected: v }),
+    setSession: (s) => set({ session: s }),
     setLeaderboard: (lb, total, rank) => set({ leaderboard: lb, totalTraders: total, playerRank: rank }),
     setPlayerExtras: (s) => set({
       playerStats: s.stats,

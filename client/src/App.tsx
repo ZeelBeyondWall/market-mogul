@@ -18,11 +18,34 @@ import { MarketBar } from './components/MarketBar';
 import { OrderToast } from './components/OrderToast';
 import { FeedbackModal } from './components/FeedbackModal';
 import { BottomNav } from './components/BottomNav';
+import { Auth } from './components/Auth';
+import { supabase } from './net/supabase';
+import { connect } from './net/wsClient';
 
 export function App() {
   useGameLoop();
+  const session = useGame(s => s.session);
+  const setSession = useGame(s => s.setSession);
   const splashShown = useGame(s => s.splashShown);
   const mobileView = useGame(s => s.mobileView);
+  const engine = useGame(s => s.engine);
+
+  // Initialize and listen to Auth changes
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) connect(engine);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) connect(engine);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [setSession, engine]);
 
   // resume audio on any user interaction after first gesture
   useEffect(() => {
@@ -30,6 +53,17 @@ export function App() {
     document.addEventListener('pointerdown', handler);
     return () => document.removeEventListener('pointerdown', handler);
   }, []);
+
+  if (!session) {
+    return (
+      <>
+        <SvgDefs />
+        <Auth />
+        <ModalRoot />
+        <OrderToast />
+      </>
+    );
+  }
 
   return (
     <>

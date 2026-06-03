@@ -11,6 +11,7 @@ export type S2C =
 
 // Client → Server
 export type C2S =
+  | { type: 'auth'; payload: { token: string } }
   | { type: 'order'; payload: { aid: string; side: 'buy' | 'sell'; qty: number; orderType: 'market' | 'limit'; limitPx?: number; slPct?: number; tpPct?: number } }
   | { type: 'close'; payload: { aid: string } }
   | { type: 'setSLTP'; payload: { aid: string; slPct?: number; tpPct?: number } }
@@ -52,6 +53,7 @@ export interface SnapshotPayload {
 }
 
 export interface PublicTrader {
+  name: string;
   cash: number;
   holdings: Record<string, Holding>;
   isPlayer: true;
@@ -95,7 +97,7 @@ export interface TickPayload {
 }
 
 export function trimTraderForPublic(t: Trader): PublicTrader {
-  return { cash: t.cash, holdings: t.holdings, isPlayer: true, closing: t.closing || {} };
+  return { name: t.name, cash: t.cash, holdings: t.holdings, isPlayer: true, closing: t.closing || {} };
 }
 
 import type { TFKey } from '../../../shared/engine/types';
@@ -105,8 +107,9 @@ export function buildSnapshot(
   active: string,
   playerRank: number,
   tf: TFKey,
+  traderId: number = 0,
 ): SnapshotPayload {
-  const p = S.traders[0];
+  const p = S.traders[traderId] || S.traders[0];
   const assets: Record<string, PublicAsset> = {};
   for (const aid of Object.keys(S.assets)) {
     const a = S.assets[aid];

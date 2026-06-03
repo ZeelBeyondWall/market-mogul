@@ -16,13 +16,13 @@ function emptySeries(): Record<TFKey, CandleSeries> {
 }
 
 export interface EngineHooks {
-  onPlayerBuy?: (assetId: string, qty: number) => void;
-  onPlayerSellProfit?: () => void;
-  onPlayerSellLoss?: () => void;
+  onPlayerBuy?: (assetId: string, qty: number, traderId?: number) => void;
+  onPlayerSellProfit?: (traderId?: number) => void;
+  onPlayerSellLoss?: (traderId?: number) => void;
   onEvent?: (ev: NewsEventDef) => void;
-  onSLTPHit?: (assetId: string, kind: 'SL' | 'TP', price: number, refPrice: number) => void;
-  onPlayerTradeClosed?: (trade: Trade) => void;
-  onMissionClaim?: (missionId: string, reward: number) => void;
+  onSLTPHit?: (assetId: string, kind: 'SL' | 'TP', price: number, refPrice: number, traderId?: number) => void;
+  onPlayerTradeClosed?: (trade: Trade, traderId?: number) => void;
+  onMissionClaim?: (missionId: string, reward: number, traderId?: number) => void;
   // v6: fires per trade (player or bot) — used by analytics + audit.
   onAnyTrade?: (buyerId: number, sellerId: number, assetId: string) => void;
 }
@@ -150,56 +150,62 @@ export class Engine {
     });
   }
 
-  player(): Trader { return this.state.traders[0]; }
+  player(traderId: number = 0): Trader {
+    return this.state.traders[traderId] || this.state.traders[0];
+  }
 
   checkPlayerSLTP(): void {
-    const p = this.player();
-    ASSETS.forEach(a => {
-      const h = p.holdings[a.id];
-      if (!h || h.shares === 0 || h.avgCost <= 0) return;
-      const px = this.state.assets[a.id].lastPrice;
-      // Convert % to absolute trigger price; fall back to legacy abs fields.
-      const slAbs = h.slPct && h.slPct > 0
-        ? (h.shares > 0 ? h.avgCost * (1 - h.slPct / 100) : h.avgCost * (1 + h.slPct / 100))
-        : (h.sl && h.sl > 0 ? h.sl : 0);
-      const tpAbs = h.tpPct && h.tpPct > 0
-        ? (h.shares > 0 ? h.avgCost * (1 + h.tpPct / 100) : h.avgCost * (1 - h.tpPct / 100))
-        : (h.tp && h.tp > 0 ? h.tp : 0);
-      let hit: { kind: 'SL' | 'TP'; ref: number } | null = null;
-      if (h.shares > 0) {
-        if (slAbs > 0 && px <= slAbs) hit = { kind: 'SL', ref: slAbs };
-        else if (tpAbs > 0 && px >= tpAbs) hit = { kind: 'TP', ref: tpAbs };
-      } else {
-        if (slAbs > 0 && px >= slAbs) hit = { kind: 'SL', ref: slAbs };
-        else if (tpAbs > 0 && px <= tpAbs) hit = { kind: 'TP', ref: tpAbs };
-      }
-      if (hit) {
-        // Mark as pending close so the server's drainCloses retries every tick
-        // until thin book is consumed. Also fire one immediate attempt.
-        if (!p.closing) p.closing = {};
-        if (!p.closing[a.id]) {
-          p.closing[a.id] = true;
-          this.hooks.onSLTPHit?.(a.id, hit.kind, hit.ref, px);
+    this.state.traders.forEach(p => {
+      if (!p.isPlayer || p.isHouse || p.rekt) return;
+      ASSETS.forEach(a => {
+        const h = p.holdings[a.id];
+        if (!h || h.shares === 0 || h.avgCost <= 0) return;
+        const px = this.state.assets[a.id].lastPrice;
+        // Convert % to absolute trigger price; fall back to legacy abs fields.
+        const slAbs = h.slPct && h.slPct > 0
+          ? (h.shares > 0 ? h.avgCost * (1 - h.slPct / 100) : h.avgCost * (1 + h.slPct / 100))
+          : (h.sl && h.sl > 0 ? h.sl : 0);
+        const tpAbs = h.tpPct && h.tpPct > 0
+          ? (h.shares > 0 ? h.avgCost * (1 + h.tpPct / 100) : h.avgCost * (1 - h.tpPct / 100))
+          : (h.tp && h.tp > 0 ? h.tp : 0);
+        let hit: { kind: 'SL' | 'TP'; ref: number } | null = null;
+        if (h.shares > 0) {
+          if (slAbs > 0 && px <= slAbs) hit = { kind: 'SL', ref: slAbs };
+          else if (tpAbs > 0 && px >= tpAbs) hit = { kind: 'TP', ref: tpAbs };
+        } else {
+          if (slAbs > 0 && px >= slAbs) hit = { kind: 'SL', ref: slAbs };
+          else if (tpAbs > 0 && px <= tpAbs) hit = { kind: 'TP', ref: tpAbs };
         }
-        this.closePosition(a.id);
-      }
+        if (hit) {
+          // Mark as pending close so the server's drainCloses retries every tick
+          // until thin book is consumed. Also fire one immediate attempt.
+          if (!p.closing) p.closing = {};
+          if (!p.closing[a.id]) {
+            p.closing[a.id] = true;
+            this.hooks.onSLTPHit?.(a.id, hit.kind, hit.ref, px, p.id);
+          }
+          this.closePosition(a.id, p.id);
+        }
+      });
     });
   }
 
-  closePosition(aid: string): void {
-    const hold = this.player().holdings[aid];
+  closePosition(aid: string, traderId: number = 0): void {
+    const p = this.player(traderId);
+    if (!p || p.rekt) return;
+    const hold = p.holdings[aid];
     if (!hold || hold.shares === 0) return;
-    if (hold.shares > 0) placeOrder(this.state, 0, aid, 'sell', hold.shares, 0, 'market', this.callbacks());
-    else placeOrder(this.state, 0, aid, 'buy', -hold.shares, 0, 'market', this.callbacks());
-    const h = this.player().holdings[aid];
+    if (hold.shares > 0) placeOrder(this.state, traderId, aid, 'sell', hold.shares, 0, 'market', this.callbacks(traderId));
+    else placeOrder(this.state, traderId, aid, 'buy', -hold.shares, 0, 'market', this.callbacks(traderId));
+    const h = p.holdings[aid];
     if (h.shares === 0) { h.sl = 0; h.tp = 0; h.slPct = 0; h.tpPct = 0; }
   }
 
-  callbacks() {
+  callbacks(traderId: number = 0) {
     return {
-      onPlayerBuy: (q: number) => this.hooks.onPlayerBuy?.(this.state.active, q),
-      onPlayerSellProfit: () => this.hooks.onPlayerSellProfit?.(),
-      onPlayerSellLoss: () => this.hooks.onPlayerSellLoss?.(),
+      onPlayerBuy: (q: number) => this.hooks.onPlayerBuy?.(this.state.active, q, traderId),
+      onPlayerSellProfit: () => this.hooks.onPlayerSellProfit?.(traderId),
+      onPlayerSellLoss: () => this.hooks.onPlayerSellLoss?.(traderId),
       onTrade: (b: number, s: number, aid: string) => {
         const buyer = this.state.traders[b]; const seller = this.state.traders[s];
         if (!buyer.isPlayer) buyer.tradesSinceChange++;
@@ -207,7 +213,8 @@ export class Engine {
         this.hooks.onAnyTrade?.(b, s, aid);
       },
       onPlayerTradeClosed: (trade: Trade) => {
-        const p = this.player();
+        const p = this.player(traderId);
+        if (!p) return;
         if (!p.playerTrades) p.playerTrades = [];
         p.playerTrades.push(trade);
         if (p.playerTrades.length > MAX_PLAYER_TRADES) p.playerTrades.shift();
@@ -216,14 +223,14 @@ export class Engine {
         p.xp = (p.xp || 0) + xpForTrade(trade.pnl);
         const newLevel = levelFromXp(p.xp);
         if (newLevel > (p.level || 1)) p.level = newLevel;
-        this.hooks.onPlayerTradeClosed?.(trade);
+        this.hooks.onPlayerTradeClosed?.(trade, traderId);
       },
     };
   }
 
   // ===== STATS =====
-  getPlayerStats(): PlayerStats {
-    const p = this.player();
+  getPlayerStats(traderId: number = 0): PlayerStats {
+    const p = this.player(traderId);
     const trades = p.playerTrades || [];
     let wins = 0, losses = 0, realizedPL = 0, largestWin = 0, largestLoss = 0, sumHold = 0;
     const perAsset: Record<string, number> = {};
@@ -266,19 +273,25 @@ export class Engine {
     };
   }
 
-  placeOrder(side: 'buy' | 'sell', qty: number, type: 'market' | 'limit', limitPx: number): void {
-    placeOrder(this.state, 0, this.state.active, side, qty, limitPx, type, this.callbacks());
+  placeOrder(side: 'buy' | 'sell', qty: number, type: 'market' | 'limit', limitPx: number, traderId: number = 0): void {
+    placeOrder(this.state, traderId, this.state.active, side, qty, limitPx, type, this.callbacks(traderId));
   }
 
   step(now: number): void {
     const dt = Math.min(0.1, (now - this.lastT) / 1000);
     this.lastT = now;
     const wallNow = Date.now();
-    ensureMissionsCurrent(this.player(), wallNow);
-    rolloverDailyLogin(this.player(), wallNow);
-    tickMissionProgress(this.player(), wallNow, () => this.netWorth());
+    let maxPlayerLvl = 1;
+    this.state.traders.forEach(t => {
+      if (t.isPlayer && !t.isHouse && !t.rekt) {
+        ensureMissionsCurrent(t, wallNow);
+        rolloverDailyLogin(t, wallNow);
+        tickMissionProgress(t, wallNow, () => this.netWorth(t.id));
+        if ((t.level || 1) > maxPlayerLvl) maxPlayerLvl = t.level || 1;
+      }
+    });
     // v7.1: propagate strict-gate cap to state (read by botDecide each call).
-    this.state.playerLevelCap = this.config.strictBotLevelGate ? (this.player().level || 1) : 0;
+    this.state.playerLevelCap = this.config.strictBotLevelGate ? maxPlayerLvl : 0;
     this.tickAcc += dt;
     while (this.tickAcc >= 0.1) {
       tickMarket(this.state, 0.1, now);
@@ -359,27 +372,27 @@ export class Engine {
     }
   }
 
-  playerIncomePerSec(): number {
+  playerIncomePerSec(traderId: number = 0): number {
     let total = 0;
     ASSETS.forEach(a => {
       if (a.div <= 0) return;
-      const h = this.player().holdings[a.id];
+      const h = this.player(traderId).holdings[a.id];
       if (h && h.shares > 0) total += h.shares * this.state.assets[a.id].lastPrice * a.div;
     });
     return total;
   }
 
-  portfolioValue(): number {
+  portfolioValue(traderId: number = 0): number {
     let v = 0;
     ASSETS.forEach(a => {
-      v += (this.player().holdings[a.id]?.shares || 0) * this.state.assets[a.id].lastPrice;
+      v += (this.player(traderId).holdings[a.id]?.shares || 0) * this.state.assets[a.id].lastPrice;
     });
     return v;
   }
 
-  netWorth(): number {
+  netWorth(traderId: number = 0): number {
     // NOTE: bonus deliberately excluded — keeps leaderboard fair vs bots.
-    return this.player().cash + this.portfolioValue();
+    return this.player(traderId).cash + this.portfolioValue(traderId);
   }
 
   // v9.2: SHORT shown exactly like a BUY — you "stake" qty×entry to open the
@@ -393,9 +406,9 @@ export class Engine {
   //   short value     = |shares|×(2·avgCost − price)      (= stake + P&L)
   //   displayPortfolio = Σ long(shares×price) + Σ short value
   //   displayCash + displayPortfolio === netWorth()       (invariant)
-  private shortStake(): number {
+  private shortStake(traderId: number = 0): number {
     let p = 0;
-    const h = this.player().holdings;
+    const h = this.player(traderId).holdings;
     ASSETS.forEach(a => {
       const pos = h[a.id];
       if (pos && pos.shares < 0) p += (-pos.shares) * pos.avgCost;
@@ -403,13 +416,13 @@ export class Engine {
     return p;
   }
 
-  displayCash(): number {
-    return this.player().cash - 2 * this.shortStake();
+  displayCash(traderId: number = 0): number {
+    return this.player(traderId).cash - 2 * this.shortStake(traderId);
   }
 
-  displayPortfolioValue(): number {
+  displayPortfolioValue(traderId: number = 0): number {
     let v = 0;
-    const h = this.player().holdings;
+    const h = this.player(traderId).holdings;
     ASSETS.forEach(a => {
       const pos = h[a.id];
       if (!pos || pos.shares === 0) return;
@@ -421,22 +434,23 @@ export class Engine {
   }
 
   // Value to show for a single position row (long = market value, short = stake+P&L).
-  positionDisplayValue(aid: string): number {
-    const pos = this.player().holdings[aid];
+  positionDisplayValue(aid: string, traderId: number = 0): number {
+    const pos = this.player(traderId).holdings[aid];
     if (!pos || pos.shares === 0) return 0;
     const px = this.state.assets[aid].lastPrice;
     return pos.shares > 0 ? pos.shares * px : (-pos.shares) * (2 * pos.avgCost - px);
   }
 
   // Player-only "wallet" including mission bonus, shown in header alongside net.
-  walletBonus(): number {
-    return this.player().bonus || 0;
+  walletBonus(traderId: number = 0): number {
+    return this.player(traderId).bonus || 0;
   }
 
-  playerRank(): number {
-    const me = traderNet(this.player(), this.state);
+  playerRank(traderId: number = 0): number {
+    const me = traderNet(this.player(traderId), this.state);
     let rank = 1;
-    for (let i = 1; i < this.state.traders.length; i++) {
+    for (let i = 0; i < this.state.traders.length; i++) {
+      if (i === traderId) continue;
       const t = this.state.traders[i];
       if (t.isHouse) continue; // v8.9: House not ranked
       if (traderNet(t, this.state) > me) rank++;

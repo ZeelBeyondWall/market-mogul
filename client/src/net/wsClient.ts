@@ -20,7 +20,7 @@ interface SnapshotPayload {
   serverTime: number;
   active: string;
   tf?: string;
-  player: { cash: number; holdings: Record<string, any>; isPlayer: true; closing?: Record<string, boolean> };
+  player: { name: string; cash: number; holdings: Record<string, any>; isPlayer: true; closing?: Record<string, boolean> };
   assets: Record<string, PublicAsset>;
   events: { type: 'boom'|'crash'|'news'; title: string; desc: string; t: number; assetIds?: string[]; cat?: NewsCategory }[];
   leaderboard: { id: number; name: string; net: number; strat: string; rekt: boolean; level: number; isPlayer: boolean }[];
@@ -65,6 +65,7 @@ let prevLevel = 0;
 const seenCompletedMissions = new Set<string>();
 
 export type C2SMsg =
+  | { type: 'auth'; payload: { token: string } }
   | { type: 'order'; payload: { aid: string; side: 'buy'|'sell'; qty: number; orderType: 'market'|'limit'; limitPx?: number; slPct?: number; tpPct?: number } }
   | { type: 'close'; payload: { aid: string } }
   | { type: 'setSLTP'; payload: { aid: string; slPct?: number; tpPct?: number } }
@@ -113,6 +114,9 @@ export function connect(engine: Engine): void {
     reconnectAttempt = 0;
     useGame.getState().setConnected(true);
     const s = useGame.getState();
+    if (s.session) {
+      send({ type: 'auth', payload: { token: s.session.access_token } });
+    }
     send({ type: 'setTF', payload: { tf: s.activeTF } });
     if (s.engine.state.active) send({ type: 'setActive', payload: { aid: s.engine.state.active } });
   };
@@ -174,6 +178,7 @@ function applySnapshot(engine: Engine, snap: SnapshotPayload): void {
   engine.state.active = snap.active;
   engine.state.events = snap.events;
   const p = engine.player();
+  p.name = snap.player.name;
   p.cash = snap.player.cash;
   // merge holdings (preserve unset assets)
   for (const aid of Object.keys(snap.player.holdings)) {

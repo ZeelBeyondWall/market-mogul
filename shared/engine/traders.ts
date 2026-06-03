@@ -145,8 +145,8 @@ export function makeTrader(i: number, isPlayer: boolean, forcedStrat?: StrategyI
   });
 
   const xp = isPlayer ? 0 : xpToReach(level);
-  // v7.3: player name configurable via MM_PLAYER_NAME env var. Default 'Zeel'.
-  const playerName = (typeof globalThis !== 'undefined' && (globalThis as any)?.process?.env?.MM_PLAYER_NAME) || 'Zeel';
+  // v7.3: player name configurable via MM_PLAYER_NAME env var. Default 'Trader'.
+  const playerName = (typeof globalThis !== 'undefined' && (globalThis as any)?.process?.env?.MM_PLAYER_NAME) || 'Trader';
 
   let activity = isPlayer ? 0 : activityFor(strat);
   if (!isPlayer && tier === 'whale') {
