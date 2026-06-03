@@ -99,6 +99,15 @@ function getLeague(netWorth: number, rank: number): LeagueInfo {
   }
 }
 
+function fmtLeaderboardPct(n: number): string {
+  const absN = Math.abs(n);
+  if (absN >= 1e12) return (absN / 1e12).toFixed(2) + 'T%';
+  if (absN >= 1e9)  return (absN / 1e9).toFixed(2)  + 'B%';
+  if (absN >= 1e6)  return (absN / 1e6).toFixed(2)  + 'M%';
+  if (absN >= 1e3)  return (absN / 1e3).toFixed(2)  + 'K%';
+  return absN.toFixed(2) + '%';
+}
+
 export function LeaderboardPage() {
   const eng = useGame(s => s.engine);
   useGame(s => s.dataTick);
@@ -191,7 +200,7 @@ export function LeaderboardPage() {
       : (entry.net / 10000);
     const trades = entry.isPlayer
       ? (playerStats?.totalTrades || 28)
-      : Math.floor(100 + (entry.net / 2200) + (entry.level * 8));
+      : Math.floor(500 + Math.log10(Math.max(1, entry.net)) * 40 + (entry.level * 5) + (entry.id % 200));
     
     return {
       ...entry,
@@ -344,7 +353,7 @@ export function LeaderboardPage() {
                       </td>
                       <td>
                         <span className="qty-val" style={{ color: trader.returnPct >= 0 ? '#22C55E' : '#EF4444' }}>
-                          {trader.returnPct >= 0 ? '▲' : '▼'} {Math.abs(trader.returnPct).toFixed(2)}%
+                          {trader.returnPct >= 0 ? '▲' : '▼'} {fmtLeaderboardPct(trader.returnPct)}
                         </span>
                       </td>
                       <td>
@@ -379,7 +388,7 @@ export function LeaderboardPage() {
                     </td>
                     <td>
                       <span className="qty-val" style={{ color: playerReturnPct >= 0 ? '#22C55E' : '#EF4444' }}>
-                        {playerReturnPct >= 0 ? '▲' : '▼'} {Math.abs(playerReturnPct).toFixed(2)}%
+                        {playerReturnPct >= 0 ? '▲' : '▼'} {fmtLeaderboardPct(playerReturnPct)}
                       </span>
                     </td>
                     <td>
@@ -423,7 +432,7 @@ export function LeaderboardPage() {
             <div className="rank-shield-stat-item">
               <span className="rank-shield-stat-lbl">TOTAL RETURN</span>
               <span className={`rank-shield-stat-val ${playerReturnPct >= 0 ? 'green' : 'red'}`}>
-                {playerReturnPct >= 0 ? '▲' : '▼'} {Math.abs(playerReturnPct).toFixed(2)}%
+                {playerReturnPct >= 0 ? '▲' : '▼'} {fmtLeaderboardPct(playerReturnPct)}
               </span>
             </div>
           </div>
