@@ -27,14 +27,7 @@ export function Settings() {
 
   if (!open) return null;
 
-  const onReset = async () => {
-    const ok = await showModal('Reset everything?',
-      'Wipes server state (state.json) AND local prefs. Server must be restarted via start.bat.', true);
-    if (!ok) return;
-    try { await fetch(`http://${location.hostname}:8787/admin/reset`, { method: 'POST' }); } catch { /* server gone */ }
-    localStorage.removeItem('mm_ui_prefs_v2');
-    location.reload();
-  };
+
 
   const onLogout = async () => {
     Audio.click();
@@ -98,9 +91,7 @@ export function Settings() {
           </div>
         </Section>
 
-        <Section title="Danger">
-          <button className="settings-danger" onClick={onReset}>Reset save + restart</button>
-        </Section>
+
 
         <div className="settings-foot">
           <div>MarketVerseX v2.1</div>
