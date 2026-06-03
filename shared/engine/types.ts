@@ -133,6 +133,7 @@ export interface Trader {
   // aggregates. In executeTrade its cash/holdings are NOT mutated (infinite
   // counterparty), so it never accumulates or pollutes totals.
   isHouse?: boolean;
+  userId?: string; // Supabase Auth User ID for human players
   // Perf cache — invalidated on any trade involving this trader.
   _netCache?: number;
   _netDirty?: boolean;

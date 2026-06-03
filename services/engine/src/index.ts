@@ -535,52 +535,92 @@ function handleClientMessage(ws: WebSocket, msg: C2S) {
           const uuid = user.id;
           const username = user.user_metadata?.username || user.email?.split('@')[0] || 'Trader';
           
-          let traderId = 0;
-          const { data: profile, error: dbErr } = await supabase
-            .from('profiles')
-            .select('trader_id')
-            .eq('id', uuid)
-            .maybeSingle();
-            
-          if (dbErr) {
-            console.error('DB query error:', dbErr.message);
-            ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: 'Database error' } } satisfies S2C));
-            return;
-          }
+          // Memory-first lookup: search for a trader that is a player and has either the matching userId (uuid) or matching username name.
+          let foundTraderIdx = engine.state.traders.findIndex(t => t && t.isPlayer && !t.isHouse && (t.userId === uuid || t.name === username));
           
-          if (profile) {
-            traderId = profile.trader_id;
+          let traderId = 0;
+          if (foundTraderIdx >= 0) {
+            // Found in memory! Let's ensure its fields are synced.
+            traderId = foundTraderIdx;
             const t = engine.state.traders[traderId];
-            if (!t || !t.isPlayer || t.isHouse) {
-              traderId = engine.state.traders.length;
-              const newTrader = makeTrader(traderId, true);
-              newTrader.name = username;
-              engine.state.traders.push(newTrader);
-              
+            t.userId = uuid; // Sync just in case it was loaded via name match
+            t.name = username;
+            
+            // Sync database profile table to point to this index
+            const { data: profile, error: dbErr } = await supabase
+              .from('profiles')
+              .select('trader_id')
+              .eq('id', uuid)
+              .maybeSingle();
+
+            if (!profile) {
+              // Profile not in DB yet, insert it
+              await supabase
+                .from('profiles')
+                .insert({ id: uuid, username, trader_id: traderId });
+            } else if (profile.trader_id !== traderId) {
+              // Index shifted, update database to current index
               await supabase
                 .from('profiles')
                 .update({ trader_id: traderId, username })
                 .eq('id', uuid);
-                
-              diskSave(engine.state);
-            } else {
-              t.name = username;
             }
           } else {
-            traderId = engine.state.traders.length;
-            const newTrader = makeTrader(traderId, true);
-            newTrader.name = username;
-            engine.state.traders.push(newTrader);
-            
-            const { error: insErr } = await supabase
+            // Not found in memory. Let's check the database as fallback.
+            const { data: profile, error: dbErr } = await supabase
               .from('profiles')
-              .insert({ id: uuid, username, trader_id: traderId });
+              .select('trader_id')
+              .eq('id', uuid)
+              .maybeSingle();
               
-            if (insErr) {
-              console.error('DB insert error:', insErr.message);
+            if (dbErr) {
+              console.error('DB query error:', dbErr.message);
+              ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: 'Database error' } } satisfies S2C));
+              return;
             }
             
-            diskSave(engine.state);
+            if (profile) {
+              // DB has it, but it wasn't matched in memory (maybe index changed and name changed).
+              // Let's check if the index is valid and is a player.
+              traderId = profile.trader_id;
+              const t = engine.state.traders[traderId];
+              if (t && t.isPlayer && !t.isHouse) {
+                // Yes, the index is still valid. Sync memory fields.
+                t.userId = uuid;
+                t.name = username;
+              } else {
+                // The index was occupied by a bot or invalid. Allocate a new trader index.
+                traderId = engine.state.traders.length;
+                const newTrader = makeTrader(traderId, true);
+                newTrader.userId = uuid;
+                newTrader.name = username;
+                engine.state.traders.push(newTrader);
+                
+                await supabase
+                  .from('profiles')
+                  .update({ trader_id: traderId, username })
+                  .eq('id', uuid);
+                  
+                diskSave(engine.state);
+              }
+            } else {
+              // Brand new user, not in memory and not in DB.
+              traderId = engine.state.traders.length;
+              const newTrader = makeTrader(traderId, true);
+              newTrader.userId = uuid;
+              newTrader.name = username;
+              engine.state.traders.push(newTrader);
+              
+              const { error: insErr } = await supabase
+                .from('profiles')
+                .insert({ id: uuid, username, trader_id: traderId });
+                
+              if (insErr) {
+                console.error('DB insert error:', insErr.message);
+              }
+              
+              diskSave(engine.state);
+            }
           }
           
           cs.traderId = traderId;

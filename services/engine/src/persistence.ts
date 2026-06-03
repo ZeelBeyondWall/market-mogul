@@ -40,6 +40,7 @@ async function doSave(S: GameState): Promise<void> {
         bornNet: t.bornNet, tradesSinceChange: t.tradesSinceChange, mutateCooldown: t.mutateCooldown,
         rekt: t.rekt,
         level: t.level, xp: t.xp,    // v4: progression
+        userId: t.isPlayer ? t.userId : undefined, // save Supabase User ID for players
         // Player-only extras (no-op for bots — fields will be undefined).
         playerTrades: t.isPlayer ? (t.playerTrades || []) : undefined,
         playerEntryTs: t.isPlayer ? (t.playerEntryTs || {}) : undefined,
@@ -111,11 +112,45 @@ function loadFrom(target: GameState, file: string): boolean {
     if (d.v !== FORMAT_VERSION) console.log(`⚙ migrating v${d.v} → v${FORMAT_VERSION} save`);
     // Build valid-asset-id set once for stale pickedAssets filtering.
     const validAssetIds = new Set(ASSETS.map(a => a.id));
+
+    // Dedup player entries: if there are multiple players with the same name or userId,
+    // sort them by level desc, then cash desc, and only keep the best one.
+    const playerGroups: Record<string, any[]> = {};
+    const nonPlayers: any[] = [];
+    d.traders.forEach((td: any) => {
+      if (td.isPlayer) {
+        const key = td.userId || td.name || 'unknown';
+        if (!playerGroups[key]) playerGroups[key] = [];
+        playerGroups[key].push(td);
+      } else {
+        nonPlayers.push(td);
+      }
+    });
+
+    const dedupedPlayers: any[] = [];
+    for (const key of Object.keys(playerGroups)) {
+      const group = playerGroups[key];
+      group.sort((a, b) => {
+        const lvlA = a.level || 1;
+        const lvlB = b.level || 1;
+        if (lvlB !== lvlA) return lvlB - lvlA;
+        const cashA = a.cash || 0;
+        const cashB = b.cash || 0;
+        return cashB - cashA;
+      });
+      dedupedPlayers.push(group[0]);
+    }
+
+    const cleanTraders = [...nonPlayers, ...dedupedPlayers];
+    // Sort by original id so that relative indexing is preserved as much as possible
+    cleanTraders.sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+
     const newTraders: Trader[] = [];
-    d.traders.forEach((td: Partial<Trader>, i: number) => {
+    cleanTraders.forEach((td: Partial<Trader>, i: number) => {
       const t = td.isPlayer ? makeTrader(0, true) : makeTrader(i, false, td.strat);
       Object.assign(t, td);
       t.id = i;
+      t.userId = td.userId; // Restore Supabase User ID on load
       // Drop pickedAssets entries that no longer exist (old asset universe).
       if (Array.isArray(t.pickedAssets)) {
         t.pickedAssets = t.pickedAssets.filter(id => validAssetIds.has(id));
