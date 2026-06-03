@@ -40,6 +40,16 @@ export function DashboardPage() {
 
   const username = session?.user?.user_metadata?.username || session?.user?.email?.split('@')[0] || p.name || 'Trader';
 
+  // State for viewport size detection
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 820);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // State for tabs inside Market Movers
   const [moversTab, setMoversTab] = useState<'gainers' | 'losers' | 'active'>('gainers');
 
@@ -167,8 +177,6 @@ export function DashboardPage() {
         { label: 'Others', value: 7.3, color: '#A8B3CF', pct: 7.3 }
       ];
 
-  // Leaderboard data - Filter weekly rankings for human players (excluding bots)
-  // Pad with mock human players to make lobby look populated
   const topHumans = [
     { rank: 1, name: 'AlphaTrader', net: 245231.25, level: 18, isPlayer: false },
     { rank: 2, name: 'WolfInvestor', net: 189023.14, level: 14, isPlayer: false },
@@ -190,28 +198,6 @@ export function DashboardPage() {
     Audio.click();
   };
 
-  const handleChooseMarket = (market: 'stocks' | 'crypto' | 'forex') => {
-    Audio.click();
-    if (market === 'stocks') {
-      setActiveMarket('stocks');
-      setActiveScreen('trading');
-    } else if (market === 'crypto') {
-      if (lvl < 20) {
-        pushToast('Crypto Nebula unlocks at Level 20', 'err');
-        return;
-      }
-      setActiveMarket('crypto');
-      setActiveScreen('trading');
-    } else if (market === 'forex') {
-      if (lvl < 30) {
-        pushToast('Forex Grid unlocks at Level 30', 'err');
-        return;
-      }
-      setActiveMarket('forex');
-      setActiveScreen('trading');
-    }
-  };
-
   // Static Sparkline Renderer
   const Sparkline = ({ points, color = '#22C55E' }: { points: number[]; color?: string }) => {
     const width = 80;
@@ -228,19 +214,277 @@ export function DashboardPage() {
     );
   };
 
-  // Sparkline Generator for items without history
   const getStaticPoints = (positive: boolean) => {
     return positive 
       ? [10, 12, 11, 14, 13, 16, 15, 18, 17, 20]
       : [20, 18, 19, 16, 17, 14, 15, 12, 13, 10];
   };
 
-  // Achievements checking
   const firstTradeUnlocked = (playerStats?.totalTrades || 0) > 0;
   const profitMakerUnlocked = realizedPnL >= 10000 || net >= 15000;
   const bigSpenderUnlocked = net >= 100000 || (playerStats?.totalTrades || 0) >= 20;
   const marketMasterUnlocked = lvl >= 20;
 
+  const handleNavTab = (tab: any) => {
+    Audio.click();
+    setActiveScreen('trading');
+    setActiveTab(tab);
+  };
+
+  // ==========================================================================
+  // MOBILE RENDER LAYOUT
+  // ==========================================================================
+  if (isMobile) {
+    return (
+      <div className="mmo-mobile-dash-container">
+        
+        {/* 1. Hero Card Welcome + Live Event combined */}
+        <section className="mmo-mobile-hero" style={{ backgroundImage: 'linear-gradient(rgba(11,16,32,0.4), rgba(11,16,32,0.9)), url(/cityscape_sunset.png)' }}>
+          <div className="mobile-hero-welcome-area">
+            <h1 className="mob-welcome-title">WELCOME BACK, <span className="gold-text">{username.toUpperCase()}</span>!</h1>
+            <p className="mob-welcome-sub">The market never sleeps. Opportunity is everywhere.</p>
+          </div>
+
+          <div className="mobile-hero-event-overlay">
+            <div className="mob-event-head-row">
+              <span className="mob-event-tag">LIVE EVENT</span>
+              <span className="mob-event-time">
+                {timeLeft.hours.toString().padStart(2, '0')}H : {timeLeft.minutes.toString().padStart(2, '0')}M : {timeLeft.seconds.toString().padStart(2, '0')}S
+              </span>
+            </div>
+            <h3 className="mob-event-title">{eventTitle}</h3>
+            <p className="mob-event-desc">{eventDesc}</p>
+            <button className="mob-event-cta" onClick={() => handleNavTab('news')}>
+              VIEW EVENT
+            </button>
+          </div>
+        </section>
+
+        {/* 2. Player Progression Card */}
+        <section className="mmo-mobile-card prog-mobile-card">
+          <div className="prog-mobile-left-badge">
+            <svg viewBox="0 0 100 100" className="shield-svg-mob">
+              <path d="M50 10 L85 25 L85 60 C85 80 50 90 50 90 C50 90 15 80 15 60 L15 25 Z" fill="#7C5CFF" fillOpacity="0.1" stroke="#FBBF24" strokeWidth="3" />
+              <polygon points="50,22 58,40 77,40 62,52 68,70 50,60 32,70 38,52 23,40 42,40" fill="#FBBF24" />
+            </svg>
+          </div>
+          <div className="prog-mobile-center-text">
+            <span className="prog-mob-lbl">YOUR RANK</span>
+            <span className="prog-mob-rank">#{rank || 247}</span>
+            <span className="prog-mob-sub">TOP 2% OF TRADERS</span>
+          </div>
+          <div className="prog-mobile-right-spark">
+            <Sparkline points={[10, 12, 11, 14, 13, 16, 17, 16, 19, 18, 22]} color="#22C55E" />
+          </div>
+        </section>
+
+        {/* 3. Financial Summary full-width cards */}
+        <section className="mmo-mobile-financial-summary">
+          {/* Cash Balance */}
+          <div className="mmo-mobile-card summary-mobile-card">
+            <div className="sm-circle green-theme-circle">
+              <span>$</span>
+            </div>
+            <div className="sm-details">
+              <span className="sm-label">CASH BALANCE</span>
+              <span className="sm-value"><AnimatedNumber value={cash} format={n => fmt(n)} /></span>
+            </div>
+            <div className="sm-sparkline">
+              <Sparkline points={[100, 102, 101, 104, 103, 106, 105, 108]} color="#22C55E" />
+            </div>
+          </div>
+
+          {/* Net Worth */}
+          <div className="mmo-mobile-card summary-mobile-card">
+            <div className="sm-circle blue-theme-circle">
+              <span>💎</span>
+            </div>
+            <div className="sm-details">
+              <span className="sm-label">NET WORTH</span>
+              <span className="sm-value"><AnimatedNumber value={net} format={n => fmt(n)} /></span>
+              <span className={`sm-delta ${todayPnLPct >= 0 ? 'up-green' : 'dn-red'}`}>
+                {todayPnLPct >= 0 ? '▲' : '▼'} {Math.abs(todayPnLPct).toFixed(2)}% TODAY
+              </span>
+            </div>
+            <div className="sm-sparkline">
+              <Sparkline points={[200, 201, 203, 202, 205, 204, 208, 210]} color="#22C55E" />
+            </div>
+          </div>
+
+          {/* Today's Profit */}
+          <div className="mmo-mobile-card summary-mobile-card">
+            <div className="sm-circle dark-green-circle">
+              <span>📈</span>
+            </div>
+            <div className="sm-details">
+              <span className="sm-label">TODAY'S PROFIT</span>
+              <span className={`sm-value ${todayPnL >= 0 ? 'up-green' : 'dn-red'}`}>
+                {todayPnL >= 0 ? '+' : ''}<AnimatedNumber value={todayPnL} format={n => fmt(n)} />
+              </span>
+              <span className={`sm-delta ${todayPnL >= 0 ? 'up-green' : 'dn-red'}`}>
+                {todayPnL >= 0 ? '▲' : '▼'} {Math.abs(todayPnLPct).toFixed(2)}%
+              </span>
+            </div>
+            <div className="sm-sparkline">
+              <Sparkline points={todayPnL >= 0 ? [50, 52, 51, 55, 53, 58, 60] : [60, 58, 55, 52, 50]} color={todayPnL >= 0 ? '#22C55E' : '#EF4444'} />
+            </div>
+          </div>
+        </section>
+
+        {/* 4. Rewards chest + Streak row */}
+        <section className="mmo-mobile-rewards-row">
+          {/* Daily Reward */}
+          <div className="mmo-mobile-card reward-mob-card">
+            <div className="reward-mob-top">
+              <span className="chest-badge-icon">🎁</span>
+              <div className="reward-text-wrap">
+                <span className="reward-main-lbl">DAILY REWARD</span>
+                <span className="reward-sub-lbl">CLAIM YOUR REWARD</span>
+              </div>
+            </div>
+            <button className="claim-now-btn-mob" onClick={handleClaimDailyReward}>
+              CLAIM NOW
+            </button>
+          </div>
+
+          {/* Streak Card */}
+          <div className="mmo-mobile-card streak-mob-card">
+            <div className="streak-mob-top">
+              <span className="streak-flame-icon">🔥</span>
+              <div className="streak-text-wrap">
+                <span className="streak-main-lbl">STREAK</span>
+                <span className="streak-sub-lbl">{streak || 7} DAYS</span>
+                <span className="streak-caption">Keep it up!</span>
+              </div>
+            </div>
+            <div className="streak-progress-container-mob">
+              <div className="streak-line-bg-mob"></div>
+              <div className="streak-line-fill-mob" style={{ width: `${((Math.min(7, streak || 7) - 1) / 6) * 100}%` }}></div>
+              <div className="streak-dots-wrap-mob">
+                {[1, 2, 3, 4, 5, 6, 7].map(day => {
+                  const active = day <= (streak || 7);
+                  return (
+                    <span key={day} className={`streak-dot-node-mob ${active ? 'active' : ''}`} />
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 5. Market Movers Card */}
+        <section className="mmo-mobile-card movers-mob-card">
+          <div className="movers-mob-head">
+            <span className="movers-mob-title">MARKET MOVERS</span>
+            <span className="movers-mob-view-all" onClick={() => handleNavTab('movers')}>VIEW ALL</span>
+          </div>
+
+          <div className="movers-mob-tabs">
+            <button className={`movers-tab-btn-mob ${moversTab === 'gainers' ? 'active' : ''}`} onClick={() => setMoversTab('gainers')}>TOP GAINERS</button>
+            <button className={`movers-tab-btn-mob ${moversTab === 'losers' ? 'active' : ''}`} onClick={() => setMoversTab('losers')}>TOP LOSERS</button>
+            <button className={`movers-tab-btn-mob ${moversTab === 'active' ? 'active' : ''}`} onClick={() => setMoversTab('active')}>MOST ACTIVE</button>
+          </div>
+
+          <div className="movers-mob-list">
+            {activeMovers.slice(0, 3).map(({ a, ast, chg }) => {
+              const isPositive = chg >= 0;
+              return (
+                <div key={a.id} className="mover-mob-row" onClick={() => navigateToTrade(a.id, a.market as Market)}>
+                  <div className="mover-mob-icon-wrap">
+                    <svg className="mover-mob-icon-svg" style={{ width: '18px', height: '18px', fill: isPositive ? '#22C55E' : '#EF4444' }}>
+                      <use href={`#${a.icon}`} />
+                    </svg>
+                  </div>
+                  <div className="mover-mob-asset-info">
+                    <span className="mover-mob-sym">{a.id}</span>
+                    <span className="mover-mob-name">{a.name}</span>
+                  </div>
+                  <div className="mover-mob-price-col">
+                    <span className="mover-mob-price">{fmt(ast.lastPrice)}</span>
+                    <span className={`mover-mob-chg ${isPositive ? 'up-green' : 'dn-red'}`}>
+                      {isPositive ? '▲' : '▼'} {Math.abs(chg).toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* 6. Daily Missions Card */}
+        <section className="mmo-mobile-card missions-mob-card">
+          <div className="missions-mob-head">
+            <span className="missions-mob-title">DAILY MISSIONS</span>
+            <span className="missions-mob-countdown">RESETS IN {midnightTimeLeft}</span>
+          </div>
+
+          <div className="missions-mob-list">
+            {daily.length > 0 ? (
+              daily.map((m, idx) => {
+                const pct = Math.min(100, (m.progress / m.def.goal.target) * 100);
+                return (
+                  <div key={m.def.id} className="mission-mob-row">
+                    <span className="mission-mob-num">{idx + 1}</span>
+                    <div className="mission-mob-details">
+                      <span className="mission-mob-title-text">{m.def.title}</span>
+                      <div className="mission-mob-prog-row">
+                        <div className="m-bar-outer"><div className="m-bar-inner" style={{ width: `${pct}%` }} /></div>
+                        <span className="m-prog-count-mob">{Math.floor(m.progress)} / {m.def.goal.target}</span>
+                      </div>
+                    </div>
+                    <div className="mission-mob-rewards">
+                      <span className="mob-rew-xp">XP {m.def.reward * 5}</span>
+                      <span className="mob-rew-cash">${m.def.reward * 10}</span>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <>
+                <div className="mission-mob-row">
+                  <span className="mission-mob-num">1</span>
+                  <div className="mission-mob-details">
+                    <span className="mission-mob-title-text">Make 3 Profitable Trades</span>
+                    <div className="mission-mob-prog-row">
+                      <div className="m-bar-outer"><div className="m-bar-inner" style={{ width: '66%' }} /></div>
+                      <span className="m-prog-count-mob">2 / 3</span>
+                    </div>
+                  </div>
+                  <div className="mission-mob-rewards">
+                    <span className="mob-rew-xp">XP 250</span>
+                    <span className="mob-rew-cash">$500</span>
+                  </div>
+                </div>
+                <div className="mission-mob-row">
+                  <span className="mission-mob-num">2</span>
+                  <div className="mission-mob-details">
+                    <span className="mission-mob-title-text">Trade in Crypto Market</span>
+                    <div className="mission-mob-prog-row">
+                      <div className="m-bar-outer"><div className="m-bar-inner" style={{ width: '0%' }} /></div>
+                      <span className="m-prog-count-mob">0 / 1</span>
+                    </div>
+                  </div>
+                  <div className="mission-mob-rewards">
+                    <span className="mob-rew-xp">XP 200</span>
+                    <span className="mob-rew-cash">$300</span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          <button className="view-all-missions-btn-mob" onClick={() => handleNavTab('missions')}>
+            VIEW ALL MISSIONS
+          </button>
+        </section>
+
+      </div>
+    );
+  }
+
+  // ==========================================================================
+  // DESKTOP RENDER LAYOUT
+  // ==========================================================================
   return (
     <div className="mmo-dash-layout">
       {/* ================= LEFT SIDEBAR ================= */}
@@ -292,8 +536,8 @@ export function DashboardPage() {
           <div className="balance-info">
             <span className="balance-lbl">NET WORTH</span>
             <span className="balance-val"><AnimatedNumber value={net} format={n => fmt(n)} /></span>
-            <span className="delta-pct-today up-green">
-              ▲ {todayPnLPct >= 0 ? '+' : ''}{fmtPct(todayPnLPct)} TODAY
+            <span className={`delta-pct-today ${todayPnLPct >= 0 ? 'up-green' : 'dn-red'}`}>
+              {todayPnLPct >= 0 ? '▲' : '▼'} {Math.abs(todayPnLPct).toFixed(2)}% TODAY
             </span>
           </div>
         </div>
@@ -307,7 +551,7 @@ export function DashboardPage() {
                 {todayPnL >= 0 ? '+' : ''}<AnimatedNumber value={todayPnL} format={n => fmt(n)} />
               </span>
               <span className={`pnl-pct ${todayPnL >= 0 ? 'up-green' : 'dn-red'}`}>
-                {todayPnL >= 0 ? '+' : ''}{fmtPct(todayPnLPct)}
+                {todayPnL >= 0 ? '▲' : '▼'} {Math.abs(todayPnLPct).toFixed(2)}%
               </span>
             </div>
             <div className="pnl-sparkline">
@@ -798,11 +1042,26 @@ export function DashboardPage() {
     </div>
   );
 
-  // Helper for center navigation routing
-  function handleNavTab(tab: any) {
+  function handleChooseMarket(market: 'stocks' | 'crypto' | 'forex') {
     Audio.click();
-    setActiveScreen('trading');
-    setActiveTab(tab);
+    if (market === 'stocks') {
+      setActiveMarket('stocks');
+      setActiveScreen('trading');
+    } else if (market === 'crypto') {
+      if (lvl < 20) {
+        pushToast('Crypto Nebula unlocks at Level 20', 'err');
+        return;
+      }
+      setActiveMarket('crypto');
+      setActiveScreen('trading');
+    } else if (market === 'forex') {
+      if (lvl < 30) {
+        pushToast('Forex Grid unlocks at Level 30', 'err');
+        return;
+      }
+      setActiveMarket('forex');
+      setActiveScreen('trading');
+    }
   }
 }
 

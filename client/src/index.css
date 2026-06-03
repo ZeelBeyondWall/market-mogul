@@ -3631,6 +3631,12 @@ body[data-theme="game"] {
 .hdr-logo-area {
   cursor: pointer;
   display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.logo-text-wrap {
+  display: flex;
   flex-direction: column;
 }
 
@@ -5378,4 +5384,929 @@ body[data-theme="game"] {
 .text-gold {
   color: #FBBF24 !important;
 }
+
+/* ==========================================================================
+   MOBILE-FIRST MMO STANDALONE GAME SCREEN LAYOUT (SCREEN WIDTH <= 820PX)
+   ========================================================================== */
+@media (max-width: 820px) {
+  /* Hide the desktop bottom nav bars or modify app main layout */
+  #app {
+    grid-template-rows: auto auto 0px 1fr 56px !important;
+    height: 100vh;
+    display: grid;
+    overflow: hidden;
+  }
+
+  /* Make sure main layout does not break when on dashboard view */
+  #app.dashboard {
+    grid-template-rows: auto auto 0px 1fr 56px !important;
+  }
+
+  main {
+    padding-bottom: 0 !important;
+  }
+
+  /* Compact Mobile Header (Top Sticky) */
+  .mmo-mobile-header {
+    background-color: #141B2D;
+    border-bottom: 1.5px solid #7C5CFF;
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    position: relative;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  }
+
+  .mobile-header-top-row {
+    height: 52px;
+    padding: 0 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .mobile-hdr-logo {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .mobile-hdr-logo .logo-title {
+    font-size: 17px;
+    letter-spacing: 1px;
+  }
+
+  .mobile-hdr-logo .logo-slogan {
+    font-size: 7px;
+    letter-spacing: 1px;
+    margin-top: 0.5px;
+  }
+
+  .mobile-hdr-profile {
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  .mobile-profile-avatar {
+    font-size: 15px;
+    width: 24px;
+    height: 24px;
+    background-color: rgba(124, 92, 255, 0.15);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #7C5CFF;
+    position: relative;
+  }
+
+  .mobile-active-dot {
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #22C55E;
+    border: 1.5px solid #141B2D;
+    box-shadow: 0 0 4px #22C55E;
+  }
+
+  .mobile-profile-details {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mobile-profile-name {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 10px;
+    color: #FFFFFF;
+    line-height: 1;
+  }
+
+  .mobile-profile-lvl {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 7.5px;
+    color: #22C55E;
+    margin-top: 2px;
+    line-height: 1;
+  }
+
+  .mobile-hdr-bell .notif-bell {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 13px !important;
+    background: transparent !important;
+    border: none !important;
+  }
+
+  .mobile-hdr-bell .notif-badge {
+    top: -2px !important;
+    right: -2px !important;
+    width: 14px !important;
+    height: 14px !important;
+    font-size: 8px !important;
+  }
+
+  /* Horizontal Market Ticker underneath sticky header top row */
+  .mobile-hdr-ticker-row {
+    height: 26px;
+    background-color: #0B1020;
+    border-top: 1px solid rgba(255, 255, 255, 0.02);
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Scrolling Ticker Animation */
+  @keyframes tickerMarquee {
+    0% { transform: translate3d(0, 0, 0); }
+    100% { transform: translate3d(-50%, 0, 0); }
+  }
+
+  .hdr-ticker-scroll-content {
+    display: flex;
+    gap: 24px;
+    width: max-content;
+    animation: tickerMarquee 28s linear infinite;
+    padding-left: 16px;
+  }
+
+  .hdr-ticker-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 9.5px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .ticker-sym {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    color: #A8B3CF;
+  }
+
+  .ticker-price {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    color: #FFFFFF;
+  }
+
+  .ticker-chg {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 8.5px;
+  }
+
+  /* Mobile Dashboard Page container */
+  .mmo-mobile-dash-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    background-color: #0B1020;
+    height: calc(100vh - 78px - 56px); /* Viewport height minus header and footer */
+    overflow-y: auto;
+    box-sizing: border-box;
+    scrollbar-width: none;
+  }
+
+  .mmo-mobile-dash-container::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Base Mobile Card */
+  .mmo-mobile-card {
+    background-color: #141B2D;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* 1. Mobile Hero section welcome banner + Live event combined */
+  .mmo-mobile-hero {
+    background-size: cover;
+    background-position: center;
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border: 1px solid rgba(124, 92, 255, 0.15);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mobile-hero-welcome-area {
+    position: relative;
+    z-index: 2;
+  }
+
+  .mob-welcome-title {
+    font-family: 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: 19px;
+    color: #FFFFFF;
+    margin: 0;
+    letter-spacing: 0.5px;
+  }
+
+  .mob-welcome-title .gold-text {
+    color: #FBBF24;
+  }
+
+  .mob-welcome-sub {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 10px;
+    color: #A8B3CF;
+    margin-top: 4px;
+    margin-bottom: 0;
+  }
+
+  .mobile-hero-event-overlay {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.07) 0%, rgba(20, 27, 44, 0.96) 100%);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 10px;
+    padding: 10px 12px;
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  }
+
+  .mob-event-head-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .mob-event-tag {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 8.5px;
+    color: #EF4444;
+    letter-spacing: 0.5px;
+  }
+
+  .mob-event-time {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 9.5px;
+    color: #EF4444;
+  }
+
+  .mob-event-title {
+    font-family: 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: 14.5px;
+    color: #FFFFFF;
+    margin: 4px 0 0 0;
+  }
+
+  .mob-event-desc {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 9.5px;
+    color: #A8B3CF;
+    margin: 4px 0 0 0;
+    line-height: 1.3;
+  }
+
+  .mob-event-cta {
+    background-color: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 4px;
+    color: #EF4444;
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 8.5px;
+    padding: 5px 12px;
+    cursor: pointer;
+    margin-top: 10px;
+    align-self: flex-start;
+    transition: all 0.2s ease;
+  }
+
+  .mob-event-cta:hover {
+    background-color: #EF4444;
+    color: #FFFFFF;
+  }
+
+  /* 2. Progression mobile card */
+  .prog-mobile-card {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .prog-mobile-left-badge {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 2px 6px rgba(124, 92, 255, 0.2));
+  }
+
+  .shield-svg-mob {
+    width: 100%;
+    height: 100%;
+  }
+
+  .prog-mobile-center-text {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    align-items: flex-start;
+  }
+
+  .prog-mob-lbl {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 8.5px;
+    color: #A8B3CF;
+    letter-spacing: 0.5px;
+  }
+
+  .prog-mob-rank {
+    font-family: 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: 19px;
+    color: #22C55E;
+    margin-top: 1px;
+  }
+
+  .prog-mob-sub {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 8px;
+    color: #A8B3CF;
+    margin-top: 1px;
+  }
+
+  .prog-mobile-right-spark {
+    display: flex;
+    align-items: center;
+  }
+
+  /* 3. Financial Summary lists */
+  .mmo-mobile-financial-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .summary-mobile-card {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .sm-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+
+  .green-theme-circle {
+    background-color: rgba(34, 197, 94, 0.12);
+    color: #22C55E;
+    border: 1px solid rgba(34, 197, 94, 0.25);
+  }
+
+  .blue-theme-circle {
+    background-color: rgba(124, 92, 255, 0.12);
+    color: #7C5CFF;
+    border: 1px solid rgba(124, 92, 255, 0.25);
+  }
+
+  .dark-green-circle {
+    background-color: rgba(34, 197, 94, 0.12);
+    color: #22C55E;
+    border: 1px solid rgba(34, 197, 94, 0.25);
+  }
+
+  .sm-details {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .sm-label {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 8px;
+    color: #A8B3CF;
+    letter-spacing: 0.5px;
+  }
+
+  .sm-value {
+    font-family: 'Inter', sans-serif;
+    font-weight: 900;
+    font-size: 16px;
+    color: #FFFFFF;
+    margin-top: 1px;
+  }
+
+  .sm-delta {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 8.5px;
+    margin-top: 1px;
+  }
+
+  .sm-sparkline {
+    display: flex;
+    align-items: center;
+  }
+
+  /* 4. Rewards chest + streak row */
+  .mmo-mobile-rewards-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .reward-mob-card, .streak-mob-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 100px;
+    box-sizing: border-box;
+  }
+
+  .reward-mob-top, .streak-mob-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .chest-badge-icon, .streak-flame-icon {
+    font-size: 18px;
+    filter: drop-shadow(0 2px 4px rgba(251, 191, 36, 0.2));
+  }
+
+  .reward-text-wrap, .streak-text-wrap {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .reward-main-lbl, .streak-main-lbl {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 9px;
+    color: #FFFFFF;
+  }
+
+  .reward-sub-lbl, .streak-sub-lbl {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 7.5px;
+    color: #A8B3CF;
+    margin-top: 1px;
+  }
+
+  .streak-caption {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 7.5px;
+    color: #A8B3CF;
+  }
+
+  .claim-now-btn-mob {
+    width: 100%;
+    background: linear-gradient(90deg, #FBBF24 0%, #F59E0B 100%);
+    border: none;
+    border-radius: 5px;
+    color: #0B1020;
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 9.5px;
+    padding: 6px 0;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    margin-top: 10px;
+  }
+
+  .streak-progress-container-mob {
+    position: relative;
+    width: 100%;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    margin-top: 10px;
+  }
+
+  .streak-line-bg-mob {
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    height: 2px;
+    background-color: #1C2438;
+    z-index: 1;
+  }
+
+  .streak-line-fill-mob {
+    position: absolute;
+    left: 4px;
+    height: 2px;
+    background-color: #FBBF24;
+    box-shadow: 0 0 6px #FBBF24;
+    z-index: 2;
+  }
+
+  .streak-dots-wrap-mob {
+    position: absolute;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    z-index: 3;
+  }
+
+  .streak-dot-node-mob {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #1C2438;
+    border: 1px solid #141B2D;
+    transition: all 0.3s ease;
+  }
+
+  .streak-dot-node-mob.active {
+    background-color: #FBBF24;
+    box-shadow: 0 0 6px #FBBF24;
+    border-color: #FBBF24;
+  }
+
+  /* 5. Movers mobile card */
+  .movers-mob-card {
+    min-height: 200px;
+  }
+
+  .movers-mob-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .movers-mob-title {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 10px;
+    color: #A8B3CF;
+    letter-spacing: 0.5px;
+  }
+
+  .movers-mob-view-all {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 9px;
+    color: #7C5CFF;
+    cursor: pointer;
+  }
+
+  .movers-mob-tabs {
+    display: flex;
+    background-color: #0B1020;
+    padding: 2px;
+    border-radius: 6px;
+    gap: 2px;
+    margin-bottom: 10px;
+  }
+
+  .movers-tab-btn-mob {
+    flex: 1;
+    background: transparent;
+    border: none;
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 7.5px;
+    color: #A8B3CF;
+    padding: 5px 0;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+  }
+
+  .movers-tab-btn-mob.active {
+    background-color: #7C5CFF;
+    color: #FFFFFF;
+  }
+
+  .movers-mob-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .mover-mob-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0.01);
+    border: 1px solid rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+
+  .mover-mob-icon-wrap {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+
+  .mover-mob-asset-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    margin-left: 10px;
+  }
+
+  .mover-mob-sym {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 11px;
+    color: #FFFFFF;
+  }
+
+  .mover-mob-name {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 8px;
+    color: #A8B3CF;
+    margin-top: 1px;
+  }
+
+  .mover-mob-price-col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .mover-mob-price {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 11px;
+    color: #FFFFFF;
+  }
+
+  .mover-mob-chg {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 8.5px;
+    margin-top: 1px;
+  }
+
+  /* 6. Daily Missions mobile card */
+  .missions-mob-card {
+    min-height: 200px;
+    margin-bottom: 8px;
+  }
+
+  .missions-mob-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .missions-mob-title {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 10px;
+    color: #A8B3CF;
+    letter-spacing: 0.5px;
+  }
+
+  .missions-mob-countdown {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 8.5px;
+    color: #FBBF24;
+  }
+
+  .missions-mob-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .mission-mob-row {
+    display: flex;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0.01);
+    border: 1px solid rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    padding: 6px 10px;
+    gap: 10px;
+  }
+
+  .mission-mob-num {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 10px;
+    color: #7C5CFF;
+    width: 18px;
+    height: 18px;
+    background-color: rgba(124, 92, 255, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(124, 92, 255, 0.2);
+    flex-shrink: 0;
+  }
+
+  .mission-mob-details {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .mission-mob-title-text {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 10px;
+    color: #FFFFFF;
+  }
+
+  .mission-mob-prog-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  .m-prog-count-mob {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 7.5px;
+    color: #A8B3CF;
+  }
+
+  .mission-mob-rewards {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    flex-shrink: 0;
+  }
+
+  .mob-rew-xp {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 8px;
+    color: #7C5CFF;
+    background-color: rgba(124, 92, 255, 0.08);
+    border-radius: 2px;
+    padding: 1px 3px;
+  }
+
+  .mob-rew-cash {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 8px;
+    color: #FBBF24;
+    background-color: rgba(251, 191, 36, 0.08);
+    border-radius: 2px;
+    padding: 1px 3px;
+  }
+
+  .view-all-missions-btn-mob {
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    color: #A8B3CF;
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 9px;
+    padding: 8px 0;
+    width: 100%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  /* Fixed Bottom Nav customized styling for mobile devices */
+  .bnav {
+    height: 56px;
+    background-color: #141B2D;
+    border-top: 1.5px solid #7C5CFF;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.4);
+    padding: 0 8px;
+  }
+
+  .bnav-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #A8B3CF;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 100%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+    position: relative;
+  }
+
+  .bnav-btn.on {
+    color: #7C5CFF;
+  }
+
+  .bnav-btn::after {
+    content: '';
+    position: absolute;
+    top: -1.5px; /* sit directly on top of the border-top */
+    width: 20px;
+    height: 3px;
+    background: transparent;
+    border-radius: 0 0 2px 2px;
+    transition: all 0.2s ease;
+  }
+
+  .bnav-btn.on::after {
+    background: #7C5CFF;
+    box-shadow: 0 0 10px #7C5CFF, 0 0 4px #7C5CFF;
+    width: 32px;
+  }
+
+  .bnav-btn .hud-svg {
+    color: #A8B3CF;
+    transition: transform 0.2s ease, color 0.15s ease;
+  }
+
+  .bnav-btn.on .hud-svg {
+    color: #7C5CFF;
+    filter: drop-shadow(0 0 4px rgba(124, 92, 255, 0.5));
+    transform: scale(1.05);
+  }
+
+  .bnav-icon {
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .bnav-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #EF4444;
+  }
+
+  .bnav-label {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 9.5px;
+    letter-spacing: 0.5px;
+  }
+}
+
 
