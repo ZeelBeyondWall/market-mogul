@@ -200,9 +200,16 @@ export function botDecide(t: Trader, S: GameState): void {
 
   const positionSize = (frac: number) => {
     const emotionMult = 1 + gVal - fVal * 0.5; // range: 0.5 to 2.0
-    const budget = t.cash * Math.min(0.99, frac * emotionMult);
+    let budget = t.cash * Math.min(0.99, frac * emotionMult);
+    if (!t.isPlayer) {
+      const maxBudget = t.tier === 'whale' ? 100000 : (t.tier === 'institution' ? 25000 : 5000);
+      if (budget > maxBudget) budget = maxBudget;
+    }
     const px = Math.max(0.01, last);
-    const raw = budget / px;
+    const def = ASSET_BY_ID[aid];
+    const float = def?.float || 1e9;
+    const maxQty = Math.max(10, float * 0.0001); // cap single order to 0.01% of float
+    const raw = Math.min(maxQty, budget / px);
     const minQty = Math.min(1, 0.5 / px);
     return roundShares(Math.max(minQty, raw));
   };
@@ -516,7 +523,7 @@ export function tickBots(S: GameState, dt: number): void {
         const hasActiveEvent = S.events.length > 0 && (Date.now() - S.events[0].t) / 1000 < 30;
         const hype = t.hype || 0.0;
         const speedMult = (hasActiveEvent ? 2.5 : 1.0) * (1 + hype);
-        t.cooldown = (rand(0.5, 2) / Math.max(0.05, t.activity)) / speedMult;
+        t.cooldown = (rand(60, 300) / Math.max(0.05, t.activity)) / speedMult;
         botDecide(t, S);
       }
     }

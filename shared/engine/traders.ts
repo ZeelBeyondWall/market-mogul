@@ -161,7 +161,7 @@ export function makeTrader(i: number, isPlayer: boolean, forcedStrat?: StrategyI
     strat,
     isPlayer,
     activity,
-    cooldown: isPlayer ? 0 : rand(3, 30),
+    cooldown: isPlayer ? 0 : rand(20, 300),
     openOrders: [],
     pickedAssets: isPlayer ? null : pickAssetsFor(strat, level),
     fairBias: isPlayer ? 1 : rand(0.85, 1.15),
