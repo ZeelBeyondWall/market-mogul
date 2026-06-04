@@ -217,7 +217,8 @@ export class Engine {
         if (!p) return;
         if (!p.playerTrades) p.playerTrades = [];
         p.playerTrades.push(trade);
-        if (p.playerTrades.length > MAX_PLAYER_TRADES) p.playerTrades.shift();
+        const limit = p.isPlayer ? MAX_PLAYER_TRADES : 20;
+        if (p.playerTrades.length > limit) p.playerTrades.shift();
         recordClosedTradeForMissions(p, trade, Date.now());
         // v5: player gains XP per closed trade; level recomputed from cumulative XP.
         p.xp = (p.xp || 0) + xpForTrade(trade.pnl);
@@ -377,7 +378,7 @@ export class Engine {
     ASSETS.forEach(a => {
       if (a.div <= 0) return;
       const h = this.player(traderId).holdings[a.id];
-      if (h && h.shares > 0) total += h.shares * this.state.assets[a.id].lastPrice * a.div;
+      if (h && h.shares > 0) total += h.shares * this.state.assets[a.id].lastPrice * (a.div / 86400);
     });
     return total;
   }

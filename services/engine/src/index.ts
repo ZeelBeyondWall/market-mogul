@@ -360,7 +360,7 @@ function broadcast(msg: S2C) {
 // LEADERBOARD_TTL_MS — avoids O(N log N) sort per client per snapshot.
 const LEADERBOARD_TTL_MS = 1500;
 const TOP_N = 200;
-interface LbEntry { id: number; name: string; net: number; strat: string; rekt: boolean; level: number; isPlayer: boolean; tier?: string; trades: number }
+interface LbEntry { id: number; name: string; net: number; strat: string; rekt: boolean; level: number; isPlayer: boolean; tier?: string; trades: number; bornNet: number }
 let lbCache: { top: LbEntry[]; ts: number } | null = null;
 
 function computeLeaderboard(): LbEntry[] {
@@ -373,13 +373,13 @@ function computeLeaderboard(): LbEntry[] {
     if (t.isHouse) continue; // v8.9: House excluded from leaderboard
     const net = traderNet(t, engine.state);
     if (top.length < TOP_N) {
-      top.push({ id: t.id, name: t.name, net, strat: t.strat as string, rekt: !!t.rekt, level: t.level || 1, isPlayer: !!t.isPlayer, tier: t.tier, trades: t.totalTradeCount || 0 });
+      top.push({ id: t.id, name: t.name, net, strat: t.strat as string, rekt: !!t.rekt, level: t.level || 1, isPlayer: !!t.isPlayer, tier: t.tier, trades: t.totalTradeCount || 0, bornNet: t.bornNet || t.cash });
       if (top.length === TOP_N) {
         top.sort((a, b) => a.net - b.net);
         minNet = top[0].net;
       }
     } else if (net > minNet) {
-      top[0] = { id: t.id, name: t.name, net, strat: t.strat as string, rekt: !!t.rekt, level: t.level || 1, isPlayer: !!t.isPlayer, tier: t.tier, trades: t.totalTradeCount || 0 };
+      top[0] = { id: t.id, name: t.name, net, strat: t.strat as string, rekt: !!t.rekt, level: t.level || 1, isPlayer: !!t.isPlayer, tier: t.tier, trades: t.totalTradeCount || 0, bornNet: t.bornNet || t.cash };
       // Re-bubble new entry to its sorted slot (still ascending by net).
       let j = 0;
       while (j + 1 < TOP_N && top[j + 1].net < top[j].net) {
@@ -446,7 +446,8 @@ function sendSnapshot(ws: WebSocket) {
       level: p.level || 1,
       isPlayer: true,
       tier: p.tier,
-      trades: p.totalTradeCount || 0
+      trades: p.totalTradeCount || 0,
+      bornNet: p.bornNet || p.cash
     });
   }
   snap.leaderboard = top;

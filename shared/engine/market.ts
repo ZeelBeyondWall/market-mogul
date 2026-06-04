@@ -145,7 +145,7 @@ export function payDividends(S: GameState, dt: number): void {
     S.traders.forEach(t => {
       const h = t.holdings[a.id];
       if (h && h.shares > 0) {
-        t.cash += h.shares * ast.lastPrice * a.div * dt;
+        t.cash += h.shares * ast.lastPrice * (a.div / 86400) * dt;
       }
     });
   });

@@ -28,7 +28,7 @@ export interface SnapshotPayload {
   player: PublicTrader;
   assets: Record<string, PublicAsset>;
   events: NewsEvent[];
-  leaderboard: { id: number; name: string; net: number; strat: string; rekt: boolean; level: number; isPlayer: boolean; tier?: string; trades?: number }[];
+  leaderboard: { id: number; name: string; net: number; strat: string; rekt: boolean; level: number; isPlayer: boolean; tier?: string; trades?: number; bornNet?: number }[];
   totalTraders: number;
   playerRank: number;
   playerStats: PlayerStats;

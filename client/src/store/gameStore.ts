@@ -39,7 +39,7 @@ export interface UIPrefs extends ChartToggles {
 }
 
 export interface LeaderboardEntry {
-  id: number; name: string; net: number; strat: string; rekt: boolean; level: number; isPlayer: boolean; tier?: string;
+  id: number; name: string; net: number; strat: string; rekt: boolean; level: number; isPlayer: boolean; tier?: string; trades?: number; bornNet?: number;
 }
 
 interface GameStore extends UIPrefs {

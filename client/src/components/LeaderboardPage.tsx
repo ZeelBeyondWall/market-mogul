@@ -197,7 +197,7 @@ export function LeaderboardPage() {
   const displayList = leaderboard.slice(0, 10).map((entry, idx) => {
     const returnPct = entry.isPlayer 
       ? (((net - (p.dayStartNet || 10000)) / (p.dayStartNet || 10000)) * 100)
-      : (entry.net / 10000);
+      : (((entry.net - (entry.bornNet || 10000)) / (entry.bornNet || 10000)) * 100);
     const trades = entry.isPlayer
       ? (playerStats?.totalTrades || 0)
       : ((entry as any).trades || 0);
