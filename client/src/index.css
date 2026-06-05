@@ -5389,6 +5389,14 @@ body[data-theme="game"] {
    MOBILE-FIRST MMO STANDALONE GAME SCREEN LAYOUT (SCREEN WIDTH <= 820PX)
    ========================================================================== */
 @media (max-width: 820px) {
+  /* Generic mobile font override to solve serif fallback issues */
+  body, button, input, select, textarea, div, span, p, h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sans) !important;
+  }
+  .sw-val, .qty-val, .smw-item, .smw-val, .lvl-xp-text, .ticker-price, .ticker-chg, .ticker-sym, .mover-mob-sym, .mover-mob-price {
+    font-family: var(--font-mono) !important;
+  }
+
   /* Hide the desktop bottom nav bars or modify app main layout */
   #app {
     grid-template-rows: auto auto auto 1fr 56px !important;
@@ -5620,10 +5628,8 @@ body[data-theme="game"] {
     border-radius: 16px;
     padding: 16px;
     display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: stretch;
-    gap: 16px;
+    flex-direction: column !important;
+    gap: 14px;
     border: 1px solid rgba(124, 92, 255, 0.15);
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
     position: relative;
@@ -5631,10 +5637,11 @@ body[data-theme="game"] {
     min-width: 0 !important;
     width: 100% !important;
     box-sizing: border-box !important;
+    height: auto !important;
   }
 
   .mobile-hero-welcome-area {
-    flex: 1.1;
+    flex: none !important;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -5644,13 +5651,12 @@ body[data-theme="game"] {
   }
 
   .mob-welcome-title {
-    font-family: 'Inter', sans-serif;
     font-weight: 900;
     font-size: 16px;
     color: #FFFFFF;
     margin: 0;
     letter-spacing: 0.5px;
-    line-height: 1.2;
+    line-height: 1.3;
     white-space: normal !important;
     word-wrap: break-word !important;
     word-break: break-word !important;
@@ -5661,24 +5667,24 @@ body[data-theme="game"] {
   }
 
   .mob-welcome-sub {
-    font-family: 'Inter', sans-serif;
     font-weight: 700;
-    font-size: 8.5px;
+    font-size: 9px;
     color: #A8B3CF;
     margin-top: 4px;
     margin-bottom: 0;
-    line-height: 1.2;
+    line-height: 1.3;
     white-space: normal !important;
     word-wrap: break-word !important;
     word-break: break-word !important;
   }
 
   .mobile-hero-event-overlay {
-    flex: 1;
-    background: linear-gradient(135deg, rgba(124, 92, 255, 0.08) 0%, rgba(20, 27, 44, 0.96) 100%);
+    flex: none !important;
+    width: 100% !important;
+    background: linear-gradient(135deg, rgba(124, 92, 255, 0.12) 0%, rgba(20, 27, 44, 0.98) 100%);
     border: 1px solid rgba(124, 92, 255, 0.25);
     border-radius: 10px;
-    padding: 10px 12px;
+    padding: 12px;
     position: relative;
     z-index: 2;
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
@@ -5686,6 +5692,7 @@ body[data-theme="game"] {
     flex-direction: column;
     justify-content: space-between;
     min-width: 0 !important;
+    gap: 8px;
   }
 
   .mob-event-head-row {
@@ -5776,30 +5783,32 @@ body[data-theme="game"] {
     flex-direction: column;
     flex: 1;
     align-items: flex-start;
+    justify-content: center;
+    line-height: normal !important;
   }
-
+ 
   .prog-mob-lbl {
-    font-family: 'Inter', sans-serif;
     font-weight: 700;
     font-size: 8.5px;
     color: #A8B3CF;
     letter-spacing: 0.5px;
+    line-height: 1.2 !important;
   }
-
+ 
   .prog-mob-rank {
-    font-family: 'Inter', sans-serif;
     font-weight: 900;
     font-size: 19px;
     color: #22C55E;
-    margin-top: 1px;
+    margin-top: 2px !important;
+    margin-bottom: 2px !important;
+    line-height: 1 !important;
   }
-
+ 
   .prog-mob-sub {
-    font-family: 'Inter', sans-serif;
     font-weight: 700;
-    font-size: 8px;
+    font-size: 8.5px;
     color: #A8B3CF;
-    margin-top: 1px;
+    line-height: 1.2 !important;
   }
 
   .prog-mobile-right-spark {
@@ -5855,34 +5864,38 @@ body[data-theme="game"] {
     display: flex;
     flex-direction: column;
     flex: 1;
+    min-width: 0 !important;
+    line-height: normal !important;
   }
 
   .sm-label {
-    font-family: 'Inter', sans-serif;
     font-weight: 700;
-    font-size: 8px;
+    font-size: 8.5px;
     color: #A8B3CF;
     letter-spacing: 0.5px;
+    line-height: 1.2 !important;
   }
 
   .sm-value {
-    font-family: 'Inter', sans-serif;
     font-weight: 900;
     font-size: 16px;
     color: #FFFFFF;
-    margin-top: 1px;
+    margin-top: 2px !important;
+    margin-bottom: 2px !important;
+    line-height: 1.1 !important;
   }
 
   .sm-delta {
-    font-family: 'Inter', sans-serif;
     font-weight: 800;
     font-size: 8.5px;
-    margin-top: 1px;
+    line-height: 1.2 !important;
   }
 
   .sm-sparkline {
     display: flex;
     align-items: center;
+    flex-shrink: 0 !important;
+    margin-left: 8px;
   }
 
   /* 4. Rewards chest + streak row */
@@ -5945,16 +5958,19 @@ body[data-theme="game"] {
     width: 100% !important;
     background: linear-gradient(90deg, #FBBF24 0%, #F59E0B 100%) !important;
     border: none !important;
-    border-radius: 5px !important;
-    color: #0B1020 !important;
-    font-family: 'Inter', sans-serif !important;
+    border-radius: 6px !important;
+    color: #0b1020 !important;
     font-weight: 800 !important;
-    font-size: 9.5px !important;
-    padding: 6px 0 !important;
+    font-size: 11px !important;
+    padding: 10px 0 !important;
     cursor: pointer !important;
-    letter-spacing: 0.5px !important;
+    letter-spacing: 0.8px !important;
     margin-top: 10px !important;
-    display: block !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 36px !important;
+    box-shadow: 0 4px 10px rgba(251, 191, 36, 0.2) !important;
   }
 
   .streak-progress-container-mob {
@@ -6037,24 +6053,31 @@ body[data-theme="game"] {
   }
 
   .movers-mob-tabs {
-    display: flex;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
     margin-bottom: 12px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .movers-tab-btn-mob {
-    flex: 1;
-    background-color: rgba(255, 255, 255, 0.01);
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    font-family: 'Inter', sans-serif;
+    width: 100%;
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     font-weight: 800;
-    font-size: 8px;
+    font-size: 8.5px;
     color: #A8B3CF;
-    padding: 6px 0;
+    padding: 8px 2px;
     border-radius: 6px;
     cursor: pointer;
     text-align: center;
     transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    box-sizing: border-box;
   }
 
   .movers-tab-btn-mob.active {
@@ -6098,27 +6121,31 @@ body[data-theme="game"] {
     flex-direction: column;
     flex: 1;
     margin-left: 10px;
+    min-width: 0 !important;
   }
 
   .mover-mob-sym {
-    font-family: 'Inter', sans-serif;
     font-weight: 800;
     font-size: 11px;
     color: #FFFFFF;
   }
 
   .mover-mob-name {
-    font-family: 'Inter', sans-serif;
     font-weight: 700;
-    font-size: 8px;
+    font-size: 8.5px;
     color: #A8B3CF;
     margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .mover-mob-price-col {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
+    flex-shrink: 0 !important;
+    margin-left: 8px;
   }
 
   .mover-mob-price {
