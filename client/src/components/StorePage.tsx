@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useGame } from '../store/gameStore';
 import { Audio } from '../audio/audio';
 import { fmt } from '../../../shared/engine/helpers';
 import { send } from '../net/wsClient';
+import './Pages.css';
 
 interface CosmeticItem {
   id: string;
@@ -63,6 +64,17 @@ export function StorePage() {
   const setTheme = useGame(s => s.setTheme);
   const theme = useGame(s => s.theme);
   const pushToast = useGame(s => s.pushToast);
+
+  // Responsive state
+  const [isMobile, setIsMobile] = useState(false);
+  const [cosmeticTab, setCosmeticTab] = useState<'frame' | 'badge' | 'name_color' | 'theme'>('frame');
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 820);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // UI state
   const [activeCategory, setActiveCategory] = useState<'featured' | 'boosts' | 'cosmetics' | 'bundles' | 'resources' | 'tools'>('featured');
@@ -200,16 +212,36 @@ export function StorePage() {
 
   return (
     <div className="store-page-container">
+      {/* MOBILE ONLY WALLET SUMMARY */}
+      {isMobile && (
+        <div className="store-mobile-wallet-bar">
+          <div className="smw-item cash-green">
+            <span className="smw-icon">💵</span>
+            <span className="smw-val">${fmt(cash)}</span>
+          </div>
+          <div className="smw-item gem-purple">
+            <span className="smw-icon">💎</span>
+            <span className="smw-val">{gems}</span>
+          </div>
+          <div className="smw-item xp-blue">
+            <span className="smw-icon">⭐</span>
+            <span className="smw-val">{xp} XP</span>
+          </div>
+        </div>
+      )}
+
       {/* LEFT SIDEBAR */}
       <aside className="store-sidebar">
-        <div className="store-sidebar-head">
-          <svg className="store-title-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <path d="M16 10a4 4 0 0 1-8 0" />
-          </svg>
-          <h2>STORE</h2>
-        </div>
+        {!isMobile && (
+          <div className="store-sidebar-head">
+            <svg className="store-title-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <path d="M16 10a4 4 0 0 1-8 0" />
+            </svg>
+            <h2>STORE</h2>
+          </div>
+        )}
 
         {/* CATEGORY NAV */}
         <nav className="store-cat-nav">
@@ -240,26 +272,28 @@ export function StorePage() {
         </nav>
 
         {/* WALLET */}
-        <div className="store-wallet-card">
-          <h3>YOUR WALLET</h3>
-          <div className="store-wallet-rows">
-            <div className="store-wallet-row">
-              <span className="sw-label">Cash Balance</span>
-              <span className="sw-val cash-green">${fmt(cash)}</span>
+        {!isMobile && (
+          <div className="store-wallet-card">
+            <h3>YOUR WALLET</h3>
+            <div className="store-wallet-rows">
+              <div className="store-wallet-row">
+                <span className="sw-label">Cash Balance</span>
+                <span className="sw-val cash-green">${fmt(cash)}</span>
+              </div>
+              <div className="store-wallet-row">
+                <span className="sw-label">Gems Balance</span>
+                <span className="sw-val gem-purple">💎 {gems}</span>
+              </div>
+              <div className="store-wallet-row">
+                <span className="sw-label">XP Points</span>
+                <span className="sw-val xp-blue">⭐ {xp}</span>
+              </div>
             </div>
-            <div className="store-wallet-row">
-              <span className="sw-label">Gems Balance</span>
-              <span className="sw-val gem-purple">💎 {gems}</span>
-            </div>
-            <div className="store-wallet-row">
-              <span className="sw-label">XP Points</span>
-              <span className="sw-val xp-blue">⭐ {xp}</span>
-            </div>
+            <button className="sw-tx-btn" onClick={showRecentTransactions}>
+              VIEW TRANSACTIONS <span>&gt;</span>
+            </button>
           </div>
-          <button className="sw-tx-btn" onClick={showRecentTransactions}>
-            VIEW TRANSACTIONS <span>&gt;</span>
-          </button>
-        </div>
+        )}
       </aside>
 
       {/* MAIN CONTENT AREA */}
@@ -363,103 +397,120 @@ export function StorePage() {
         <div ref={sectionCosmetics} className="store-section list-sec">
           <h3 className="section-title">COSMETICS</h3>
           
+          {isMobile && (
+            <div className="cosmetics-mobile-tabs">
+              <button className={cosmeticTab === 'frame' ? 'active' : ''} onClick={() => { Audio.click(); setCosmeticTab('frame'); }}>Frames</button>
+              <button className={cosmeticTab === 'badge' ? 'active' : ''} onClick={() => { Audio.click(); setCosmeticTab('badge'); }}>Badges</button>
+              <button className={cosmeticTab === 'name_color' ? 'active' : ''} onClick={() => { Audio.click(); setCosmeticTab('name_color'); }}>Colors</button>
+              <button className={cosmeticTab === 'theme' ? 'active' : ''} onClick={() => { Audio.click(); setCosmeticTab('theme'); }}>Themes</button>
+            </div>
+          )}
+
           <div className="cosmetics-columns">
             {/* COLUMN 1: PROFILE FRAMES */}
-            <div className="cosmetic-group-panel">
-              <h4>PROFILE FRAMES</h4>
-              <p className="group-desc">Unique frames to show off your style around your avatar.</p>
-              
-              <div className="cosmetics-grid-mini frames-grid">
-                {COSMETICS_LIST.filter(c => c.type === 'frame').map(item => {
-                  const isOwned = ownedCosmetics.includes(item.id);
-                  const isEquipped = equippedFrame === item.id;
-                  return (
-                    <div key={item.id} className={`cosmetic-item-card ${isOwned ? 'owned' : ''} ${isEquipped ? 'equipped' : ''}`}>
-                      <div className="cosmetic-preview-box">
-                        <img src={item.previewUrl} alt={item.name} className="cosmetic-preview-img" />
-                        <div className="avatar-dummy">👤</div>
+            {(!isMobile || cosmeticTab === 'frame') && (
+              <div className="cosmetic-group-panel">
+                <h4>PROFILE FRAMES</h4>
+                <p className="group-desc">Unique frames to show off your style around your avatar.</p>
+                
+                <div className="cosmetics-grid-mini frames-grid">
+                  {COSMETICS_LIST.filter(c => c.type === 'frame').map(item => {
+                    const isOwned = ownedCosmetics.includes(item.id);
+                    const isEquipped = equippedFrame === item.id;
+                    return (
+                      <div key={item.id} className={`cosmetic-item-card ${isOwned ? 'owned' : ''} ${isEquipped ? 'equipped' : ''}`}>
+                        <div className="cosmetic-preview-box">
+                          <img src={item.previewUrl} alt={item.name} className="cosmetic-preview-img" />
+                          <div className="avatar-dummy">👤</div>
+                        </div>
+                        <span className="cos-name">{item.name}</span>
+                        <button className={`cos-action-btn ${isEquipped ? 'eq-on' : isOwned ? 'eq-off' : ''}`} onClick={() => buyWithGems(item)}>
+                          {isEquipped ? 'Equipped' : isOwned ? 'Equip' : `💎 ${item.cost}`}
+                        </button>
                       </div>
-                      <span className="cos-name">{item.name}</span>
-                      <button className={`cos-action-btn ${isEquipped ? 'eq-on' : isOwned ? 'eq-off' : ''}`} onClick={() => buyWithGems(item)}>
-                        {isEquipped ? 'Equipped' : isOwned ? 'Equip' : `💎 ${item.cost}`}
-                      </button>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* COLUMN 2: PROFILE BADGES */}
-            <div className="cosmetic-group-panel">
-              <h4>PROFILE BADGES</h4>
-              <p className="group-desc">Exclusive badges to represent your rank on the leaderboard.</p>
-              
-              <div className="cosmetics-grid-mini badges-grid">
-                {COSMETICS_LIST.filter(c => c.type === 'badge').map(item => {
-                  const isOwned = ownedCosmetics.includes(item.id);
-                  const isEquipped = equippedBadge === item.id;
-                  return (
-                    <div key={item.id} className={`cosmetic-item-card ${isOwned ? 'owned' : ''} ${isEquipped ? 'equipped' : ''}`}>
-                      <div className="cosmetic-preview-box badge-box">
-                        <img src={item.previewUrl} alt={item.name} className="cosmetic-preview-badge" />
+            {(!isMobile || cosmeticTab === 'badge') && (
+              <div className="cosmetic-group-panel">
+                <h4>PROFILE BADGES</h4>
+                <p className="group-desc">Exclusive badges to represent your rank on the leaderboard.</p>
+                
+                <div className="cosmetics-grid-mini badges-grid">
+                  {COSMETICS_LIST.filter(c => c.type === 'badge').map(item => {
+                    const isOwned = ownedCosmetics.includes(item.id);
+                    const isEquipped = equippedBadge === item.id;
+                    return (
+                      <div key={item.id} className={`cosmetic-item-card ${isOwned ? 'owned' : ''} ${isEquipped ? 'equipped' : ''}`}>
+                        <div className="cosmetic-preview-box badge-box">
+                          <img src={item.previewUrl} alt={item.name} className="cosmetic-preview-badge" />
+                        </div>
+                        <span className="cos-name">{item.name}</span>
+                        <button className={`cos-action-btn ${isEquipped ? 'eq-on' : isOwned ? 'eq-off' : ''}`} onClick={() => buyWithGems(item)}>
+                          {isEquipped ? 'Equipped' : isOwned ? 'Equip' : `💎 ${item.cost}`}
+                        </button>
                       </div>
-                      <span className="cos-name">{item.name}</span>
-                      <button className={`cos-action-btn ${isEquipped ? 'eq-on' : isOwned ? 'eq-off' : ''}`} onClick={() => buyWithGems(item)}>
-                        {isEquipped ? 'Equipped' : isOwned ? 'Equip' : `💎 ${item.cost}`}
-                      </button>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* COLUMN 3: NAME COLORS */}
-            <div className="cosmetic-group-panel">
-              <h4>NAME COLORS</h4>
-              <p className="group-desc">Stand out in the chat and lists with custom colored names.</p>
-              
-              <div className="cosmetics-grid-mini colors-grid">
-                {COSMETICS_LIST.filter(c => c.type === 'name_color').map(item => {
-                  const isOwned = ownedCosmetics.includes(item.id);
-                  const isEquipped = equippedNameColor === item.value;
-                  return (
-                    <div key={item.id} className={`cosmetic-item-card ${isOwned ? 'owned' : ''} ${isEquipped ? 'equipped' : ''}`}>
-                      <div className="cosmetic-preview-box color-preview-box">
-                        <span style={{ color: item.value, fontWeight: 'bold' }}>TraderOne</span>
+            {(!isMobile || cosmeticTab === 'name_color') && (
+              <div className="cosmetic-group-panel">
+                <h4>NAME COLORS</h4>
+                <p className="group-desc">Stand out in the chat and lists with custom colored names.</p>
+                
+                <div className="cosmetics-grid-mini colors-grid">
+                  {COSMETICS_LIST.filter(c => c.type === 'name_color').map(item => {
+                    const isOwned = ownedCosmetics.includes(item.id);
+                    const isEquipped = equippedNameColor === item.value;
+                    return (
+                      <div key={item.id} className={`cosmetic-item-card ${isOwned ? 'owned' : ''} ${isEquipped ? 'equipped' : ''}`}>
+                        <div className="cosmetic-preview-box color-preview-box">
+                          <span style={{ color: item.value, fontWeight: 'bold' }}>TraderOne</span>
+                        </div>
+                        <span className="cos-name">{item.name}</span>
+                        <button className={`cos-action-btn ${isEquipped ? 'eq-on' : isOwned ? 'eq-off' : ''}`} onClick={() => buyWithGems(item)}>
+                          {isEquipped ? 'Equipped' : isOwned ? 'Equip' : `💎 ${item.cost}`}
+                        </button>
                       </div>
-                      <span className="cos-name">{item.name}</span>
-                      <button className={`cos-action-btn ${isEquipped ? 'eq-on' : isOwned ? 'eq-off' : ''}`} onClick={() => buyWithGems(item)}>
-                        {isEquipped ? 'Equipped' : isOwned ? 'Equip' : `💎 ${item.cost}`}
-                      </button>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* COLUMN 4: PORTFOLIO THEMES */}
-            <div className="cosmetic-group-panel">
-              <h4>PORTFOLIO THEMES</h4>
-              <p className="group-desc">Customize your system accent color variables across the app.</p>
-              
-              <div className="cosmetics-grid-mini themes-grid">
-                {COSMETICS_LIST.filter(c => c.type === 'theme').map(item => {
-                  const isOwned = ownedCosmetics.includes(item.id);
-                  const isEquipped = theme === item.value;
-                  return (
-                    <div key={item.id} className={`cosmetic-item-card ${isOwned ? 'owned' : ''} ${isEquipped ? 'equipped' : ''}`}>
-                      <div className="cosmetic-preview-box theme-preview-box">
-                        <img src={item.previewUrl} alt={item.name} className="cosmetic-preview-theme" />
+            {(!isMobile || cosmeticTab === 'theme') && (
+              <div className="cosmetic-group-panel">
+                <h4>PORTFOLIO THEMES</h4>
+                <p className="group-desc">Customize your system accent color variables across the app.</p>
+                
+                <div className="cosmetics-grid-mini themes-grid">
+                  {COSMETICS_LIST.filter(c => c.type === 'theme').map(item => {
+                    const isOwned = ownedCosmetics.includes(item.id);
+                    const isEquipped = theme === item.value;
+                    return (
+                      <div key={item.id} className={`cosmetic-item-card ${isOwned ? 'owned' : ''} ${isEquipped ? 'equipped' : ''}`}>
+                        <div className="cosmetic-preview-box theme-preview-box">
+                          <img src={item.previewUrl} alt={item.name} className="cosmetic-preview-theme" />
+                        </div>
+                        <span className="cos-name">{item.name}</span>
+                        <button className={`cos-action-btn ${isEquipped ? 'eq-on' : isOwned ? 'eq-off' : ''}`} onClick={() => buyWithGems(item)}>
+                          {isEquipped ? 'Equipped' : isOwned ? 'Equip' : `💎 ${item.cost}`}
+                        </button>
                       </div>
-                      <span className="cos-name">{item.name}</span>
-                      <button className={`cos-action-btn ${isEquipped ? 'eq-on' : isOwned ? 'eq-off' : ''}`} onClick={() => buyWithGems(item)}>
-                        {isEquipped ? 'Equipped' : isOwned ? 'Equip' : `💎 ${item.cost}`}
-                      </button>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
           </div>
         </div>
