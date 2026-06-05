@@ -24,6 +24,7 @@ import { connect } from './net/wsClient';
 import { DashboardPage } from './components/DashboardPage';
 import { PortfolioPage } from './components/PortfolioPage';
 import { LeaderboardPage } from './components/LeaderboardPage';
+import { StorePage } from './components/StorePage';
 
 export function App() {
   useGameLoop();
@@ -84,6 +85,8 @@ export function App() {
             <PortfolioPage />
           ) : activeScreen === 'leaderboard' ? (
             <LeaderboardPage />
+          ) : activeScreen === 'store' ? (
+            <StorePage />
           ) : (
             <main>
               <div className="col col-market"><AssetList /></div>

@@ -72,7 +72,8 @@ export type C2SMsg =
   | { type: 'setActive'; payload: { aid: string } }
   | { type: 'setTF'; payload: { tf: string } }
   | { type: 'cancelClose'; payload: { aid: string } }
-  | { type: 'claimMission'; payload: { missionId: string } };
+  | { type: 'claimMission'; payload: { missionId: string } }
+  | { type: 'storePurchase'; payload: { cashChange: number; gemsChange: number; xpChange: number } };
 
 let ws: WebSocket | null = null;
 let reconnectTimer: number | null = null;

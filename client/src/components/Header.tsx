@@ -16,6 +16,9 @@ export function Header() {
   const setActiveTab = useGame(s => s.setActiveTab);
   const pushToast = useGame(s => s.pushToast);
   const setSettingsOpen = useGame(s => s.setSettingsOpen);
+  const equippedFrame = useGame(s => s.equippedFrame);
+  const equippedNameColor = useGame(s => s.equippedNameColor);
+  const equippedBadge = useGame(s => s.equippedBadge);
 
   const p = eng.player();
   const username = session?.user?.user_metadata?.username || session?.user?.email?.split('@')[0] || p.name || 'Trader';
@@ -39,7 +42,7 @@ export function Header() {
     return '👑';
   };
 
-  const handleNav = (screen: 'dashboard' | 'trading' | 'portfolio' | 'leaderboard', tab?: any) => {
+  const handleNav = (screen: 'dashboard' | 'trading' | 'portfolio' | 'leaderboard' | 'store', tab?: any) => {
     Audio.click();
     setActiveScreen(screen);
     if (tab) {
@@ -82,10 +85,15 @@ export function Header() {
           {/* Profile Card */}
           <div className="mobile-hdr-profile" onClick={() => { Audio.click(); setSettingsOpen(true); }}>
             <div className="mobile-profile-details" style={{ textAlign: 'right' }}>
-              <span className="mobile-profile-name">{username}</span>
+              <span className="mobile-profile-name" style={{ color: equippedNameColor !== 'none' ? equippedNameColor : undefined }}>
+                {username}
+                {equippedBadge && equippedBadge !== 'none' && (
+                  <img src={`/store/${equippedBadge}.png`} alt="badge" style={{ width: '14px', height: '14px', marginLeft: '6px', verticalAlign: 'middle', display: 'inline-block' }} />
+                )}
+              </span>
               <span className="mobile-profile-lvl">LEVEL {lvl}</span>
             </div>
-            <div className="mobile-profile-avatar">
+            <div className={`mobile-profile-avatar ${equippedFrame !== 'none' ? equippedFrame : ''}`}>
               {getAvatarEmoji(lvl)}
               <span className="mobile-active-dot"></span>
             </div>
@@ -176,11 +184,8 @@ export function Header() {
           Events
         </button>
         <button
-          className="nav-link-btn store-btn"
-          onClick={() => {
-            Audio.click();
-            pushToast('Premium Store unlocks in the next season!', 'info');
-          }}
+          className={`nav-link-btn store-btn ${activeScreen === 'store' ? 'active' : ''}`}
+          onClick={() => handleNav('store')}
         >
           Store
         </button>
@@ -207,11 +212,16 @@ export function Header() {
         </div>
 
         <div className="hdr-profile-card" onClick={() => { Audio.click(); setSettingsOpen(true); }} title="Profile Settings">
-          <div className="profile-avatar">
+          <div className={`profile-avatar ${equippedFrame !== 'none' ? equippedFrame : ''}`}>
             {getAvatarEmoji(lvl)}
           </div>
           <div className="profile-info">
-            <span className="profile-name">{username}</span>
+            <span className="profile-name" style={{ color: equippedNameColor !== 'none' ? equippedNameColor : undefined }}>
+              {username}
+              {equippedBadge && equippedBadge !== 'none' && (
+                <img src={`/store/${equippedBadge}.png`} alt="badge" style={{ width: '14px', height: '14px', marginLeft: '6px', verticalAlign: 'middle', display: 'inline-block' }} />
+              )}
+            </span>
             <span className="profile-level">LEVEL {lvl}</span>
           </div>
         </div>

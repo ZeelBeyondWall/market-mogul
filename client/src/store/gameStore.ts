@@ -6,7 +6,7 @@ import { setMuted } from '../audio/audio';
 import type { IndicatorId } from '../utils/indicators';
 import type { Session } from '@supabase/supabase-js';
 
-export type Theme = 'game' | 'pro';
+export type Theme = 'game' | 'pro' | 'purple' | 'green' | 'gold' | 'blue';
 
 type ChartToggles = { chartLine: boolean; chartCandles: boolean; chartVol: boolean };
 
@@ -35,7 +35,11 @@ export interface UIPrefs extends ChartToggles {
   beginnerMode: boolean; // hides advanced UI when true (v7.2)
   priceAlerts: PriceAlert[]; // v9: persisted price alerts
   activeIndicators: IndicatorId[]; // v10: chart indicators
-  activeScreen: 'dashboard' | 'trading' | 'portfolio' | 'leaderboard';
+  activeScreen: 'dashboard' | 'trading' | 'portfolio' | 'leaderboard' | 'store';
+  equippedFrame: string;
+  equippedBadge: string;
+  equippedNameColor: string;
+  ownedCosmetics: string[];
 }
 
 export interface LeaderboardEntry {
@@ -94,7 +98,11 @@ interface GameStore extends UIPrefs {
   addPriceAlert: (aid: string, price: number, dir: 'above' | 'below') => void;
   removePriceAlert: (id: number) => void;
   setMobileView: (v: 'market' | 'trade' | 'panel') => void;
-  setActiveScreen: (s: 'dashboard' | 'trading' | 'portfolio' | 'leaderboard') => void;
+  setActiveScreen: (s: 'dashboard' | 'trading' | 'portfolio' | 'leaderboard' | 'store') => void;
+  setEquippedFrame: (frame: string) => void;
+  setEquippedBadge: (badge: string) => void;
+  setEquippedNameColor: (color: string) => void;
+  addOwnedCosmetic: (id: string) => void;
   toggleChartLayer: (k: keyof ChartToggles) => void;
   toggleMute: () => void;
   hideSplash: () => void;
@@ -117,7 +125,7 @@ const STORAGE = 'mm_ui_prefs_v3';
 const UI_KEYS: (keyof UIPrefs)[] = [
   'muted','chartLine','chartCandles','chartVol','orderType','activeTab','activeMarket','botFilter','splashShown',
   'theme','reduceMotion','showParticles','autoConfirm','activeTF','watchlist','beginnerMode','priceAlerts','activeIndicators',
-  'activeScreen',
+  'activeScreen', 'equippedFrame', 'equippedBadge', 'equippedNameColor', 'ownedCosmetics',
 ];
 function defaultPrefs(): UIPrefs {
   return {
@@ -131,6 +139,10 @@ function defaultPrefs(): UIPrefs {
     priceAlerts: [],
     activeIndicators: [],
     activeScreen: 'dashboard',
+    equippedFrame: 'none',
+    equippedBadge: 'none',
+    equippedNameColor: 'none',
+    ownedCosmetics: [],
   };
 }
 function loadPrefs(): UIPrefs {
@@ -272,6 +284,16 @@ export const useGame = create<GameStore>((set, get) => {
     removePriceAlert: (id) => { set(s => ({ priceAlerts: s.priceAlerts.filter(a => a.id !== id) })); persist(); },
     setMobileView: (v) => set({ mobileView: v }),
     setActiveScreen: (s) => { set({ activeScreen: s }); persist(); },
+    setEquippedFrame: (frame) => { set({ equippedFrame: frame }); persist(); },
+    setEquippedBadge: (badge) => { set({ equippedBadge: badge }); persist(); },
+    setEquippedNameColor: (color) => { set({ equippedNameColor: color }); persist(); },
+    addOwnedCosmetic: (id) => {
+      const cur = get().ownedCosmetics;
+      if (!cur.includes(id)) {
+        set({ ownedCosmetics: [...cur, id] });
+        persist();
+      }
+    },
     setTheme: (t) => { applyTheme(t); set({ theme: t }); persist(); },
     setReduceMotion: (v) => { set({ reduceMotion: v }); persist(); },
     setShowParticles: (v) => { set({ showParticles: v }); persist(); },

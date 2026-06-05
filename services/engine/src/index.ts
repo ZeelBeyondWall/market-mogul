@@ -6,7 +6,7 @@ import { createServer } from 'http';
 import { spawn } from 'child_process';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Engine } from '../../../shared/engine/engine';
-import { ASSETS, NEWS_EVENTS as NEWS_EVENTS_REF, STRATEGIES, xpToReach } from '../../../shared/engine/constants';
+import { ASSETS, NEWS_EVENTS as NEWS_EVENTS_REF, STRATEGIES, xpToReach, levelFromXp } from '../../../shared/engine/constants';
 import { traderNet } from '../../../shared/engine/strategies';
 import { placeOrder } from '../../../shared/engine/matching';
 import { applyEvent as applyEventRef } from '../../../shared/engine/market';
@@ -734,6 +734,35 @@ function handleClientMessage(ws: WebSocket, msg: C2S) {
       if (typeof msg.payload?.missionId !== 'string') return;
       const reward = claimMission(engine.player(cs.traderId), msg.payload.missionId);
       if (reward > 0) sendSnapshot(ws);
+      return;
+    }
+    case 'storePurchase': {
+      const p = engine.player(cs.traderId);
+      const cashChange = Number(msg.payload?.cashChange) || 0;
+      const gemsChange = Number(msg.payload?.gemsChange) || 0;
+      const xpChange = Number(msg.payload?.xpChange) || 0;
+
+      // Verify that player has enough gems (if gemsChange is negative)
+      if (gemsChange < 0 && (p.bonus || 0) + gemsChange < 0) {
+        ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: 'Insufficient Gems!' } } satisfies S2C));
+        return;
+      }
+      
+      // Verify that player has enough cash (if cashChange is negative)
+      if (cashChange < 0 && p.cash + cashChange < 0) {
+        ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: 'Insufficient Cash!' } } satisfies S2C));
+        return;
+      }
+
+      // Apply changes
+      p.cash += cashChange;
+      p.bonus = (p.bonus || 0) + gemsChange;
+      p.xp = (p.xp || 0) + xpChange;
+      p.level = levelFromXp(p.xp);
+
+      // Save and sync
+      diskSave(engine.state);
+      sendSnapshot(ws);
       return;
     }
   }

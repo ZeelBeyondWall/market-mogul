@@ -18,7 +18,8 @@ export type C2S =
   | { type: 'setActive'; payload: { aid: string } }
   | { type: 'setTF'; payload: { tf: string } }
   | { type: 'cancelClose'; payload: { aid: string } }
-  | { type: 'claimMission'; payload: { missionId: string } };
+  | { type: 'claimMission'; payload: { missionId: string } }
+  | { type: 'storePurchase'; payload: { cashChange: number; gemsChange: number; xpChange: number } };
 
 // Snapshot — sent on connect + periodically. Compact subset of GameState.
 export interface SnapshotPayload {

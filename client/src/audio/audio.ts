@@ -108,4 +108,14 @@ export const Audio = {
     setTimeout(() => beep(880, 0.18, 'sine', 0.1), 140);
   },
   click(): void { beep(600, 0.02, 'square', 0.05); },
+  success(): void {
+    beep(523.25, 0.05, 'sine', 0.12);
+    setTimeout(() => beep(659.25, 0.05, 'sine', 0.12), 40);
+    setTimeout(() => beep(783.99, 0.05, 'sine', 0.12), 80);
+    setTimeout(() => beep(1046.5, 0.12, 'triangle', 0.1), 120);
+  },
+  error(): void {
+    beep(196, 0.08, 'sawtooth', 0.10);
+    setTimeout(() => beep(185, 0.15, 'sawtooth', 0.10), 60);
+  },
 };
