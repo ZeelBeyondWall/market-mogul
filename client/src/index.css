@@ -6382,6 +6382,74 @@ body[data-theme="game"] {
     font-size: 9.5px;
     letter-spacing: 0.5px;
   }
+
+  /* Dedicated Mobile Trading Layout */
+  .mobile-trading-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    padding-bottom: 84px; /* safe area for BottomNav */
+    box-sizing: border-box;
+  }
+
+  .mobile-trading-pane {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .mobile-trading-pane.market-pane {
+    overflow-y: auto;
+  }
+
+  .mobile-trading-pane.panel-pane {
+    overflow-y: auto;
+    padding: 10px;
+    box-sizing: border-box;
+  }
+
+  .mobile-trading-pane.trade-pane {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    justify-content: space-between;
+  }
+
+  .mobile-chart-container {
+    height: 48vh !important;
+    min-height: 280px !important;
+    max-height: 380px !important;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+    box-sizing: border-box;
+    flex-shrink: 0;
+  }
+
+  .mobile-chart-container .chart-header {
+    margin-bottom: 4px !important;
+    flex-shrink: 0;
+  }
+
+  .mobile-chart-container .chart-box {
+    flex: 1 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    position: relative;
+  }
+
+  .mobile-panel-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 0;
+  }
 }
 
 

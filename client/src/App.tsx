@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useGame } from './store/gameStore';
 import { useGameLoop } from './hooks/useGameLoop';
 import { resumeAudio } from './audio/audio';
@@ -25,6 +25,7 @@ import { DashboardPage } from './components/DashboardPage';
 import { PortfolioPage } from './components/PortfolioPage';
 import { LeaderboardPage } from './components/LeaderboardPage';
 import { StorePage } from './components/StorePage';
+import { MobileTradingPage } from './components/MobileTradingPage';
 
 export function App() {
   useGameLoop();
@@ -34,6 +35,7 @@ export function App() {
   const mobileView = useGame(s => s.mobileView);
   const engine = useGame(s => s.engine);
   const activeScreen = useGame(s => s.activeScreen);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 820);
 
   // Initialize and listen to Auth changes
   useEffect(() => {
@@ -51,6 +53,13 @@ export function App() {
       subscription.unsubscribe();
     };
   }, [setSession, engine]);
+
+  // Handle mobile detection on window resize
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 820);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // resume audio on any user interaction after first gesture
   useEffect(() => {
@@ -87,6 +96,8 @@ export function App() {
             <LeaderboardPage />
           ) : activeScreen === 'store' ? (
             <StorePage />
+          ) : isMobile ? (
+            <MobileTradingPage />
           ) : (
             <main>
               <div className="col col-market"><AssetList /></div>
