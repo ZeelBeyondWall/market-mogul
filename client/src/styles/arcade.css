@@ -1,0 +1,316 @@
+/* ============================================================
+   ARCADE.CSS — Neon Arcade HUD token + utility layer
+   Loaded AFTER index.css. Additive: existing classes untouched;
+   components opt in via .arcade-* / .hud-* classes.
+   Not applied to admin (body[data-admin]) — game shell only.
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Russo+One&display=swap');
+
+:root {
+  /* layers */
+  --hud-bg: #070a12;
+  --hud-panel: #0c1120;
+  --hud-inset: #0a0e17;
+  --hud-raise: #11203a;
+  --hud-border: #233052;
+  --hud-border-dim: #1c2438;
+  /* neon accents */
+  --neon-cyan: #22d3ee;
+  --neon-cyan-dim: #0e7490;
+  --neon-green: #34d399;
+  --neon-green-deep: #0f6e56;
+  --neon-rose: #f43f5e;
+  --neon-rose-deep: #99203a;
+  --neon-purple: #a78bfa;
+  --neon-purple-deep: #6d28d9;
+  --neon-gold: #dfa637;
+  --neon-gold-deep: #8a6516;
+  /* ink on neon fills (contrast-safe) */
+  --ink-on-cyan: #04222b;
+  --ink-on-green: #04342c;
+  --ink-on-rose: #4b0d18;
+  --ink-on-gold: #3b2a05;
+  /* glows */
+  --glow-cyan: 0 0 12px rgba(34, 211, 238, 0.55);
+  --glow-green: 0 0 12px rgba(52, 211, 153, 0.5);
+  --glow-rose: 0 0 12px rgba(244, 63, 94, 0.5);
+  --glow-gold: 0 0 12px rgba(223, 166, 55, 0.5);
+  --glow-purple: 0 0 12px rgba(167, 139, 250, 0.5);
+  --font-display: 'Russo One', 'Plus Jakarta Sans', sans-serif;
+}
+
+/* ---------- display type ---------- */
+.disp {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+/* ---------- HUD panel (card) ---------- */
+.hud-panel {
+  position: relative;
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-border-dim);
+  border-radius: 12px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.hud-panel:hover { border-color: var(--hud-border); }
+.hud-panel.glow-hover:hover {
+  border-color: var(--neon-cyan-dim);
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.18), 0 0 18px rgba(34, 211, 238, 0.08);
+}
+/* angular corner accents */
+.hud-corners::before,
+.hud-corners::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  opacity: 0.7;
+}
+.hud-corners::before {
+  top: -1px; left: -1px;
+  border-top: 2px solid var(--neon-cyan);
+  border-left: 2px solid var(--neon-cyan);
+  border-top-left-radius: 12px;
+}
+.hud-corners::after {
+  bottom: -1px; right: -1px;
+  border-bottom: 2px solid var(--neon-cyan);
+  border-right: 2px solid var(--neon-cyan);
+  border-bottom-right-radius: 12px;
+}
+.hud-corners.gold::before { border-color: var(--neon-gold); }
+.hud-corners.gold::after { border-color: var(--neon-gold); }
+
+/* ---------- arcade buttons (chunky pressable) ---------- */
+.arcade-btn {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text);
+  background: var(--hud-raise);
+  border: none;
+  border-bottom: 3px solid var(--hud-border);
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.08s ease, border-bottom-width 0.08s ease;
+  user-select: none;
+}
+.arcade-btn:hover { filter: brightness(1.12); }
+.arcade-btn:active {
+  transform: translateY(2px);
+  border-bottom-width: 1px;
+}
+.arcade-btn:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 2px;
+}
+.arcade-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+.arcade-btn.buy { background: var(--neon-green); border-bottom-color: var(--neon-green-deep); color: var(--ink-on-green); }
+.arcade-btn.sell { background: var(--neon-rose); border-bottom-color: var(--neon-rose-deep); color: var(--ink-on-rose); }
+.arcade-btn.cyan { background: var(--neon-cyan); border-bottom-color: var(--neon-cyan-dim); color: var(--ink-on-cyan); }
+.arcade-btn.gold { background: var(--neon-gold); border-bottom-color: var(--neon-gold-deep); color: var(--ink-on-gold); }
+.arcade-btn.ghost {
+  background: transparent;
+  border: 1px solid var(--hud-border);
+  border-bottom-width: 3px;
+}
+
+/* ---------- HUD pills (gems / streak / badges) ---------- */
+.hud-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 9px;
+  border-radius: 20px;
+  border: 1px solid var(--hud-border);
+  background: var(--hud-inset);
+  white-space: nowrap;
+}
+.hud-pill.gold { color: var(--neon-gold); border-color: rgba(223, 166, 55, 0.35); }
+.hud-pill.rose { color: var(--neon-rose); border-color: rgba(244, 63, 94, 0.35); }
+.hud-pill.cyan { color: var(--neon-cyan); border-color: rgba(34, 211, 238, 0.35); }
+.hud-pill.green { color: var(--neon-green); border-color: rgba(52, 211, 153, 0.35); }
+.hud-pill.purple { color: var(--neon-purple); border-color: rgba(167, 139, 250, 0.35); }
+
+/* ---------- XP bar ---------- */
+.xp-bar {
+  position: relative;
+  height: 10px;
+  background: var(--hud-inset);
+  border: 1px solid var(--hud-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.xp-bar.thin { height: 7px; border-radius: 4px; }
+.xp-fill {
+  position: relative;
+  height: 100%;
+  background: var(--neon-cyan);
+  box-shadow: var(--glow-cyan);
+  border-radius: 6px;
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: hidden;
+}
+.xp-fill.gold { background: var(--neon-gold); box-shadow: var(--glow-gold); }
+.xp-fill.purple { background: var(--neon-purple); box-shadow: var(--glow-purple); }
+.xp-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.45) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: xpShimmer 2.6s ease-in-out infinite;
+}
+@keyframes xpShimmer {
+  0% { transform: translateX(-100%); }
+  55%, 100% { transform: translateX(100%); }
+}
+
+/* ---------- skeleton shimmer ---------- */
+.skel {
+  position: relative;
+  background: var(--hud-raise);
+  border-radius: 6px;
+  overflow: hidden;
+  min-height: 12px;
+}
+.skel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(148, 163, 184, 0.12) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: skelShimmer 1.4s ease-in-out infinite;
+}
+@keyframes skelShimmer {
+  to { transform: translateX(100%); }
+}
+
+/* ---------- value flash on change ---------- */
+@keyframes flashUp {
+  0% { color: var(--neon-green); text-shadow: var(--glow-green); }
+  100% { color: inherit; text-shadow: none; }
+}
+@keyframes flashDown {
+  0% { color: var(--neon-rose); text-shadow: var(--glow-rose); }
+  100% { color: inherit; text-shadow: none; }
+}
+.flash-up { animation: flashUp 0.8s ease-out; }
+.flash-down { animation: flashDown 0.8s ease-out; }
+
+/* ---------- neon text ---------- */
+.neon-cyan { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(34, 211, 238, 0.45); }
+.neon-gold { color: var(--neon-gold); text-shadow: 0 0 8px rgba(223, 166, 55, 0.45); }
+.neon-green { color: var(--neon-green); text-shadow: 0 0 8px rgba(52, 211, 153, 0.45); }
+.neon-rose { color: var(--neon-rose); text-shadow: 0 0 8px rgba(244, 63, 94, 0.45); }
+
+/* ---------- console dock (mobile bottom nav) ---------- */
+.dock {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: rgba(7, 10, 18, 0.92);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--hud-border-dim);
+}
+.dock-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px 6px;
+  color: #5d6f93;
+  background: none;
+  border: none;
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+.dock-item.active {
+  color: var(--neon-cyan);
+  text-shadow: 0 0 10px rgba(34, 211, 238, 0.55);
+}
+.dock-item.active svg { filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.6)); }
+.dock-item:focus-visible { outline: 2px solid var(--neon-cyan); outline-offset: -2px; }
+.dock-center {
+  width: 48px;
+  height: 48px;
+  margin-top: -22px;
+  border-radius: 50%;
+  background: var(--neon-cyan);
+  color: var(--ink-on-cyan);
+  border: 3px solid var(--hud-bg);
+  box-shadow: var(--glow-cyan);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.2s ease;
+}
+.dock-center:active { transform: scale(0.92); }
+.dock-center:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* ---------- ticking dot (live indicator) ---------- */
+@keyframes livePulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(52, 211, 153, 0.8); }
+  50% { opacity: 0.4; box-shadow: none; }
+}
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--neon-green);
+  animation: livePulse 1.6s ease-in-out infinite;
+}
+
+/* ---------- celebration confetti burst ---------- */
+@keyframes confettiFall {
+  0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(90px) rotate(540deg); opacity: 0; }
+}
+.confetti-piece {
+  position: absolute;
+  width: 7px;
+  height: 10px;
+  animation: confettiFall 1.1s ease-in forwards;
+}
+
+/* ---------- reduced motion: kill decorative animation ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .xp-fill::after,
+  .skel::after,
+  .live-dot,
+  .confetti-piece,
+  .flash-up,
+  .flash-down {
+    animation: none !important;
+  }
+  .xp-fill,
+  .arcade-btn,
+  .hud-panel,
+  .dock-item,
+  .dock-center {
+    transition: none !important;
+  }
+}
+
+/* admin shell opts out of everything above by simply not using the classes */
