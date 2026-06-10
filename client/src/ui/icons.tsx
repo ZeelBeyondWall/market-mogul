@@ -215,6 +215,27 @@ export const IconGlobe = (p: IconProps) => (
   </Svg>
 );
 
+export const IconLock = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="5" y="11" width="14" height="9" rx="2" />
+    <path d="M8 11V7a4 4 0 0 1 8 0v4M12 15v2" />
+  </Svg>
+);
+
+export const IconChat = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5z" />
+    <path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01" />
+  </Svg>
+);
+
+export const IconHelp = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M9.5 9a2.5 2.5 0 0 1 4.9.8c0 1.7-2.4 2.2-2.4 3.7M12 17h.01" />
+  </Svg>
+);
+
 export const IconWallet = (p: IconProps) => (
   <Svg {...p}>
     <rect x="3" y="6" width="18" height="13" rx="2" />

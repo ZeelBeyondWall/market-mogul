@@ -4,12 +4,26 @@ import { fmt, fmtPct, fmtNum } from '../../../shared/engine/helpers';
 import { ASSETS } from '../../../shared/engine/constants';
 import { Audio } from '../audio/audio';
 import { AnimatedNumber } from './AnimatedNumber';
+import { useCountUp } from '../ui/useCountUp';
+import { LevelShield } from '../ui/LevelShield';
+import {
+  IconTrophy,
+  IconWallet,
+  IconBars,
+  IconFlame,
+  IconCoin,
+  IconClock,
+  IconBriefcase,
+  IconArrowUp,
+  IconArrowDown,
+} from '../ui/icons';
 import './Pages.css';
+import '../styles/arcade-portfolio.css';
 
 export function PortfolioPage() {
   const eng = useGame(s => s.engine);
-  useGame(s => s.dataTick);
-  
+  const dataTick = useGame(s => s.dataTick);
+
   const rank = useGame(s => s.playerRank);
   const total = useGame(s => s.totalTraders);
   const lvl = useGame(s => s.playerLevel);
@@ -29,6 +43,12 @@ export function PortfolioPage() {
   const cash = eng.displayCash();
   const port = eng.displayPortfolioValue();
   const net = eng.netWorth();
+
+  // Visual-only: skeleton state until the first server snapshot/tick arrives,
+  // count-up animation on pure display values.
+  const isLoading = dataTick === 0;
+  const animNet = useCountUp(net);
+  const animCash = useCountUp(cash);
 
   // Today's P&L
   const dayStartNet = p.dayStartNet || 10000;
@@ -96,12 +116,13 @@ export function PortfolioPage() {
     .filter(Boolean) as any[];
 
   // Allocation categories logic
+  // Donut segment colors = neon arcade palette tokens (see arcade.css :root)
   const assetClasses: Record<string, { label: string; val: number; color: string; pct: number }> = {
-    stocks: { label: 'Stocks', val: 0, color: '#7C5CFF', pct: 0 },
-    crypto: { label: 'Crypto', val: 0, color: '#D946EF', pct: 0 },
-    forex: { label: 'Forex', val: 0, color: '#06B6D4', pct: 0 },
-    commodity: { label: 'Commodities', val: 0, color: '#F59E0B', pct: 0 },
-    cash: { label: 'Cash', val: cash, color: '#22C55E', pct: 0 }
+    stocks: { label: 'Stocks', val: 0, color: '#a78bfa', pct: 0 },
+    crypto: { label: 'Crypto', val: 0, color: '#f43f5e', pct: 0 },
+    forex: { label: 'Forex', val: 0, color: '#22d3ee', pct: 0 },
+    commodity: { label: 'Commodities', val: 0, color: '#dfa637', pct: 0 },
+    cash: { label: 'Cash', val: cash, color: '#34d399', pct: 0 }
   };
 
   holdingsList.forEach(h => {
@@ -240,92 +261,94 @@ export function PortfolioPage() {
   };
 
   return (
-    <div className="page-container">
-      
+    <div className="page-container arcade-portfolio">
+
       {/* ================= LEFT SIDEBAR ================= */}
       <aside className="page-sidebar">
-        
+
         {/* Level card */}
-        <div className="lvl-card mmo-card">
+        <div className="lvl-card mmo-card hud-panel glow-hover">
           <div className="lvl-badge-wrap">
-            <span className="lvl-badge-icon">⭐</span>
+            <span className="lvl-badge-icon"><LevelShield level={lvl} size={42} /></span>
           </div>
           <div className="lvl-progress-area">
-            <span className="lvl-text">LEVEL</span>
-            <div className="lvl-num">{lvl}</div>
-            <div className="lvl-xp-bar-bg">
-              <div className="lvl-xp-bar-fill" style={{ width: `${xpProgress}%` }}></div>
+            <span className="lvl-text disp">LEVEL</span>
+            <div className="lvl-num disp">{lvl}</div>
+            <div className="lvl-xp-bar-bg xp-bar thin">
+              <div className="lvl-xp-bar-fill xp-fill" style={{ width: `${xpProgress}%` }}></div>
             </div>
             <div className="lvl-xp-text">XP {xp - xpAt} / {xpTo - xpAt}</div>
           </div>
         </div>
 
         {/* Rank card */}
-        <div className="stat-pill-card mmo-card">
+        <div className="stat-pill-card mmo-card hud-panel glow-hover">
           <div className="stat-card-left">
-            <div className="stat-icon-wrap icon-purple-bg">🏆</div>
+            <div className="stat-icon-wrap icon-purple-bg pf-ic-gold"><IconTrophy size={20} /></div>
             <div className="stat-card-details">
               <span className="stat-label">RANK</span>
-              <span className="rank-val">#{rank || 247}</span>
+              <span className="rank-val disp">#{rank || 247}</span>
             </div>
           </div>
           <span className="rank-pct">TOP 2%</span>
         </div>
 
         {/* Cash Balance */}
-        <div className="stat-pill-card mmo-card">
+        <div className="stat-pill-card mmo-card hud-panel glow-hover">
           <div className="stat-card-left">
-            <div className="stat-icon-wrap icon-green-bg">💵</div>
+            <div className="stat-icon-wrap icon-green-bg pf-ic-green"><IconWallet size={20} /></div>
             <div className="stat-card-details">
               <span className="stat-label">CASH BALANCE</span>
-              <span className="stat-val-large">{fmt(cash)}</span>
+              <span className="stat-val-large">{fmt(animCash)}</span>
             </div>
           </div>
         </div>
 
         {/* Net Worth */}
-        <div className="stat-pill-card mmo-card">
+        <div className="stat-pill-card mmo-card hud-panel glow-hover">
           <div className="stat-card-left">
-            <div className="stat-icon-wrap icon-blue-bg">💎</div>
+            <div className="stat-icon-wrap icon-blue-bg pf-ic-cyan"><IconBars size={20} /></div>
             <div className="stat-card-details">
               <span className="stat-label">NET WORTH</span>
-              <span className="stat-val-large">{fmt(net)}</span>
+              <span className="stat-val-large">{fmt(animNet)}</span>
             </div>
           </div>
         </div>
 
         {/* Today's Profit */}
-        <div className="stat-pill-card mmo-card">
+        <div className="stat-pill-card mmo-card hud-panel glow-hover">
           <div className="stat-card-left">
-            <div className="stat-icon-wrap icon-green-bg">📈</div>
+            <div className={`stat-icon-wrap icon-green-bg ${todayPnL >= 0 ? 'pf-ic-green' : 'pf-ic-rose'}`}>
+              {todayPnL >= 0 ? <IconArrowUp size={20} /> : <IconArrowDown size={20} />}
+            </div>
             <div className="stat-card-details">
               <span className="stat-label">TODAY'S PROFIT</span>
-              <span className="stat-val-large" style={{ color: todayPnL >= 0 ? '#22C55E' : '#EF4444' }}>
+              <span className="stat-val-large" style={{ color: todayPnL >= 0 ? 'var(--neon-green)' : 'var(--neon-rose)' }}>
                 {todayPnL >= 0 ? '+' : ''}{fmt(todayPnL)}
               </span>
             </div>
           </div>
           <span className={todayPnLPct >= 0 ? 'stat-subtext-green' : 'stat-subtext-red'}>
-            {todayPnLPct >= 0 ? '▲' : '▼'} {Math.abs(todayPnLPct).toFixed(2)}%
+            {todayPnLPct >= 0 ? <IconArrowUp size={10} /> : <IconArrowDown size={10} />} {Math.abs(todayPnLPct).toFixed(2)}%
           </span>
         </div>
 
         {/* Daily Reward countdown chest */}
-        <div className="daily-reward-card mmo-card">
-          <div className="daily-title">DAILY REWARD</div>
-          <div className="daily-timer">Next reward in: {claimTimer}</div>
-          <span className="daily-chest-img" style={{ fontSize: '48px' }}>🎁</span>
-          <button className="daily-btn" onClick={handleClaimReward}>CLAIM REWARD</button>
+        <div className="daily-reward-card mmo-card hud-panel hud-corners gold">
+          <div className="daily-title disp">DAILY REWARD</div>
+          <div className="daily-timer"><IconClock size={11} /> Next reward in: {claimTimer}</div>
+          <span className="daily-chest-img"><IconCoin size={46} /></span>
+          <button className="daily-btn arcade-btn gold" onClick={handleClaimReward}>CLAIM REWARD</button>
         </div>
 
         {/* Streak card */}
-        <div className="streak-card mmo-card">
+        <div className="streak-card mmo-card hud-panel glow-hover">
           <div className="streak-row">
             <div className="streak-details">
               <span className="stat-label">STREAK</span>
-              <span className="stat-val-large" style={{ color: '#EF4444' }}>{streak || 7} DAYS</span>
+              <span className="stat-val-large disp" style={{ color: 'var(--neon-rose)' }}>{streak || 7} DAYS</span>
             </div>
-            <div className="stat-icon-wrap" style={{ fontSize: '24px' }}>🔥</div>
+            <div className="stat-icon-wrap pf-ic-rose"><IconFlame size={22} /></div>
           </div>
           <div className="streak-dots-row">
             {Array.from({ length: 7 }).map((_, idx) => (
@@ -342,17 +365,22 @@ export function PortfolioPage() {
       <main className="page-main-content">
         
         {/* PORTFOLIO OVERVIEW */}
-        <section className="mmo-card">
+        <section className="mmo-card hud-panel hud-corners glow-hover">
           <div className="portfolio-header-row">
             <div className="portfolio-title-wrap">
-              <h2 className="stat-label" style={{ fontSize: '12px' }}>PORTFOLIO OVERVIEW</h2>
-              <button className="eye-btn" title="Toggle visibility">👁</button>
+              <h2 className="stat-label disp" style={{ fontSize: '12px' }}>PORTFOLIO OVERVIEW</h2>
+              <button className="eye-btn" title="Toggle visibility">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
             </div>
             <div className="time-filters">
               {(['1D', '1W', '1M', '3M', '1Y', 'ALL'] as const).map(tf => (
                 <button
                   key={tf}
-                  className={`tf-pill ${activeTf === tf ? 'active' : ''}`}
+                  className={`tf-pill arcade-btn ghost ${activeTf === tf ? 'active' : ''}`}
                   onClick={() => { Audio.click(); setActiveTf(tf); }}
                 >
                   {tf}
@@ -361,11 +389,11 @@ export function PortfolioPage() {
             </div>
           </div>
 
-          <div className="portfolio-value-main">
-            {isHoveredChart && hoveredDataPoint ? fmt(hoveredDataPoint.val) : fmt(net)}
+          <div className="portfolio-value-main disp">
+            {isHoveredChart && hoveredDataPoint ? fmt(hoveredDataPoint.val) : fmt(animNet)}
           </div>
-          <div className="portfolio-change-sub" style={{ color: todayPnL >= 0 ? '#22C55E' : '#EF4444' }}>
-            <span>{todayPnL >= 0 ? '▲' : '▼'} {fmt(Math.abs(todayPnL))} ({Math.abs(todayPnLPct).toFixed(2)}%) Today</span>
+          <div className="portfolio-change-sub" style={{ color: todayPnL >= 0 ? 'var(--neon-green)' : 'var(--neon-rose)' }}>
+            <span>{todayPnL >= 0 ? <IconArrowUp size={11} /> : <IconArrowDown size={11} />} {fmt(Math.abs(todayPnL))} ({Math.abs(todayPnLPct).toFixed(2)}%) Today</span>
             <span style={{ color: 'var(--dim)', marginLeft: '10px', fontWeight: 'normal' }}>
               {isHoveredChart && hoveredDataPoint ? hoveredDataPoint.date : 'Live net worth'}
             </span>
@@ -384,8 +412,8 @@ export function PortfolioPage() {
             >
               <defs>
                 <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#7C5CFF" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#7C5CFF" stopOpacity="0" />
+                  <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.22" />
+                  <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
                 </linearGradient>
               </defs>
 
@@ -416,9 +444,9 @@ export function PortfolioPage() {
                   return `${idx === 0 ? 'M' : 'L'} ${x} ${y}`;
                 }).join(' ')}
                 fill="none"
-                stroke="#7C5CFF"
+                stroke="#22d3ee"
                 strokeWidth="2.5"
-                style={{ filter: 'drop-shadow(0px 0px 5px rgba(124, 92, 255, 0.8))' }}
+                style={{ filter: 'drop-shadow(0px 0px 5px rgba(34, 211, 238, 0.7))' }}
               />
 
               {/* Vertical Crosshair Line */}
@@ -428,7 +456,7 @@ export function PortfolioPage() {
                   y1="0"
                   x2={(chartPoints.indexOf(hoveredDataPoint.val) / (chartPoints.length - 1)) * 500}
                   y2="200"
-                  stroke="rgba(124, 92, 255, 0.4)"
+                  stroke="rgba(34, 211, 238, 0.4)"
                   strokeWidth="1"
                   strokeDasharray="4 4"
                 />
@@ -469,7 +497,7 @@ export function PortfolioPage() {
         </section>
 
         {/* HOLDINGS TABLE */}
-        <section className="holdings-card mmo-card">
+        <section className="holdings-card mmo-card hud-panel">
           <div className="holdings-header-row">
             <div className="holdings-tabs">
               {(['ALL', 'STOCKS', 'CRYPTO', 'FOREX', 'COMMODITIES', 'CASH'] as const).map(tab => (
@@ -499,18 +527,40 @@ export function PortfolioPage() {
                 </tr>
               </thead>
               <tbody>
-                {activeHoldingsTab === 'CASH' || activeHoldingsTab === 'ALL' ? (
-                  <tr>
+                {/* Skeleton shimmer rows until first data tick arrives (visual only) */}
+                {isLoading && Array.from({ length: 4 }).map((_, i) => (
+                  <tr key={`skel-${i}`} className="pf-static-row">
                     <td>
                       <div className="asset-cell">
-                        <div className="asset-logo-wrap" style={{ color: '#22C55E', borderColor: 'rgba(34,197,94,0.3)' }}>$</div>
+                        <div className="skel pf-skel-logo"></div>
+                        <div className="asset-name-sub">
+                          <div className="skel pf-skel-line w60"></div>
+                          <div className="skel pf-skel-line w80"></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td><div className="skel pf-skel-line w40"></div></td>
+                    <td><div className="skel pf-skel-line w60"></div></td>
+                    <td><div className="skel pf-skel-line w60"></div></td>
+                    <td><div className="skel pf-skel-line w40"></div></td>
+                    <td><div className="skel pf-skel-line w60"></div></td>
+                    <td><div className="skel pf-skel-line w60"></div></td>
+                    <td></td>
+                  </tr>
+                ))}
+
+                {!isLoading && (activeHoldingsTab === 'CASH' || activeHoldingsTab === 'ALL') ? (
+                  <tr className="pf-static-row">
+                    <td>
+                      <div className="asset-cell">
+                        <div className="asset-logo-wrap" style={{ color: 'var(--neon-green)', borderColor: 'rgba(52,211,153,0.35)' }}>$</div>
                         <div className="asset-name-sub">
                           <span className="asset-ticker-lbl">CASH</span>
                           <span className="asset-name-lbl">US Dollar Balance</span>
                         </div>
                       </div>
                     </td>
-                    <td><span className="type-pill" style={{ background: 'rgba(34,197,94,0.15)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.2)' }}>Cash</span></td>
+                    <td><span className="type-pill" style={{ background: 'rgba(52,211,153,0.12)', color: 'var(--neon-green)', border: '1px solid rgba(52,211,153,0.25)' }}>Cash</span></td>
                     <td><span className="qty-val">$1.00</span></td>
                     <td>
                       <div className="price-cell-wrap">
@@ -525,7 +575,7 @@ export function PortfolioPage() {
                   </tr>
                 ) : null}
 
-                {filteredHoldings.map((h, i) => (
+                {!isLoading && filteredHoldings.map((h, i) => (
                   <tr key={i} style={{ cursor: 'pointer' }} onClick={() => handleNavigateToAsset(h.aid, h.market)}>
                     <td>
                       <div className="asset-cell">
@@ -542,7 +592,7 @@ export function PortfolioPage() {
                       <div className="price-cell-wrap">
                         <span className="price-main">{fmt(h.lastPrice)}</span>
                         <span className={`price-change-pct ${h.chg >= 0 ? 'up-green' : 'dn-red'}`}>
-                          {h.chg >= 0 ? '▲' : '▼'} {Math.abs(h.chg).toFixed(2)}%
+                          {h.chg >= 0 ? <IconArrowUp size={9} /> : <IconArrowDown size={9} />} {Math.abs(h.chg).toFixed(2)}%
                         </span>
                       </div>
                     </td>
@@ -550,10 +600,10 @@ export function PortfolioPage() {
                     <td><span className="qty-val">{fmt(h.val)}</span></td>
                     <td>
                       <div className="price-cell-wrap">
-                        <span className="qty-val" style={{ color: h.unrealized >= 0 ? '#22C55E' : '#EF4444' }}>
+                        <span className="qty-val" style={{ color: h.unrealized >= 0 ? 'var(--neon-green)' : 'var(--neon-rose)' }}>
                           {h.unrealized >= 0 ? '+' : ''}{fmt(h.unrealized)}
                         </span>
-                        <span className="price-change-pct" style={{ color: h.unrealized >= 0 ? '#22C55E' : '#EF4444' }}>
+                        <span className="price-change-pct" style={{ color: h.unrealized >= 0 ? 'var(--neon-green)' : 'var(--neon-rose)' }}>
                           {h.unrealized >= 0 ? '+' : ''}{h.unrealizedPct.toFixed(2)}%
                         </span>
                       </div>
@@ -564,10 +614,24 @@ export function PortfolioPage() {
                   </tr>
                 ))}
 
-                {filteredHoldings.length === 0 && activeHoldingsTab !== 'CASH' && activeHoldingsTab !== 'ALL' && (
-                  <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: 'var(--dim)' }}>
-                      No positions held in this asset class.
+                {!isLoading && filteredHoldings.length === 0 && activeHoldingsTab !== 'CASH' && (
+                  <tr className="pf-static-row">
+                    <td colSpan={8}>
+                      <div className="pf-empty hud-panel">
+                        <span className="pf-empty-icon"><IconBriefcase size={36} /></span>
+                        <span className="pf-empty-title disp">No positions yet</span>
+                        <span className="pf-empty-sub">
+                          {activeHoldingsTab === 'ALL'
+                            ? 'Your holdings will appear here after your first trade.'
+                            : 'No positions held in this asset class.'}
+                        </span>
+                        <button
+                          className="arcade-btn cyan pf-empty-btn"
+                          onClick={() => { Audio.click(); setActiveScreen('trading'); }}
+                        >
+                          Start Trading
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -587,8 +651,8 @@ export function PortfolioPage() {
       <aside className="page-right-sidebar">
         
         {/* ASSET ALLOCATION */}
-        <section className="mmo-card">
-          <h2 className="stat-label" style={{ fontSize: '11px' }}>ASSET ALLOCATION</h2>
+        <section className="mmo-card hud-panel glow-hover">
+          <h2 className="stat-label disp" style={{ fontSize: '11px' }}>ASSET ALLOCATION</h2>
           
           <div className="donut-section">
             <div className="donut-chart-wrap">
@@ -596,7 +660,7 @@ export function PortfolioPage() {
                 {renderDonutChart()}
               </svg>
               <div className="donut-center-text">
-                <span className="donut-center-val">{fmt(totalValue)}</span>
+                <span className="donut-center-val disp">{fmt(totalValue)}</span>
                 <span className="donut-center-lbl">TOTAL VALUE</span>
               </div>
             </div>
@@ -618,18 +682,18 @@ export function PortfolioPage() {
           <div className="diversity-footer">
             <div className="diversity-lbl-row">
               <span>PORTFOLIO DIVERSITY</span>
-              <span style={{ color: '#22C55E', fontWeight: '700' }}>78% Well Balanced</span>
+              <span style={{ color: 'var(--neon-green)', fontWeight: '700' }}>78% Well Balanced</span>
             </div>
-            <div className="diversity-progress-bg">
-              <div className="diversity-progress-fill" style={{ width: '78%' }}></div>
+            <div className="diversity-progress-bg xp-bar thin">
+              <div className="diversity-progress-fill xp-fill" style={{ width: '78%' }}></div>
             </div>
           </div>
         </section>
 
         {/* RECENT ACTIVITY */}
-        <section className="mmo-card">
+        <section className="mmo-card hud-panel glow-hover">
           <div className="activity-header-row">
-            <h2 className="stat-label" style={{ fontSize: '11px' }}>RECENT ACTIVITY</h2>
+            <h2 className="stat-label disp" style={{ fontSize: '11px' }}>RECENT ACTIVITY</h2>
             <span className="view-all-link" onClick={() => { setActiveScreen('trading'); setActiveTab('history'); Audio.click(); }}>
               VIEW ALL
             </span>
@@ -643,8 +707,8 @@ export function PortfolioPage() {
               return (
                 <div key={idx} className="activity-item">
                   <div className="activity-item-left">
-                    <div className="activity-icon" style={{ color: isBuy ? '#22C55E' : '#EF4444' }}>
-                      {isBuy ? '↙' : '↗'}
+                    <div className="activity-icon" style={{ color: isBuy ? 'var(--neon-green)' : 'var(--neon-rose)' }}>
+                      {isBuy ? <IconArrowDown size={15} /> : <IconArrowUp size={15} />}
                     </div>
                     <div className="activity-details">
                       <div className="activity-title-line">

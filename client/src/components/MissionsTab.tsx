@@ -17,7 +17,7 @@ export function MissionsTab() {
       <div className="mission-summary">
         <div>
           <div className="ms-l">Bonus Wallet</div>
-          <div className="ms-v">${fmt(bonus)}</div>
+          <div className="ms-v">{fmt(bonus)}</div>
         </div>
         <div>
           <div className="ms-l">Login Streak</div>

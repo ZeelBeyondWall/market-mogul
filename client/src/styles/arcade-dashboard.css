@@ -1,0 +1,560 @@
+/* ============================================================
+   ARCADE-DASHBOARD.CSS — Neon Arcade HUD overrides, dashboard surface only.
+   Every rule is scoped under .arcdash (added to the dashboard roots in
+   DashboardPage.tsx) so nothing leaks to other surfaces that reuse the
+   same legacy class names (PortfolioPage / LeaderboardPage).
+   Tokens come from arcade.css; no new palette values introduced.
+   ============================================================ */
+
+/* ---------- page background deepen ---------- */
+.arcdash.mmo-dash-layout,
+.arcdash.mmo-mobile-dash-container {
+  background-color: var(--hud-bg);
+}
+
+/* ============================================================
+   HERO BANNER
+   ============================================================ */
+.arcdash .welcome-heading {
+  font-size: 24px;
+}
+
+.arcdash .welcome-subtext {
+  color: #a8b3cf;
+}
+
+/* stat strip filling the hero dead space */
+.arcdash .hero-stat-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  min-width: 0;
+}
+
+.arcdash .hero-stat-strip .hud-pill {
+  font-size: 11px;
+  padding: 5px 12px;
+  background: rgba(10, 14, 23, 0.78);
+}
+
+.arcdash .hero-stat-strip .strip-lbl {
+  opacity: 0.6;
+  letter-spacing: 0.6px;
+  font-size: 9px;
+}
+
+/* live event card — retune to token palette */
+.arcdash .event-card-live {
+  border-color: rgba(244, 63, 94, 0.3);
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.08) 0%, rgba(12, 17, 32, 0.95) 100%);
+}
+
+.arcdash .live-event-tag {
+  color: var(--neon-rose);
+}
+
+.arcdash .live-event-title {
+  font-size: 16px;
+}
+
+.arcdash .ends-in-time {
+  color: var(--neon-rose);
+  font-family: var(--font-mono);
+}
+
+.arcdash .view-event-btn.arcade-btn {
+  background: var(--neon-purple);
+  border-bottom-color: var(--neon-purple-deep);
+  color: var(--hud-bg);
+  font-size: 10px;
+  padding: 7px 14px;
+}
+
+/* ============================================================
+   SIDEBAR CARDS
+   ============================================================ */
+.arcdash .level-shield-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: none;
+}
+
+.arcdash .lvl-title {
+  font-size: 18px;
+}
+
+.arcdash .rank-value {
+  color: var(--neon-cyan);
+  text-shadow: 0 0 10px rgba(34, 211, 238, 0.35);
+  font-size: 22px;
+}
+
+/* cash = green accent */
+.arcdash .cash-card .card-icon-circle,
+.arcdash .green-theme-circle {
+  color: var(--neon-green);
+  background-color: rgba(52, 211, 153, 0.1);
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+.arcdash .cash-card .balance-val,
+.arcdash .cash-card .sm-value {
+  color: var(--neon-green);
+}
+
+/* net worth = gold (gems/premium) accent */
+.arcdash .networth-card .card-icon-circle,
+.arcdash .networth-card .sm-circle {
+  color: var(--neon-gold);
+  background-color: rgba(223, 166, 55, 0.1);
+  border-color: rgba(223, 166, 55, 0.3);
+}
+
+.arcdash .balance-val {
+  font-size: 18px;
+}
+
+/* daily reward chest */
+.arcdash .chest-illustration-wrap {
+  background: linear-gradient(135deg, rgba(223, 166, 55, 0.25) 0%, var(--hud-raise) 100%);
+  border-color: rgba(223, 166, 55, 0.4);
+  box-shadow: 0 0 10px rgba(223, 166, 55, 0.18);
+}
+
+.arcdash .chest-icon-emoji {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--neon-gold);
+  z-index: 2;
+}
+
+.arcdash .glowing-orb {
+  background-color: var(--neon-gold);
+}
+
+.arcdash .claim-now-btn.arcade-btn {
+  width: 100%;
+  box-shadow: none;
+}
+
+.arcdash .claim-now-btn.arcade-btn:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* streak = rose flame accent */
+.arcdash .streak-flame,
+.arcdash .streak-flame-icon {
+  display: flex;
+  align-items: center;
+  color: var(--neon-rose);
+  filter: drop-shadow(0 0 6px rgba(244, 63, 94, 0.5));
+}
+
+.arcdash .streak-days,
+.arcdash .streak-sub-lbl {
+  color: var(--neon-rose);
+}
+
+.arcdash .streak-dot.active-gold {
+  background-color: var(--neon-rose);
+  box-shadow: 0 0 6px rgba(244, 63, 94, 0.55);
+}
+
+/* ============================================================
+   MARKET MOVERS
+   ============================================================ */
+.arcdash .mover-tab-btn {
+  cursor: pointer;
+}
+
+.arcdash .mover-tab-btn.active {
+  background-color: var(--neon-cyan);
+  color: var(--ink-on-cyan);
+}
+
+.arcdash .mover-tab-btn:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 1px;
+}
+
+.arcdash .mover-row-item {
+  background-color: var(--hud-inset);
+  border-color: var(--hud-border-dim);
+}
+
+.arcdash .mover-row-item:hover {
+  background-color: rgba(34, 211, 238, 0.05);
+  border-color: var(--neon-cyan-dim);
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.06);
+}
+
+.arcdash .asset-icon-placeholder {
+  color: var(--neon-cyan);
+  background-color: var(--hud-raise);
+  border: 1px solid var(--hud-border-dim);
+}
+
+/* prices / quantities stay mono per spec */
+.arcdash .mover-price,
+.arcdash .mover-chg-pct,
+.arcdash .mover-mob-price,
+.arcdash .mover-mob-chg,
+.arcdash .lobby-player-net,
+.arcdash .donut-center-val,
+.arcdash .m-progress-count,
+.arcdash .m-prog-count-mob {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* skeleton rows while snapshot data has not arrived */
+.arcdash .skel-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  cursor: default;
+}
+
+.arcdash .skel-row:hover {
+  background-color: var(--hud-inset);
+  border-color: var(--hud-border-dim);
+  box-shadow: none;
+}
+
+.arcdash .skel-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  flex: 0 0 auto;
+}
+
+.arcdash .skel-line {
+  height: 12px;
+  min-width: 0;
+}
+
+.arcdash .skel-line.skel-w-lg { flex: 2 1 0; }
+.arcdash .skel-line.skel-w-sm { flex: 1 1 0; }
+
+/* ============================================================
+   NEWS
+   ============================================================ */
+.arcdash .news-article-row.hud-panel {
+  padding: 10px 12px;
+  background-color: var(--hud-inset);
+}
+
+.arcdash .news-bullet {
+  display: flex;
+  align-items: center;
+  color: var(--neon-purple);
+  margin-top: 1px;
+}
+
+.arcdash .news-headline:hover {
+  color: var(--neon-cyan);
+}
+
+/* ============================================================
+   LEADERBOARD
+   ============================================================ */
+.arcdash .lobby-leaderboard-row {
+  background-color: var(--hud-inset);
+  border-color: var(--hud-border-dim);
+}
+
+.arcdash .lobby-rank {
+  display: inline-flex;
+  align-items: center;
+  color: var(--neon-gold);
+  font-family: var(--font-display);
+}
+
+.arcdash .lobby-leaderboard-row.player-active-row {
+  background-color: rgba(34, 211, 238, 0.05);
+  border-color: rgba(34, 211, 238, 0.35);
+  box-shadow: inset 0 0 10px rgba(34, 211, 238, 0.06);
+}
+
+.arcdash .player-active-row .lobby-rank {
+  color: var(--neon-cyan);
+}
+
+.arcdash .weekly-ranking-lbl.hud-pill {
+  font-size: 9px;
+  padding: 2px 8px;
+}
+
+/* ============================================================
+   MISSIONS
+   ============================================================ */
+.arcdash .lobby-mission-row,
+.arcdash .mission-mob-row {
+  background-color: var(--hud-inset);
+  border-color: var(--hud-border-dim);
+}
+
+.arcdash .lobby-mission-row.completed {
+  border-color: rgba(52, 211, 153, 0.35);
+}
+
+.arcdash .mission-number {
+  color: var(--neon-purple);
+  background-color: rgba(167, 139, 250, 0.12);
+  font-family: var(--font-display);
+}
+
+/* progress bars use .xp-bar.thin with purple fill; outer must flex */
+.arcdash .m-bar-outer.xp-bar {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* pills sized down for dense lists */
+.arcdash .lobby-reward-xp.hud-pill,
+.arcdash .lobby-reward-cash.hud-pill,
+.arcdash .mob-rew-xp.hud-pill,
+.arcdash .mob-rew-cash.hud-pill,
+.arcdash .resets-in-countdown.hud-pill,
+.arcdash .missions-mob-countdown.hud-pill,
+.arcdash .ach-new-badge.hud-pill {
+  font-size: 9px;
+  padding: 2px 8px;
+}
+
+/* ============================================================
+   ACHIEVEMENTS
+   ============================================================ */
+.arcdash .ach-shield-icon {
+  color: #5d6f93;
+}
+
+.arcdash .ach-badge-box.unlocked .ach-shield-icon {
+  color: var(--neon-gold);
+  border-color: rgba(223, 166, 55, 0.5);
+  background-color: rgba(223, 166, 55, 0.12);
+  box-shadow: 0 0 8px rgba(223, 166, 55, 0.25);
+}
+
+/* ============================================================
+   CHOOSE YOUR MARKET
+   ============================================================ */
+.arcdash .market-choice-card {
+  cursor: pointer;
+}
+
+/* hud-panel (loaded later) would eat the per-market hover borders — restore */
+.arcdash .market-choice-card.stocks-card-border:hover {
+  border-color: var(--neon-green);
+  box-shadow: 0 0 14px rgba(52, 211, 153, 0.12);
+}
+
+.arcdash .market-choice-card.crypto-card-border:hover:not(.locked-grey) {
+  border-color: var(--neon-purple);
+  box-shadow: 0 0 14px rgba(167, 139, 250, 0.12);
+}
+
+.arcdash .market-choice-card.forex-card-border:hover:not(.locked-grey) {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 14px rgba(34, 211, 238, 0.12);
+}
+
+.arcdash .green-outline { color: var(--neon-green); }
+.arcdash .purple-outline { color: var(--neon-purple); }
+.arcdash .blue-outline { color: var(--neon-cyan); }
+.arcdash .locked-outline { color: #5d6f93; }
+
+.arcdash .choice-title {
+  font-size: 12px;
+}
+
+.arcdash .choice-cta-btn.arcade-btn {
+  font-size: 10px;
+  padding: 8px 14px;
+}
+
+.arcdash .arcade-btn.green-btn {
+  background: var(--neon-green);
+  border-bottom-color: var(--neon-green-deep);
+  color: var(--ink-on-green);
+}
+
+.arcdash .arcade-btn.purple-btn {
+  background: var(--neon-purple);
+  border-bottom-color: var(--neon-purple-deep);
+  color: var(--hud-bg);
+}
+
+.arcdash .arcade-btn.blue-btn {
+  background: var(--neon-cyan);
+  border-bottom-color: var(--neon-cyan-dim);
+  color: var(--ink-on-cyan);
+}
+
+.arcdash .arcade-btn.locked-btn {
+  background: var(--hud-raise);
+  border-bottom-color: var(--hud-border-dim);
+  color: #5d6f93;
+  cursor: not-allowed;
+}
+
+.arcdash .arcade-btn.locked-btn:hover {
+  filter: none;
+}
+
+/* footer "view all" buttons (ghost arcade) sized to card width */
+.arcdash .card-footer-action-btn.arcade-btn {
+  width: 100%;
+  margin-top: auto;
+  font-size: 10px;
+  padding: 9px 12px;
+  color: #a8b3cf;
+}
+
+.arcdash .card-footer-action-btn.arcade-btn:hover {
+  color: var(--neon-cyan);
+  border-color: var(--neon-cyan-dim);
+}
+
+/* ============================================================
+   MOBILE (existing 820px breakpoint preserved; touch targets >= 44px)
+   ============================================================ */
+@media (max-width: 820px) {
+  .arcdash .mob-welcome-title {
+    font-size: 15px;
+  }
+
+  .arcdash .hero-stat-strip {
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .arcdash .hero-stat-strip .hud-pill {
+    font-size: 10px;
+    padding: 4px 10px;
+  }
+
+  /* event CTA — purple arcade button */
+  .arcdash .mob-event-cta.arcade-btn {
+    background: var(--neon-purple);
+    border-bottom: 3px solid var(--neon-purple-deep);
+    color: var(--hud-bg);
+    font-size: 9px;
+    min-height: 44px;
+    padding: 8px 16px;
+    display: inline-flex;
+    align-items: center;
+    box-shadow: none;
+  }
+
+  /* claim button — index.css uses !important here, so overrides must too */
+  .arcdash .claim-now-btn-mob.arcade-btn {
+    background: var(--neon-cyan) !important;
+    color: var(--ink-on-cyan) !important;
+    border-bottom: 3px solid var(--neon-cyan-dim) !important;
+    border-radius: 8px !important;
+    font-family: var(--font-display) !important;
+    font-weight: 400 !important;
+    letter-spacing: 0.8px !important;
+    min-height: 44px;
+    box-shadow: none !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .arcdash .view-all-missions-btn-mob.arcade-btn {
+    min-height: 44px;
+    font-size: 10px;
+    color: #a8b3cf;
+  }
+
+  .arcdash .view-all-missions-btn-mob.arcade-btn:hover {
+    color: var(--neon-cyan);
+    border-color: var(--neon-cyan-dim);
+  }
+
+  /* movers tabs — cyan active, comfortable touch height */
+  .arcdash .movers-tab-btn-mob {
+    min-height: 44px;
+  }
+
+  .arcdash .movers-tab-btn-mob.active {
+    background-color: rgba(34, 211, 238, 0.08);
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+    box-shadow: 0 0 6px rgba(34, 211, 238, 0.15);
+  }
+
+  .arcdash .movers-tab-btn-mob:focus-visible {
+    outline: 2px solid var(--neon-cyan);
+    outline-offset: 1px;
+  }
+
+  .arcdash .movers-mob-view-all {
+    color: var(--neon-cyan);
+    cursor: pointer;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .arcdash .mover-mob-row {
+    min-height: 44px;
+  }
+
+  /* streak (rose) mobile accents */
+  .arcdash .streak-line-fill-mob {
+    background-color: var(--neon-rose);
+    box-shadow: 0 0 6px rgba(244, 63, 94, 0.55);
+  }
+
+  .arcdash .streak-dot-node-mob.active {
+    background-color: var(--neon-rose);
+    border-color: var(--neon-rose);
+    box-shadow: 0 0 5px rgba(244, 63, 94, 0.5);
+  }
+
+  .arcdash .chest-badge-icon {
+    color: var(--neon-gold);
+    display: flex;
+    align-items: center;
+    filter: drop-shadow(0 0 5px rgba(223, 166, 55, 0.4));
+  }
+
+  .arcdash .prog-mob-rank {
+    color: var(--neon-cyan);
+    text-shadow: 0 0 8px rgba(34, 211, 238, 0.35);
+  }
+
+  .arcdash .prog-mobile-left-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .arcdash .sm-circle {
+    display: flex;
+  }
+}
+
+/* ============================================================
+   REDUCED MOTION — no new keyframes added by this file; also quiet
+   the pre-existing decorative chest orb pulse on this surface.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .arcdash .glowing-orb {
+    animation: none;
+  }
+
+  .arcdash .hud-pill,
+  .arcdash .mover-row-item,
+  .arcdash .market-choice-card {
+    transition: none;
+  }
+}

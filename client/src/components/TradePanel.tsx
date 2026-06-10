@@ -4,8 +4,21 @@ import { roundShares, fmt, fmtNum, fmtPct } from '../../../shared/engine/helpers
 import { send } from '../net/wsClient';
 import { TRADE_FEE_RATE } from '../../../shared/engine/matching';
 import { Audio } from '../audio/audio';
+import { IconX } from '../ui/icons';
+import '../styles/arcade-trading.css';
 
 type Mode = 'buy' | 'short';
+
+// Tiny local lock glyph (icons.tsx has no lock; that file is shared/frozen).
+function LockGlyph({ size = 10 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  );
+}
 
 // v8.8: shorting is now PER-MARKET.
 //   STOCKS  → no shorting. BUY to open/add long, SELL only to close/reduce
@@ -173,7 +186,7 @@ export function TradePanel() {
     : null;
   const sellReason = shortMax === 0
     ? (isFlat
-        ? (!shortAllowed ? '🔒 Shorting (L10)'
+        ? (!shortAllowed ? 'Shorting unlocks L10'
            : !hasBids ? 'No buyers yet — building liquidity'
            : `Need $${Math.max(0, ast.lastPrice * 0.5 - eng.player().cash).toFixed(0)} more for margin`)
         : 'Nothing to sell')
@@ -197,7 +210,7 @@ export function TradePanel() {
       : `Confirm ${orderSheetMode === 'buy' ? (isShort ? 'Cover' : 'Buy') : (isLong ? 'Sell' : 'Short')}`;
 
     return (
-      <div className="mobile-trade-panel">
+      <div className="mobile-trade-panel arcade-mtp">
         {/* Compact Sticky Bottom Bar */}
         <div className="mobile-bottom-bar">
           {/* Position summary card (if not flat) */}
@@ -209,7 +222,7 @@ export function TradePanel() {
               }
             }}>
               <div className="pos-info">
-                <span className={`pos-tag ${posClass}`}>{hold.shares > 0 ? 'LONG' : 'SHORT'}</span>
+                <span className={`pos-tag ${posClass} hud-pill ${hold.shares > 0 ? 'green' : 'rose'}`}>{hold.shares > 0 ? 'LONG' : 'SHORT'}</span>
                 <span className="pos-shares"><b>{fmtNum(Math.abs(hold.shares))}</b> sh</span>
                 <span className="pos-avg">avg {fmt(hold.avgCost, hold.avgCost < 10 ? 3 : 2)}</span>
               </div>
@@ -218,8 +231,8 @@ export function TradePanel() {
                   {plLong >= 0 ? '+' : ''}{fmt(plLong)} ({fmtPct(hold.avgCost > 0 ? (plLong / (hold.avgCost * Math.abs(hold.shares))) * 100 : 0)})
                 </span>
               </div>
-              <button 
-                className="pos-quick-close-btn" 
+              <button
+                className="pos-quick-close-btn arcade-btn sell"
                 onClick={(e) => {
                   e.stopPropagation();
                   send({ type: 'close', payload: { aid } });
@@ -233,11 +246,11 @@ export function TradePanel() {
 
           {/* Quick Action buttons */}
           <div className="mobile-action-buttons">
-            <button className="mobile-action-btn buy" onClick={() => { setOrderSheetMode('buy'); Audio.click(); }}>
+            <button className="mobile-action-btn buy arcade-btn" onClick={() => { setOrderSheetMode('buy'); Audio.click(); }}>
               <span className="btn-title">{isShort ? 'COVER' : 'BUY'}</span>
               <span className="btn-sub">{buyReason || `Max ${fmtNum(buyMax)}sh`}</span>
             </button>
-            <button className="mobile-action-btn sell" onClick={() => { setOrderSheetMode('short'); Audio.click(); }}>
+            <button className="mobile-action-btn sell arcade-btn" onClick={() => { setOrderSheetMode('short'); Audio.click(); }}>
               <span className="btn-title">{isLong ? 'SELL' : 'SHORT'}</span>
               <span className="btn-sub">{sellReason || `Max ${fmtNum(shortMax)}sh`}</span>
             </button>
@@ -247,17 +260,17 @@ export function TradePanel() {
         {/* Drawer overlay / bottom-sheet */}
         {orderSheetMode && (
           <div className="mobile-order-drawer-backdrop" onClick={() => setOrderSheetMode(null)}>
-            <div className="mobile-order-drawer" onClick={e => e.stopPropagation()}>
+            <div className="mobile-order-drawer arcade-drawer" onClick={e => e.stopPropagation()}>
               {/* Header */}
               <div className="mod-header">
                 <div className="mod-title">
-                  <span className={`mod-side-tag ${orderSheetMode}`}>{orderSheetMode === 'buy' ? (isShort ? 'COVER' : 'BUY') : (isLong ? 'SELL' : 'SHORT')}</span>
+                  <span className={`mod-side-tag ${orderSheetMode} hud-pill ${orderSheetMode === 'buy' ? 'green' : 'rose'}`}>{orderSheetMode === 'buy' ? (isShort ? 'COVER' : 'BUY') : (isLong ? 'SELL' : 'SHORT')}</span>
                   <span className="mod-asset-id">{aid}</span>
                 </div>
                 <div className="mod-cash">
                   Cash: <b>{fmt(eng.player().cash)}</b>
                 </div>
-                <button className="mod-close" onClick={() => setOrderSheetMode(null)}>×</button>
+                <button className="mod-close" onClick={() => setOrderSheetMode(null)} title="Close"><IconX size={20} /></button>
               </div>
 
               {/* Form fields */}
@@ -265,10 +278,10 @@ export function TradePanel() {
                 {/* Order Type Selector */}
                 <div className="mod-row">
                   <label className="mod-label">Order Type</label>
-                  <div className="tb-ordertype">
-                    <button className={!isLimit ? 'on' : ''} onClick={() => { setOrderType('market'); Audio.click(); }}>MKT</button>
+                  <div className="tb-ordertype arcade-seg">
+                    <button className={'disp' + (!isLimit ? ' on' : '')} onClick={() => { setOrderType('market'); Audio.click(); }}>MKT</button>
                     <button
-                      className={(isLimit ? 'on' : '') + (playerLevel < 5 ? ' locked' : '')}
+                      className={'disp' + (isLimit ? ' on' : '') + (playerLevel < 5 ? ' locked' : '')}
                       onClick={() => {
                         if (playerLevel < 5) {
                           useGame.getState().pushToast('Limit orders unlock at Level 5', 'err');
@@ -280,7 +293,7 @@ export function TradePanel() {
                       }}
                       title={playerLevel < 5 ? 'Requires Level 5' : ''}
                     >
-                      {playerLevel < 5 ? '🔒 LMT' : 'LMT'}
+                      {playerLevel < 5 ? <><LockGlyph size={10} /> LMT</> : 'LMT'}
                     </button>
                   </div>
                 </div>
@@ -349,8 +362,8 @@ export function TradePanel() {
                 </div>
 
                 {/* Submit Button */}
-                <button 
-                  className={`mod-submit-btn ${orderSheetMode}`}
+                <button
+                  className={`mod-submit-btn ${orderSheetMode} arcade-btn ${orderSheetMode === 'buy' ? 'buy' : 'sell'}`}
                   disabled={activeMax <= 0 || qty <= 0 || qty > activeMax || activeCost < 0}
                   onClick={() => {
                     submit(orderSheetMode, false);
@@ -370,13 +383,13 @@ export function TradePanel() {
 
   // v8.2: HORIZONTAL trade bar docked under the chart (TradingView-style).
   return (
-    <div className="tradebar">
+    <div className="tradebar arcade-tradebar">
       {/* LEFT: inputs */}
       <div className="tb-inputs">
-        <div className="tb-ordertype">
-          <button className={!isLimit ? 'on' : ''} onClick={() => setOrderType('market')}>MKT</button>
+        <div className="tb-ordertype arcade-seg">
+          <button className={'disp' + (!isLimit ? ' on' : '')} onClick={() => setOrderType('market')}>MKT</button>
           <button
-            className={(isLimit ? 'on' : '') + (playerLevel < 5 ? ' locked' : '')}
+            className={'disp' + (isLimit ? ' on' : '') + (playerLevel < 5 ? ' locked' : '')}
             onClick={() => {
               if (playerLevel < 5) {
                 useGame.getState().pushToast('Limit orders unlock at Level 5', 'err');
@@ -386,7 +399,7 @@ export function TradePanel() {
             }}
             title={playerLevel < 5 ? 'Requires Level 5' : ''}
           >
-            {playerLevel < 5 ? '🔒 LMT' : 'LMT'}
+            {playerLevel < 5 ? <><LockGlyph size={10} /> LMT</> : 'LMT'}
           </button>
         </div>
         {isLimit && (
@@ -420,7 +433,7 @@ export function TradePanel() {
       {/* CENTER: action buttons */}
       <div className="tb-actions">
         <button
-          className="tb-btn buy"
+          className="tb-btn buy arcade-btn"
           disabled={bq <= 0 || bCost < 0}
           onClick={() => submit('buy', false)}
           title={buyReason || ''}
@@ -428,12 +441,12 @@ export function TradePanel() {
           <span className="tb-btn-label">{buyLabel}</span>
           <span className="tb-btn-sub">{buyReason || `${fmt(bCost < 0 ? 0 : bCost)} · ${fmtNum(bq)}sh`}</span>
         </button>
-        <button className="tb-btn buy-max" disabled={buyMax <= 0} onClick={() => submit('buy', true)} title="Max you can afford">
+        <button className="tb-btn buy-max arcade-btn" disabled={buyMax <= 0} onClick={() => submit('buy', true)} title="Max you can afford">
           <span className="tb-btn-label">MAX</span>
           <span className="tb-btn-sub">{fmtNum(buyMax)}sh</span>
         </button>
         <button
-          className="tb-btn sell"
+          className="tb-btn sell arcade-btn"
           disabled={sq <= 0 || sRev < 0}
           onClick={() => submit('short', false)}
           title={sellReason || ''}
@@ -441,7 +454,7 @@ export function TradePanel() {
           <span className="tb-btn-label">{sellLabel}</span>
           <span className="tb-btn-sub">{sellReason || `${fmt(sRev < 0 ? 0 : sRev)} · ${fmtNum(sq)}sh`}</span>
         </button>
-        <button className="tb-btn sell-max" disabled={shortMax <= 0} onClick={() => submit('short', true)} title="Max with margin">
+        <button className="tb-btn sell-max arcade-btn" disabled={shortMax <= 0} onClick={() => submit('short', true)} title="Max with margin">
           <span className="tb-btn-label">MAX</span>
           <span className="tb-btn-sub">{fmtNum(shortMax)}sh</span>
         </button>

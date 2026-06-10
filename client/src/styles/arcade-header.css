@@ -1,0 +1,342 @@
+/* ============================================================
+   ARCADE-HEADER.CSS — Neon Arcade skin for global shell chrome
+   (Header.tsx + BottomNav.tsx only).
+   Scoped under .arcade-hud (desktop header), .arcade-hud-m
+   (mobile header) and .bnav.dock (console dock) so nothing leaks.
+
+   IMPORTANT cascade note: this file is bundled BEFORE index.css
+   and arcade.css (component import graph order), so every
+   override here wins via HIGHER SPECIFICITY, never via order.
+   !important is used ONLY where index.css itself uses !important
+   (the mobile header block).
+   ============================================================ */
+
+/* ============================ DESKTOP HEADER ============================ */
+
+.mmo-header.arcade-hud {
+  height: 68px;
+  background:
+    linear-gradient(180deg, rgba(34, 211, 238, 0.05), rgba(34, 211, 238, 0) 50%),
+    var(--hud-panel);
+  border-bottom: 1px solid var(--hud-border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* logo lockup → display font, keep gold gradient from index.css */
+.mmo-header.arcade-hud .logo-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 19px;
+  letter-spacing: 1.2px;
+}
+.mmo-header.arcade-hud .logo-slogan { color: #7e8db0; }
+
+/* ---- player strip: level shield + name + XP ---- */
+.mmo-header.arcade-hud .hdr-player-status {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  border-left: 1px solid var(--hud-border-dim);
+  padding-left: 16px;
+}
+.arcade-hud .hdr-player-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.mmo-header.arcade-hud .player-username {
+  font-size: 12px;
+  letter-spacing: 0.8px;
+  line-height: 1.1;
+  color: #fff;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.arcade-hud .hdr-xp { width: 128px; }
+.mmo-header.arcade-hud .status-indicator { margin-top: 0; }
+.mmo-header.arcade-hud .status-text {
+  color: var(--neon-green);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+/* ---- center nav: arcade display font, cyan active rail ---- */
+.mmo-header.arcade-hud .nav-link-btn {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 11.5px;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: #93a3c4;
+  padding: 0 12px;
+}
+.mmo-header.arcade-hud .nav-link-btn:hover {
+  color: #fff;
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.35);
+}
+.mmo-header.arcade-hud .nav-link-btn.active {
+  color: var(--neon-cyan);
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.45);
+}
+.mmo-header.arcade-hud .nav-link-btn.active::after {
+  background: var(--neon-cyan);
+  box-shadow: 0 -2px 10px rgba(34, 211, 238, 0.45);
+}
+.mmo-header.arcade-hud .nav-link-btn:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: -4px;
+  border-radius: 8px;
+}
+.mmo-header.arcade-hud .nav-link-btn.store-btn { color: var(--neon-gold); }
+.mmo-header.arcade-hud .nav-link-btn.store-btn:hover {
+  color: var(--neon-gold);
+  text-shadow: 0 0 8px rgba(223, 166, 55, 0.55);
+}
+.mmo-header.arcade-hud .nav-link-btn.store-btn.active {
+  color: var(--neon-gold);
+  text-shadow: 0 0 8px rgba(223, 166, 55, 0.5);
+}
+.mmo-header.arcade-hud .nav-link-btn.store-btn.active::after {
+  background: var(--neon-gold);
+  box-shadow: 0 -2px 10px rgba(223, 166, 55, 0.45);
+}
+
+/* ---- wallet: cash / gems / streak pills ---- */
+.arcade-hud .hdr-wallet {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.arcade-hud .hdr-wallet .hud-pill { font-size: 12px; padding: 4px 10px; }
+.arcade-hud .hdr-wallet .hdr-cash-val { font-variant-numeric: tabular-nums; }
+
+/* ---- action buttons (messages / notifications) ---- */
+.mmo-header.arcade-hud .hdr-msg-btn {
+  background: var(--hud-inset);
+  border: 1px solid var(--hud-border-dim);
+}
+.mmo-header.arcade-hud .hdr-msg-btn:hover {
+  color: var(--neon-cyan);
+  background: var(--hud-inset);
+  border-color: var(--neon-cyan-dim);
+}
+.mmo-header.arcade-hud .hdr-msg-btn:focus-visible,
+.arcade-hud .notif-bell:focus-visible,
+.arcade-hud-m .notif-bell:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 2px;
+}
+
+/* ---- profile card (opens settings) ---- */
+.mmo-header.arcade-hud .hdr-profile-card {
+  background: var(--hud-inset);
+  border: 1px solid var(--hud-border-dim);
+}
+.mmo-header.arcade-hud .hdr-profile-card:hover {
+  border-color: var(--neon-cyan-dim);
+  background: rgba(34, 211, 238, 0.05);
+}
+.mmo-header.arcade-hud .hdr-profile-card:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 2px;
+}
+.mmo-header.arcade-hud .profile-avatar {
+  border-color: var(--neon-cyan-dim);
+  background: rgba(34, 211, 238, 0.08);
+}
+.mmo-header.arcade-hud .profile-level {
+  color: var(--neon-cyan);
+  font-family: var(--font-mono);
+}
+.arcade-hud .hdr-gear {
+  color: #5d6f93;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+.mmo-header.arcade-hud .hdr-profile-card:hover .hdr-gear { color: var(--neon-cyan); }
+
+/* ---- desktop squeeze: keep 68px strip from overflowing ---- */
+@media (max-width: 1380px) {
+  .mmo-header.arcade-hud .nav-link-btn { padding: 0 8px; font-size: 10.5px; }
+  .arcade-hud .hdr-xp { width: 96px; }
+  .mmo-header.arcade-hud .player-username { max-width: 110px; }
+}
+@media (max-width: 1180px) {
+  .arcade-hud .hdr-wallet .hud-pill.rose { display: none; }
+  .mmo-header.arcade-hud .hdr-player-status { gap: 8px; }
+}
+@media (max-width: 1024px) {
+  .arcade-hud .hdr-wallet .hud-pill.gold { display: none; }
+  .mmo-header.arcade-hud .nav-link-btn { padding: 0 6px; font-size: 10px; }
+  .arcade-hud .hdr-xp { width: 72px; }
+}
+
+/* ============================ MOBILE HEADER ============================ */
+
+@media (max-width: 820px) {
+  /* index.css uses !important on this block — matching it is unavoidable */
+  .mmo-mobile-header.arcade-hud-m {
+    background:
+      linear-gradient(180deg, rgba(34, 211, 238, 0.05), rgba(34, 211, 238, 0) 60%),
+      var(--hud-bg) !important;
+    border-bottom: 1px solid var(--hud-border) !important;
+  }
+  .arcade-hud-m .mobile-hdr-logo .logo-title {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 15px;
+    letter-spacing: 1px;
+  }
+  .arcade-hud-m .mobile-hdr-profile {
+    background: var(--hud-inset);
+    border: 1px solid var(--hud-border-dim);
+    min-height: 44px; /* touch target */
+    box-sizing: border-box;
+  }
+  .arcade-hud-m .mobile-profile-name {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: 0.5px;
+  }
+  .arcade-hud-m .mobile-profile-lvl {
+    color: var(--neon-cyan);
+    font-family: var(--font-mono);
+  }
+  .arcade-hud-m .mobile-profile-avatar {
+    border-color: var(--neon-cyan-dim);
+    background: rgba(34, 211, 238, 0.08);
+  }
+
+  /* XP + wallet strip between top row and ticker */
+  .arcade-hud-m .m-hud-strip {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 12px 7px;
+    background: var(--hud-inset);
+    border-top: 1px solid var(--hud-border-dim);
+    min-width: 0;
+    overflow: hidden;
+  }
+  .arcade-hud-m .m-hud-xp { flex: 1 1 60px; min-width: 0; }
+  .arcade-hud-m .m-hud-strip .hud-pill {
+    flex: 0 0 auto;
+    font-size: 10px;
+    padding: 1px 8px;
+  }
+  .arcade-hud-m .mobile-hdr-ticker-row {
+    background: var(--hud-bg);
+    border-top: 1px solid var(--hud-border-dim);
+  }
+}
+
+/* ============================ CONSOLE DOCK ============================ */
+
+/* arcade.css `.dock { display:flex }` loads after index.css's
+   `.bnav { display:none }` — re-hide the dock on desktop. */
+@media (min-width: 821px) {
+  .bnav.dock { display: none; }
+}
+
+@media (max-width: 820px) {
+  .bnav.dock {
+    background: rgba(7, 10, 18, 0.94);
+    border: none;
+    border-top: 1px solid var(--hud-border);
+    border-radius: 0;
+    box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.6), 0 0 16px rgba(34, 211, 238, 0.05);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  .bnav.dock .bnav-btn { color: #5d6f93; }
+  .bnav.dock .bnav-btn .hud-svg {
+    color: #5d6f93;
+    transition: color 0.15s ease, filter 0.15s ease;
+  }
+  .bnav.dock .bnav-btn.on {
+    color: var(--neon-cyan);
+    text-shadow: 0 0 10px rgba(34, 211, 238, 0.55);
+  }
+  .bnav.dock .bnav-btn.on .hud-svg {
+    color: var(--neon-cyan);
+    filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.6));
+    transform: none;
+  }
+  .bnav.dock .bnav-btn::after { background: transparent; box-shadow: none; }
+  .bnav.dock .bnav-btn.on::after {
+    background: var(--neon-cyan);
+    box-shadow: 0 0 8px var(--neon-cyan);
+  }
+  .bnav.dock .bnav-btn:focus-visible {
+    outline: 2px solid var(--neon-cyan);
+    outline-offset: -3px;
+    border-radius: 10px;
+  }
+  .bnav.dock .bnav-label {
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .bnav.dock .bnav-dot {
+    background: var(--neon-rose);
+    box-shadow: 0 0 6px rgba(244, 63, 94, 0.7);
+  }
+
+  /* raised circular center TRADE button */
+  .bnav.dock .bnav-btn.dock-trade .bnav-icon.dock-center {
+    margin-top: -18px;
+    border: 3px solid var(--hud-bg);
+    box-shadow: 0 0 14px rgba(34, 211, 238, 0.35), 0 4px 10px rgba(0, 0, 0, 0.5);
+  }
+  .bnav.dock .bnav-btn.dock-trade .hud-svg { color: var(--ink-on-cyan); }
+  .bnav.dock .bnav-btn.dock-trade.on .hud-svg {
+    color: var(--ink-on-cyan);
+    filter: none;
+    transform: none;
+  }
+  .bnav.dock .bnav-btn.dock-trade.on .bnav-icon.dock-center {
+    box-shadow: var(--glow-cyan), 0 4px 10px rgba(0, 0, 0, 0.5);
+  }
+  .bnav.dock .bnav-btn.dock-trade::after { display: none; }
+  .bnav.dock .bnav-btn.dock-trade .bnav-label { margin-top: 2px; }
+}
+
+/* ============================ REDUCED MOTION ============================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .bnav.dock .bnav-btn .hud-svg,
+  .mmo-header.arcade-hud .nav-link-btn,
+  .mmo-header.arcade-hud .hdr-profile-card,
+  .mmo-header.arcade-hud .hdr-msg-btn,
+  .arcade-hud .hdr-gear {
+    transition: none !important;
+  }
+}
+
+/* MarketBar: SVG icon alignment (icons replaced emoji glyphs) */
+.mbar-pill, .mbar-action, .mbar-pill-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.mbar-pill svg, .mbar-action svg { flex-shrink: 0; }
+.mbar-pill.active svg { color: var(--neon-cyan); }
+.mbar-pill.locked svg { opacity: 0.6; }
+
+/* Mobile: stop ticker content min-width from inflating the .dashboard grid track.
+   Grid items with overflow:visible propagate content min-width (2000px+ ticker)
+   up into the single column track; clamping the header restores 100vw layout. */
+@media (max-width: 820px) {
+  .mmo-mobile-header.arcade-hud-m {
+    min-width: 0;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  .dashboard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -2,7 +2,30 @@ import { useState, useEffect } from 'react';
 import { useGame } from '../store/gameStore';
 import { fmt, fmtPct } from '../../../shared/engine/helpers';
 import { Audio } from '../audio/audio';
+import {
+  IconClock,
+  IconTrophy,
+  IconStar,
+  IconCoin,
+  IconGem,
+  IconUser,
+  IconShield,
+  IconArrowUp,
+  IconArrowDown,
+} from '../ui/icons';
+import { useCountUp } from '../ui/useCountUp';
 import './Pages.css';
+import '../styles/arcade-leaderboard.css';
+
+/** Visual-only: maps a league name to a neon tier accent class. */
+function tierClass(name: string): string {
+  if (name.startsWith('CHALLENGER')) return 'tier-challenger';
+  if (name.startsWith('MASTER')) return 'tier-master';
+  if (name.startsWith('DIAMOND')) return 'tier-diamond';
+  if (name.startsWith('PLATINUM')) return 'tier-platinum';
+  if (name.startsWith('GOLD')) return 'tier-gold';
+  return 'tier-silver';
+}
 
 // Redefine getLeague to avoid export issues
 interface LeagueInfo {
@@ -177,7 +200,7 @@ export function LeaderboardPage() {
     return points;
   };
 
-  const Sparkline = ({ points, color = '#22C55E' }: { points: number[]; color?: string }) => {
+  const Sparkline = ({ points, color = '#34d399' }: { points: number[]; color?: string }) => {
     const width = 80;
     const height = 20;
     if (points.length < 2) return null;
@@ -215,6 +238,11 @@ export function LeaderboardPage() {
   const playerTrades = playerStats?.totalTrades || 0;
   const playerReturnPct = (((net - (p.dayStartNet || 10000)) / (p.dayStartNet || 10000)) * 100);
 
+  // Visual-only animated display values
+  const playerTier = tierClass(playerLeague.name);
+  const trophiesAnim = useCountUp(playerLeague.trophies);
+  const netAnim = useCountUp(net);
+
   const getRankBadgeClass = (r: number) => {
     if (r === 1) return 'rank-badge-1';
     if (r === 2) return 'rank-badge-2';
@@ -223,64 +251,65 @@ export function LeaderboardPage() {
   };
 
   return (
-    <div className="page-container leaderboard-page">
-      
+    <div className="page-container leaderboard-page arcade-lb">
+
       {/* ================= LEFT SIDEBAR ================= */}
       <aside className="page-sidebar">
-        
+
         {/* Season card */}
-        <div className="season-card mmo-card" style={{ backgroundImage: 'linear-gradient(rgba(11,16,32,0.4), rgba(11,16,32,0.95)), url(/cityscape_sunset.png)' }}>
+        <div className="season-card mmo-card hud-panel hud-corners gold" style={{ backgroundImage: 'linear-gradient(rgba(11,16,32,0.4), rgba(11,16,32,0.95)), url(/cityscape_sunset.png)' }}>
           <div>
-            <span className="season-tag">SEASON 1</span>
-            <h1 className="season-title">TRADING CHAMPIONSHIP</h1>
+            <span className="season-tag hud-pill gold">SEASON 1</span>
+            <h1 className="season-title disp">TRADING CHAMPIONSHIP</h1>
           </div>
-          
+
           <div className="season-countdown-wrap">
-            <span className="countdown-label">⏱ SEASON ENDS IN</span>
+            <span className="countdown-label"><IconClock size={10} /> SEASON ENDS IN</span>
             <div className="countdown-timer">{seasonTimer}</div>
           </div>
         </div>
 
         {/* League progress card */}
-        <div className="league-card mmo-card">
+        <div className="league-card mmo-card hud-panel glow-hover">
           <span className="league-card-title">YOUR LEAGUE</span>
-          {/* Mock Purple Shield emoji for diamond */}
-          <div style={{ fontSize: '72px', margin: '8px 0', filter: 'drop-shadow(0 0 10px rgba(139, 92, 246, 0.4))' }}>🛡️</div>
-          <span className="league-name-main">{playerLeague.name}</span>
+          <div className={`league-shield-wrap ${playerTier}`}>
+            <IconShield size={64} strokeWidth={1.5} title={playerLeague.name} />
+          </div>
+          <span className={`league-name-main disp ${playerTier}`}>{playerLeague.name}</span>
           <div className="league-trophies-row">
-            <span>🏆</span>
-            <span className="qty-val">{playerLeague.trophies.toLocaleString()}</span>
+            <IconTrophy size={15} />
+            <span className="qty-val">{Math.round(trophiesAnim).toLocaleString()}</span>
           </div>
           <div className="league-top-percent">TOP 2% OF TRADERS</div>
-          <div className="league-progress-bg">
-            <div className="league-progress-fill" style={{ width: `${(playerLeague.trophies / playerLeague.maxTrophies) * 100}%` }}></div>
+          <div className="league-progress-bg xp-bar thin">
+            <div className={`league-progress-fill xp-fill ${playerTier}`} style={{ width: `${(playerLeague.trophies / playerLeague.maxTrophies) * 100}%` }}></div>
           </div>
           <span className="league-progress-text">{playerLeague.trophies.toLocaleString()} / {playerLeague.maxTrophies.toLocaleString()}</span>
         </div>
 
         {/* League rewards card */}
-        <div className="mmo-card">
+        <div className="mmo-card hud-panel glow-hover">
           <span className="league-rewards-title">LEAGUE REWARDS</span>
-          <h3 style={{ fontSize: '11px', color: '#fff', marginTop: '6px' }}>{playerLeague.name}</h3>
-          
+          <h3 className={`disp ${playerTier}`} style={{ fontSize: '11px', marginTop: '6px' }}>{playerLeague.name}</h3>
+
           <div className="rewards-grid-mini">
             <div className="reward-item-mini xp">
-              <span>⭐</span>
+              <IconStar size={13} />
               <span>{playerLeague.xpReward.toLocaleString()}</span>
             </div>
             <div className="reward-item-mini cash">
-              <span>💵</span>
+              <IconCoin size={13} />
               <span>{playerLeague.cashReward.toLocaleString()}</span>
             </div>
             <div className="reward-item-mini gems">
-              <span>💎</span>
+              <IconGem size={13} />
               <span>{playerLeague.gemReward.toLocaleString()}</span>
             </div>
           </div>
 
-          <button className="rewards-card-btn" onClick={() => { Audio.click(); pushToast('League Info: Reach next tier to unlock higher rewards.', 'info'); }}>
+          <button className="rewards-card-btn arcade-btn ghost" onClick={() => { Audio.click(); pushToast('League Info: Reach next tier to unlock higher rewards.', 'info'); }}>
             <span>LEAGUE INFO</span>
-            <span>➔</span>
+            <span className="arrow-east"><IconArrowUp size={12} /></span>
           </button>
         </div>
       </aside>
@@ -289,7 +318,7 @@ export function LeaderboardPage() {
       <main className="page-main-content">
         
         {/* LEADERBOARD TABLE */}
-        <section className="mmo-card" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <section className="mmo-card hud-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <div className="leaderboard-tabs-row">
             <div className="holdings-tabs">
               {(['OVERALL', 'WEEKLY', 'MONTHLY', 'DAILY'] as const).map(tab => (
@@ -304,7 +333,7 @@ export function LeaderboardPage() {
             </div>
 
             <button className="leaderboard-friends-btn" onClick={() => { Audio.click(); pushToast('Friends list integrations unlocks next season!', 'info'); }}>
-              <span>👥</span>
+              <IconUser size={13} />
               <span>FRIENDS</span>
             </button>
           </div>
@@ -328,7 +357,7 @@ export function LeaderboardPage() {
                     <tr key={i} className={trader.isPlayer ? 'highlighted-user-row' : ''}>
                       <td>
                         <div className="rank-badge-wrap">
-                          <span className={`rank-badge-wrap ${getRankBadgeClass(trader.rank)}`}>
+                          <span className={`rank-badge-wrap ${getRankBadgeClass(trader.rank)} ${isTop3 ? 'rank-medal disp' : ''}`}>
                             {trader.rank}
                           </span>
                         </div>
@@ -347,20 +376,20 @@ export function LeaderboardPage() {
                         </div>
                       </td>
                       <td>
-                        <span className="qty-val" style={{ color: trader.isPlayer ? '#FBBF24' : '#fff' }}>
+                        <span className="qty-val" style={{ color: trader.isPlayer ? 'var(--neon-gold)' : '#fff' }}>
                           {fmt(trader.net)}
                         </span>
                       </td>
                       <td>
-                        <span className="qty-val" style={{ color: trader.returnPct >= 0 ? '#22C55E' : '#EF4444' }}>
-                          {trader.returnPct >= 0 ? '▲' : '▼'} {fmtLeaderboardPct(trader.returnPct)}
+                        <span className="qty-val delta-val" style={{ color: trader.returnPct >= 0 ? 'var(--neon-green)' : 'var(--neon-rose)' }}>
+                          {trader.returnPct >= 0 ? <IconArrowUp size={10} /> : <IconArrowDown size={10} />} {fmtLeaderboardPct(trader.returnPct)}
                         </span>
                       </td>
                       <td>
                         <span className="qty-val">{trader.trades.toLocaleString()}</span>
                       </td>
                       <td>
-                        <Sparkline points={trader.points} color={trader.returnPct >= 0 ? '#22C55E' : '#EF4444'} />
+                        <Sparkline points={trader.points} color={trader.returnPct >= 0 ? '#34d399' : '#f43f5e'} />
                       </td>
                     </tr>
                   );
@@ -379,23 +408,23 @@ export function LeaderboardPage() {
                         <div className="trader-avatar">👨‍🚀</div>
                         <div className="trader-info-wrap">
                           <span className="trader-name-lbl">{username} (You)</span>
-                          <span className="trader-tag-pro" style={{ background: 'rgba(139, 92, 246, 0.2)', color: '#8B5CF6', borderColor: 'rgba(139,92,246,0.3)' }}>{playerLeague.name}</span>
+                          <span className={`trader-tag-pro tier-tag ${playerTier}`}>{playerLeague.name}</span>
                         </div>
                       </div>
                     </td>
                     <td>
-                      <span className="qty-val" style={{ color: '#FBBF24' }}>{fmt(net)}</span>
+                      <span className="qty-val" style={{ color: 'var(--neon-gold)' }}>{fmt(net)}</span>
                     </td>
                     <td>
-                      <span className="qty-val" style={{ color: playerReturnPct >= 0 ? '#22C55E' : '#EF4444' }}>
-                        {playerReturnPct >= 0 ? '▲' : '▼'} {fmtLeaderboardPct(playerReturnPct)}
+                      <span className="qty-val delta-val" style={{ color: playerReturnPct >= 0 ? 'var(--neon-green)' : 'var(--neon-rose)' }}>
+                        {playerReturnPct >= 0 ? <IconArrowUp size={10} /> : <IconArrowDown size={10} />} {fmtLeaderboardPct(playerReturnPct)}
                       </span>
                     </td>
                     <td>
                       <span className="qty-val">{playerTrades.toLocaleString()}</span>
                     </td>
                     <td>
-                      <Sparkline points={getSeededPoints(0)} color={playerReturnPct >= 0 ? '#22C55E' : '#EF4444'} />
+                      <Sparkline points={getSeededPoints(0)} color={playerReturnPct >= 0 ? '#34d399' : '#f43f5e'} />
                     </td>
                   </tr>
                 )}
@@ -404,7 +433,7 @@ export function LeaderboardPage() {
           </div>
 
           <div className="leaderboard-footer-text">
-            <span className="blinking-dot"></span>
+            <span className="blinking-dot live-dot"></span>
             <span>Leaderboard updates in real-time</span>
           </div>
         </section>
@@ -414,25 +443,26 @@ export function LeaderboardPage() {
       <aside className="page-right-sidebar">
         
         {/* YOUR RANK PANEL */}
-        <section className="mmo-card">
-          <h2 className="stat-label" style={{ fontSize: '11px' }}>YOUR RANK</h2>
-          
+        <section className="mmo-card hud-panel hud-corners">
+          <h2 className="stat-label disp" style={{ fontSize: '11px' }}>YOUR RANK</h2>
+
           <div className="your-rank-shield-wrap">
-            {/* Mock Shield Badge */}
-            <div style={{ fontSize: '64px', filter: 'drop-shadow(0 0 10px rgba(124, 92, 255, 0.4))' }}>🛡️</div>
-            <span className="rank-shield-num">#{rank || 247}</span>
+            <div className={`your-rank-shield ${playerTier}`}>
+              <IconShield size={56} strokeWidth={1.5} title={playerLeague.name} />
+            </div>
+            <span className="rank-shield-num disp">#{rank || 247}</span>
             <span className="rank-shield-label">TOP 2% OF TRADERS</span>
           </div>
 
           <div className="rank-shield-stats-grid">
             <div className="rank-shield-stat-item">
               <span className="rank-shield-stat-lbl">NET WORTH</span>
-              <span className="rank-shield-stat-val">{fmt(net)}</span>
+              <span className="rank-shield-stat-val">{fmt(netAnim)}</span>
             </div>
             <div className="rank-shield-stat-item">
               <span className="rank-shield-stat-lbl">TOTAL RETURN</span>
-              <span className={`rank-shield-stat-val ${playerReturnPct >= 0 ? 'green' : 'red'}`}>
-                {playerReturnPct >= 0 ? '▲' : '▼'} {fmtLeaderboardPct(playerReturnPct)}
+              <span className={`rank-shield-stat-val delta-val ${playerReturnPct >= 0 ? 'green' : 'red'}`}>
+                {playerReturnPct >= 0 ? <IconArrowUp size={10} /> : <IconArrowDown size={10} />} {fmtLeaderboardPct(playerReturnPct)}
               </span>
             </div>
           </div>
@@ -441,8 +471,8 @@ export function LeaderboardPage() {
             <svg width="100%" height="100%" viewBox="0 0 250 50" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="rankChartGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#7C5CFF" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="#7C5CFF" stopOpacity="0" />
+                  <stop offset="0%" stopColor="#a78bfa" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="#a78bfa" stopOpacity="0" />
                 </linearGradient>
               </defs>
               <path
@@ -452,35 +482,35 @@ export function LeaderboardPage() {
               <path
                 d="M 0 30 L 40 35 L 80 25 L 120 40 L 160 20 L 200 15 L 250 10"
                 fill="none"
-                stroke="#7C5CFF"
+                stroke="#a78bfa"
                 strokeWidth="2"
-                style={{ filter: 'drop-shadow(0 0 4px rgba(124, 92, 255, 0.6))' }}
+                style={{ filter: 'drop-shadow(0 0 4px rgba(167, 139, 250, 0.6))' }}
               />
             </svg>
           </div>
         </section>
 
         {/* TOP PERFORMER REWARDS PANEL */}
-        <section className="mmo-card">
-          <h2 className="stat-label" style={{ fontSize: '11px' }}>TOP PERFORMER REWARDS</h2>
-          
+        <section className="mmo-card hud-panel glow-hover">
+          <h2 className="stat-label disp" style={{ fontSize: '11px' }}>TOP PERFORMER REWARDS</h2>
+
           <div className="rewards-performer-list">
-            
+
             <div className="reward-performer-item">
               <div className="reward-performer-left">
-                <span className="reward-performer-rank-icon">👑</span>
+                <span className="reward-performer-rank-icon tier-challenger"><IconTrophy size={17} /></span>
                 <div className="reward-performer-details">
                   <span className="reward-performer-rank-text">TOP 1</span>
-                  <span className="reward-performer-tier-name">Challenger</span>
+                  <span className="reward-performer-tier-name tier-challenger">Challenger</span>
                 </div>
               </div>
               <div className="reward-performer-right">
                 <div className="reward-performer-payout cash">
-                  <span>💵</span>
+                  <IconCoin size={11} />
                   <span>100,000</span>
                 </div>
                 <div className="reward-performer-payout gems">
-                  <span>💎</span>
+                  <IconGem size={11} />
                   <span>2,000</span>
                 </div>
               </div>
@@ -488,19 +518,19 @@ export function LeaderboardPage() {
 
             <div className="reward-performer-item">
               <div className="reward-performer-left">
-                <span className="reward-performer-rank-icon">🥈</span>
+                <span className="reward-performer-rank-icon tier-master"><IconShield size={17} /></span>
                 <div className="reward-performer-details">
                   <span className="reward-performer-rank-text">TOP 2 - 3</span>
-                  <span className="reward-performer-tier-name">Master</span>
+                  <span className="reward-performer-tier-name tier-master">Master</span>
                 </div>
               </div>
               <div className="reward-performer-right">
                 <div className="reward-performer-payout cash">
-                  <span>💵</span>
+                  <IconCoin size={11} />
                   <span>50,000</span>
                 </div>
                 <div className="reward-performer-payout gems">
-                  <span>💎</span>
+                  <IconGem size={11} />
                   <span>1,000</span>
                 </div>
               </div>
@@ -508,19 +538,19 @@ export function LeaderboardPage() {
 
             <div className="reward-performer-item">
               <div className="reward-performer-left">
-                <span className="reward-performer-rank-icon">🥉</span>
+                <span className="reward-performer-rank-icon tier-diamond"><IconGem size={17} /></span>
                 <div className="reward-performer-details">
                   <span className="reward-performer-rank-text">TOP 4 - 10</span>
-                  <span className="reward-performer-tier-name">Diamond II</span>
+                  <span className="reward-performer-tier-name tier-diamond">Diamond II</span>
                 </div>
               </div>
               <div className="reward-performer-right">
                 <div className="reward-performer-payout cash">
-                  <span>💵</span>
+                  <IconCoin size={11} />
                   <span>25,000</span>
                 </div>
                 <div className="reward-performer-payout gems">
-                  <span>💎</span>
+                  <IconGem size={11} />
                   <span>500</span>
                 </div>
               </div>
@@ -528,19 +558,19 @@ export function LeaderboardPage() {
 
             <div className="reward-performer-item">
               <div className="reward-performer-left">
-                <span className="reward-performer-rank-icon">🛡️</span>
+                <span className="reward-performer-rank-icon tier-diamond"><IconShield size={17} /></span>
                 <div className="reward-performer-details">
                   <span className="reward-performer-rank-text">TOP 11 - 100</span>
-                  <span className="reward-performer-tier-name">Diamond I</span>
+                  <span className="reward-performer-tier-name tier-diamond">Diamond I</span>
                 </div>
               </div>
               <div className="reward-performer-right">
                 <div className="reward-performer-payout cash">
-                  <span>💵</span>
+                  <IconCoin size={11} />
                   <span>10,000</span>
                 </div>
                 <div className="reward-performer-payout gems">
-                  <span>💎</span>
+                  <IconGem size={11} />
                   <span>250</span>
                 </div>
               </div>
@@ -548,7 +578,7 @@ export function LeaderboardPage() {
 
             <div className="reward-performer-item">
               <div className="reward-performer-left">
-                <span className="reward-performer-rank-icon">🔹</span>
+                <span className="reward-performer-rank-icon tier-platinum"><IconGem size={17} /></span>
                 <div className="reward-performer-details">
                   <span className="reward-performer-rank-text">TOP 101 - 500</span>
                   <span className="reward-performer-tier-name">Platinum</span>
@@ -556,11 +586,11 @@ export function LeaderboardPage() {
               </div>
               <div className="reward-performer-right">
                 <div className="reward-performer-payout cash">
-                  <span>💵</span>
+                  <IconCoin size={11} />
                   <span>5,000</span>
                 </div>
                 <div className="reward-performer-payout gems">
-                  <span>💎</span>
+                  <IconGem size={11} />
                   <span>100</span>
                 </div>
               </div>
@@ -569,7 +599,7 @@ export function LeaderboardPage() {
           </div>
 
           <div className="table-footer-btn-row" style={{ marginTop: '16px' }}>
-            <button className="daily-btn" onClick={() => { Audio.click(); pushToast('Performer rewards are distributed at the end of each season.', 'ok'); }}>
+            <button className="daily-btn arcade-btn gold" onClick={() => { Audio.click(); pushToast('Performer rewards are distributed at the end of each season.', 'ok'); }}>
               VIEW ALL REWARDS
             </button>
           </div>

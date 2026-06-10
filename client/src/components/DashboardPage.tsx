@@ -6,6 +6,13 @@ import type { Market, MissionState, NewsEvent } from '../../../shared/engine/typ
 import { send } from '../net/wsClient';
 import { Audio } from '../audio/audio';
 import { AnimatedNumber } from './AnimatedNumber';
+import { LevelShield } from '../ui/LevelShield';
+import { useCountUp } from '../ui/useCountUp';
+import {
+  IconGem, IconFlame, IconTrophy, IconCoin, IconGlobe, IconCandles,
+  IconWallet, IconNews, IconStar, IconShield, IconBars,
+} from '../ui/icons';
+import '../styles/arcade-dashboard.css';
 
 export function DashboardPage() {
   const eng = useGame(s => s.engine);
@@ -39,6 +46,9 @@ export function DashboardPage() {
   const xpProgress = Math.max(0, Math.min(100, ((xp - xpAt) / Math.max(1, xpTo - xpAt)) * 100));
 
   const username = session?.user?.user_metadata?.username || session?.user?.email?.split('@')[0] || p.name || 'Trader';
+
+  // Animated display value for the hero stat strip (pure display)
+  const netCount = useCountUp(net);
 
   // State for viewport size detection
   const [isMobile, setIsMobile] = useState(false);
@@ -231,18 +241,38 @@ export function DashboardPage() {
     setActiveTab(tab);
   };
 
+  // Hero stat strip — reuses existing display data (net worth / rank / streak)
+  const heroStatStrip = (
+    <div className="hero-stat-strip">
+      <span className="hud-pill gold"><IconGem size={12} /><span className="strip-lbl">NET</span>{fmt(netCount)}</span>
+      <span className="hud-pill cyan"><IconTrophy size={12} /><span className="strip-lbl">RANK</span>#{rank || 247}</span>
+      <span className="hud-pill rose"><IconFlame size={12} /><span className="strip-lbl">STREAK</span>{streak || 7}D</span>
+    </div>
+  );
+
+  // Skeleton rows shown while asset snapshot has not arrived yet (visual only)
+  const moverSkeletonRows = (count: number) =>
+    Array.from({ length: count }, (_, i) => (
+      <div key={`skel-${i}`} className="mover-row-item skel-row" aria-hidden="true">
+        <div className="skel skel-icon" />
+        <div className="skel skel-line skel-w-lg" />
+        <div className="skel skel-line skel-w-sm" />
+      </div>
+    ));
+
   // ==========================================================================
   // MOBILE RENDER LAYOUT
   // ==========================================================================
   if (isMobile) {
     return (
-      <div className="mmo-mobile-dash-container">
-        
+      <div className="mmo-mobile-dash-container arcdash">
+
         {/* 1. Hero Card Welcome + Live Event combined */}
-        <section className="mmo-mobile-hero" style={{ backgroundImage: 'linear-gradient(rgba(11,16,32,0.4), rgba(11,16,32,0.9)), url(/cityscape_sunset.png)' }}>
+        <section className="mmo-mobile-hero hud-panel hud-corners gold" style={{ backgroundImage: 'linear-gradient(rgba(11,16,32,0.4), rgba(11,16,32,0.9)), url(/cityscape_sunset.png)' }}>
           <div className="mobile-hero-welcome-area">
-            <h1 className="mob-welcome-title">WELCOME BACK, <span className="gold-text">{username.toUpperCase()}</span>!</h1>
+            <h1 className="mob-welcome-title disp">WELCOME BACK, <span className="gold-text neon-gold">{username.toUpperCase()}</span>!</h1>
             <p className="mob-welcome-sub">The market never sleeps. Opportunity is everywhere.</p>
+            {heroStatStrip}
           </div>
 
           <div className="mobile-hero-event-overlay">
@@ -252,25 +282,22 @@ export function DashboardPage() {
                 {timeLeft.hours.toString().padStart(2, '0')}H : {timeLeft.minutes.toString().padStart(2, '0')}M : {timeLeft.seconds.toString().padStart(2, '0')}S
               </span>
             </div>
-            <h3 className="mob-event-title">{eventTitle}</h3>
+            <h3 className="mob-event-title disp">{eventTitle}</h3>
             <p className="mob-event-desc">{eventDesc}</p>
-            <button className="mob-event-cta" onClick={() => handleNavTab('news')}>
+            <button className="mob-event-cta arcade-btn" onClick={() => handleNavTab('news')}>
               VIEW EVENT
             </button>
           </div>
         </section>
 
         {/* 2. Player Progression Card */}
-        <section className="mmo-mobile-card prog-mobile-card">
+        <section className="mmo-mobile-card prog-mobile-card hud-panel glow-hover">
           <div className="prog-mobile-left-badge">
-            <svg viewBox="0 0 100 100" className="shield-svg-mob">
-              <path d="M50 10 L85 25 L85 60 C85 80 50 90 50 90 C50 90 15 80 15 60 L15 25 Z" fill="#7C5CFF" fillOpacity="0.1" stroke="#FBBF24" strokeWidth="3" />
-              <polygon points="50,22 58,40 77,40 62,52 68,70 50,60 32,70 38,52 23,40 42,40" fill="#FBBF24" />
-            </svg>
+            <LevelShield level={lvl} size={44} color="var(--neon-gold)" />
           </div>
           <div className="prog-mobile-center-text">
             <span className="prog-mob-lbl">YOUR RANK</span>
-            <span className="prog-mob-rank">#{rank || 247}</span>
+            <span className="prog-mob-rank disp">#{rank || 247}</span>
             <span className="prog-mob-sub">TOP 2% OF TRADERS</span>
           </div>
           <div className="prog-mobile-right-spark">
@@ -281,13 +308,13 @@ export function DashboardPage() {
         {/* 3. Financial Summary full-width cards */}
         <section className="mmo-mobile-financial-summary">
           {/* Cash Balance */}
-          <div className="mmo-mobile-card summary-mobile-card">
+          <div className="mmo-mobile-card summary-mobile-card cash-card hud-panel glow-hover">
             <div className="sm-circle green-theme-circle">
-              <span>$</span>
+              <IconWallet size={18} />
             </div>
             <div className="sm-details">
               <span className="sm-label">CASH BALANCE</span>
-              <span className="sm-value"><AnimatedNumber value={cash} format={n => fmt(n)} /></span>
+              <span className="sm-value disp"><AnimatedNumber value={cash} format={n => fmt(n)} /></span>
             </div>
             <div className="sm-sparkline">
               <Sparkline points={[100, 102, 101, 104, 103, 106, 105, 108]} color="#22C55E" />
@@ -295,14 +322,14 @@ export function DashboardPage() {
           </div>
 
           {/* Net Worth */}
-          <div className="mmo-mobile-card summary-mobile-card">
+          <div className="mmo-mobile-card summary-mobile-card networth-card hud-panel glow-hover">
             <div className="sm-circle blue-theme-circle">
-              <span>💎</span>
+              <IconGem size={18} />
             </div>
             <div className="sm-details">
               <span className="sm-label">NET WORTH</span>
-              <span className="sm-value"><AnimatedNumber value={net} format={n => fmt(n)} /></span>
-              <span className={`sm-delta ${todayPnLPct >= 0 ? 'up-green' : 'dn-red'}`}>
+              <span className="sm-value disp"><AnimatedNumber value={net} format={n => fmt(n)} /></span>
+              <span className={`sm-delta ${todayPnLPct >= 0 ? 'up-green neon-green' : 'dn-red neon-rose'}`}>
                 {todayPnLPct >= 0 ? '▲' : '▼'} {Math.abs(todayPnLPct).toFixed(2)}% TODAY
               </span>
             </div>
@@ -312,16 +339,16 @@ export function DashboardPage() {
           </div>
 
           {/* Today's Profit */}
-          <div className="mmo-mobile-card summary-mobile-card">
+          <div className="mmo-mobile-card summary-mobile-card hud-panel glow-hover">
             <div className="sm-circle dark-green-circle">
-              <span>📈</span>
+              <IconBars size={18} />
             </div>
             <div className="sm-details">
               <span className="sm-label">TODAY'S PROFIT</span>
-              <span className={`sm-value ${todayPnL >= 0 ? 'up-green' : 'dn-red'}`}>
+              <span className={`sm-value disp ${todayPnL >= 0 ? 'up-green neon-green' : 'dn-red neon-rose'}`}>
                 {todayPnL >= 0 ? '+' : ''}<AnimatedNumber value={todayPnL} format={n => fmt(n)} />
               </span>
-              <span className={`sm-delta ${todayPnL >= 0 ? 'up-green' : 'dn-red'}`}>
+              <span className={`sm-delta ${todayPnL >= 0 ? 'up-green neon-green' : 'dn-red neon-rose'}`}>
                 {todayPnL >= 0 ? '▲' : '▼'} {Math.abs(todayPnLPct).toFixed(2)}%
               </span>
             </div>
@@ -334,26 +361,26 @@ export function DashboardPage() {
         {/* 4. Rewards chest + Streak row */}
         <section className="mmo-mobile-rewards-row">
           {/* Daily Reward */}
-          <div className="mmo-mobile-card reward-mob-card">
+          <div className="mmo-mobile-card reward-mob-card hud-panel glow-hover hud-corners gold">
             <div className="reward-mob-top">
-              <span className="chest-badge-icon">🎁</span>
+              <span className="chest-badge-icon"><IconGem size={22} /></span>
               <div className="reward-text-wrap">
                 <span className="reward-main-lbl">DAILY REWARD</span>
                 <span className="reward-sub-lbl">CLAIM YOUR REWARD</span>
               </div>
             </div>
-            <button className="claim-now-btn-mob" onClick={handleClaimDailyReward}>
+            <button className="claim-now-btn-mob arcade-btn cyan" onClick={handleClaimDailyReward}>
               CLAIM NOW
             </button>
           </div>
 
           {/* Streak Card */}
-          <div className="mmo-mobile-card streak-mob-card">
+          <div className="mmo-mobile-card streak-mob-card hud-panel glow-hover">
             <div className="streak-mob-top">
-              <span className="streak-flame-icon">🔥</span>
+              <span className="streak-flame-icon"><IconFlame size={22} /></span>
               <div className="streak-text-wrap">
                 <span className="streak-main-lbl">STREAK</span>
-                <span className="streak-sub-lbl">{streak || 7} DAYS</span>
+                <span className="streak-sub-lbl disp">{streak || 7} DAYS</span>
                 <span className="streak-caption">Keep it up!</span>
               </div>
             </div>
@@ -373,9 +400,9 @@ export function DashboardPage() {
         </section>
 
         {/* 5. Market Movers Card */}
-        <section className="mmo-mobile-card movers-mob-card">
+        <section className="mmo-mobile-card movers-mob-card hud-panel glow-hover">
           <div className="movers-mob-head">
-            <span className="movers-mob-title">MARKET MOVERS</span>
+            <span className="movers-mob-title disp">MARKET MOVERS</span>
             <span className="movers-mob-view-all" onClick={() => handleNavTab('movers')}>VIEW ALL</span>
           </div>
 
@@ -386,6 +413,7 @@ export function DashboardPage() {
           </div>
 
           <div className="movers-mob-list">
+            {activeMovers.length === 0 && moverSkeletonRows(3)}
             {activeMovers.slice(0, 3).map(({ a, ast, chg }) => {
               const isPositive = chg >= 0;
               return (
@@ -401,7 +429,7 @@ export function DashboardPage() {
                   </div>
                   <div className="mover-mob-price-col">
                     <span className="mover-mob-price">{fmt(ast.lastPrice)}</span>
-                    <span className={`mover-mob-chg ${isPositive ? 'up-green' : 'dn-red'}`}>
+                    <span className={`mover-mob-chg ${isPositive ? 'up-green neon-green' : 'dn-red neon-rose'}`}>
                       {isPositive ? '▲' : '▼'} {Math.abs(chg).toFixed(2)}%
                     </span>
                   </div>
@@ -412,10 +440,10 @@ export function DashboardPage() {
         </section>
 
         {/* 6. Daily Missions Card */}
-        <section className="mmo-mobile-card missions-mob-card">
+        <section className="mmo-mobile-card missions-mob-card hud-panel glow-hover">
           <div className="missions-mob-head">
-            <span className="missions-mob-title">DAILY MISSIONS</span>
-            <span className="missions-mob-countdown">RESETS IN {midnightTimeLeft}</span>
+            <span className="missions-mob-title disp">DAILY MISSIONS</span>
+            <span className="missions-mob-countdown hud-pill gold">RESETS IN {midnightTimeLeft}</span>
           </div>
 
           <div className="missions-mob-list">
@@ -428,13 +456,13 @@ export function DashboardPage() {
                     <div className="mission-mob-details">
                       <span className="mission-mob-title-text">{m.def.title}</span>
                       <div className="mission-mob-prog-row">
-                        <div className="m-bar-outer"><div className="m-bar-inner" style={{ width: `${pct}%` }} /></div>
+                        <div className="m-bar-outer xp-bar thin"><div className="m-bar-inner xp-fill purple" style={{ width: `${pct}%` }} /></div>
                         <span className="m-prog-count-mob">{Math.floor(m.progress)} / {m.def.goal.target}</span>
                       </div>
                     </div>
                     <div className="mission-mob-rewards">
-                      <span className="mob-rew-xp">XP {m.def.reward * 5}</span>
-                      <span className="mob-rew-cash">🪙 {m.def.reward * 10}</span>
+                      <span className="mob-rew-xp hud-pill purple">XP {m.def.reward * 5}</span>
+                      <span className="mob-rew-cash hud-pill gold"><IconCoin size={11} /> {m.def.reward * 10}</span>
                     </div>
                   </div>
                 );
@@ -446,13 +474,13 @@ export function DashboardPage() {
                   <div className="mission-mob-details">
                     <span className="mission-mob-title-text">Make 3 Profitable Trades</span>
                     <div className="mission-mob-prog-row">
-                      <div className="m-bar-outer"><div className="m-bar-inner" style={{ width: '66%' }} /></div>
+                      <div className="m-bar-outer xp-bar thin"><div className="m-bar-inner xp-fill purple" style={{ width: '66%' }} /></div>
                       <span className="m-prog-count-mob">2 / 3</span>
                     </div>
                   </div>
                   <div className="mission-mob-rewards">
-                    <span className="mob-rew-xp">XP 250</span>
-                    <span className="mob-rew-cash">🪙 500</span>
+                    <span className="mob-rew-xp hud-pill purple">XP 250</span>
+                    <span className="mob-rew-cash hud-pill gold"><IconCoin size={11} /> 500</span>
                   </div>
                 </div>
                 <div className="mission-mob-row">
@@ -460,13 +488,13 @@ export function DashboardPage() {
                   <div className="mission-mob-details">
                     <span className="mission-mob-title-text">Trade in Crypto Market</span>
                     <div className="mission-mob-prog-row">
-                      <div className="m-bar-outer"><div className="m-bar-inner" style={{ width: '0%' }} /></div>
+                      <div className="m-bar-outer xp-bar thin"><div className="m-bar-inner xp-fill purple" style={{ width: '0%' }} /></div>
                       <span className="m-prog-count-mob">0 / 1</span>
                     </div>
                   </div>
                   <div className="mission-mob-rewards">
-                    <span className="mob-rew-xp">XP 200</span>
-                    <span className="mob-rew-cash">🪙 300</span>
+                    <span className="mob-rew-xp hud-pill purple">XP 200</span>
+                    <span className="mob-rew-cash hud-pill gold"><IconCoin size={11} /> 300</span>
                   </div>
                 </div>
                 <div className="mission-mob-row">
@@ -474,20 +502,20 @@ export function DashboardPage() {
                   <div className="mission-mob-details">
                     <span className="mission-mob-title-text">Earn $5,000 Profit</span>
                     <div className="mission-mob-prog-row">
-                      <div className="m-bar-outer"><div className="m-bar-inner" style={{ width: '25%' }} /></div>
+                      <div className="m-bar-outer xp-bar thin"><div className="m-bar-inner xp-fill purple" style={{ width: '25%' }} /></div>
                       <span className="m-prog-count-mob">$1,245 / $5,000</span>
                     </div>
                   </div>
                   <div className="mission-mob-rewards">
-                    <span className="mob-rew-xp">XP 500</span>
-                    <span className="mob-rew-cash">🪙 750</span>
+                    <span className="mob-rew-xp hud-pill purple">XP 500</span>
+                    <span className="mob-rew-cash hud-pill gold"><IconCoin size={11} /> 750</span>
                   </div>
                 </div>
               </>
             )}
           </div>
 
-          <button className="view-all-missions-btn-mob" onClick={() => handleNavTab('missions')}>
+          <button className="view-all-missions-btn-mob arcade-btn ghost" onClick={() => handleNavTab('missions')}>
             VIEW ALL MISSIONS
           </button>
         </section>
@@ -500,29 +528,26 @@ export function DashboardPage() {
   // DESKTOP RENDER LAYOUT
   // ==========================================================================
   return (
-    <div className="mmo-dash-layout">
+    <div className="mmo-dash-layout arcdash">
       {/* ================= LEFT SIDEBAR ================= */}
       <aside className="mmo-sidebar">
         {/* Level Card */}
-        <div className="sidebar-card level-card">
+        <div className="sidebar-card level-card hud-panel glow-hover">
           <div className="level-shield-wrap">
-            <svg viewBox="0 0 100 100" className="shield-svg">
-              <path d="M50 10 L85 25 L85 60 C85 80 50 90 50 90 C50 90 15 80 15 60 L15 25 Z" fill="#7C5CFF" fillOpacity="0.1" stroke="#FBBF24" strokeWidth="3" />
-              <polygon points="50,22 58,40 77,40 62,52 68,70 50,60 32,70 38,52 23,40 42,40" fill="#FBBF24" />
-            </svg>
+            <LevelShield level={lvl} size={64} color="var(--neon-gold)" />
           </div>
           <div className="level-text-info">
-            <h2 className="lvl-title">LEVEL {lvl}</h2>
+            <h2 className="lvl-title disp">LEVEL {lvl}</h2>
             <div className="xp-text-range">{xp - xpAt} / {xpTo - xpAt} XP</div>
-            <div className="lvl-bar-outer">
-              <div className="lvl-bar-inner" style={{ width: `${xpProgress}%` }} />
+            <div className="lvl-bar-outer xp-bar">
+              <div className="lvl-bar-inner xp-fill" style={{ width: `${xpProgress}%` }} />
             </div>
           </div>
           <div className="lvl-divider"></div>
           <div className="rank-info-row">
             <div className="rank-left">
               <span className="rank-label">RANK</span>
-              <span className="rank-value">#{rank || 247}</span>
+              <span className="rank-value disp">#{rank || 247}</span>
               <span className="rank-sub">TOP 2% OF TRADERS</span>
             </div>
             <div className="rank-right-spark">
@@ -532,39 +557,39 @@ export function DashboardPage() {
         </div>
 
         {/* Cash Balance */}
-        <div className="sidebar-card balance-card">
+        <div className="sidebar-card balance-card cash-card hud-panel glow-hover">
           <div className="card-icon-circle green-theme">
-            <span>$</span>
+            <IconWallet size={20} />
           </div>
           <div className="balance-info">
             <span className="balance-lbl">CASH BALANCE</span>
-            <span className="balance-val"><AnimatedNumber value={cash} format={n => fmt(n)} /></span>
+            <span className="balance-val disp"><AnimatedNumber value={cash} format={n => fmt(n)} /></span>
           </div>
         </div>
 
         {/* Net Worth */}
-        <div className="sidebar-card balance-card">
+        <div className="sidebar-card balance-card networth-card hud-panel glow-hover">
           <div className="card-icon-circle purple-theme">
-            <span>💎</span>
+            <IconGem size={20} />
           </div>
           <div className="balance-info">
             <span className="balance-lbl">NET WORTH</span>
-            <span className="balance-val"><AnimatedNumber value={net} format={n => fmt(n)} /></span>
-            <span className={`delta-pct-today ${todayPnLPct >= 0 ? 'up-green' : 'dn-red'}`}>
+            <span className="balance-val disp"><AnimatedNumber value={net} format={n => fmt(n)} /></span>
+            <span className={`delta-pct-today ${todayPnLPct >= 0 ? 'up-green neon-green' : 'dn-red neon-rose'}`}>
               {todayPnLPct >= 0 ? '▲' : '▼'} {Math.abs(todayPnLPct).toFixed(2)}% TODAY
             </span>
           </div>
         </div>
 
         {/* Daily Profit/Loss */}
-        <div className="sidebar-card pnl-card">
+        <div className="sidebar-card pnl-card hud-panel glow-hover">
           <div className="pnl-header-row">
             <div className="pnl-lbl-col">
               <span className="pnl-lbl">TODAY'S PROFIT</span>
-              <span className={`pnl-val ${todayPnL >= 0 ? 'up-green' : 'dn-red'}`}>
+              <span className={`pnl-val disp ${todayPnL >= 0 ? 'up-green neon-green' : 'dn-red neon-rose'}`}>
                 {todayPnL >= 0 ? '+' : ''}<AnimatedNumber value={todayPnL} format={n => fmt(n)} />
               </span>
-              <span className={`pnl-pct ${todayPnL >= 0 ? 'up-green' : 'dn-red'}`}>
+              <span className={`pnl-pct ${todayPnL >= 0 ? 'up-green neon-green' : 'dn-red neon-rose'}`}>
                 {todayPnL >= 0 ? '▲' : '▼'} {Math.abs(todayPnLPct).toFixed(2)}%
               </span>
             </div>
@@ -575,29 +600,29 @@ export function DashboardPage() {
         </div>
 
         {/* Daily Reward Chest */}
-        <div className="sidebar-card daily-reward-card">
+        <div className="sidebar-card daily-reward-card hud-panel glow-hover hud-corners gold">
           <div className="chest-badge-layout">
             <div className="chest-illustration-wrap">
               <div className="glowing-orb"></div>
-              <span className="chest-icon-emoji">🎁</span>
+              <span className="chest-icon-emoji"><IconGem size={22} /></span>
             </div>
             <div className="reward-claim-info">
               <span className="reward-lbl">DAILY REWARD</span>
               <span className="reward-sub">CLAIM YOUR REWARD</span>
             </div>
           </div>
-          <button className="claim-now-btn" onClick={handleClaimDailyReward}>
+          <button className="claim-now-btn arcade-btn cyan" onClick={handleClaimDailyReward}>
             CLAIM NOW
           </button>
         </div>
 
         {/* Streak */}
-        <div className="sidebar-card streak-card">
+        <div className="sidebar-card streak-card hud-panel glow-hover">
           <div className="streak-title-row">
-            <span className="streak-flame">🔥</span>
+            <span className="streak-flame"><IconFlame size={22} /></span>
             <div className="streak-labels">
               <span className="streak-lbl">STREAK</span>
-              <span className="streak-days">{streak || 7} DAYS</span>
+              <span className="streak-days disp">{streak || 7} DAYS</span>
               <span className="streak-sub">Keep it up!</span>
             </div>
           </div>
@@ -620,12 +645,13 @@ export function DashboardPage() {
       <div className="mmo-main-content">
         
         {/* Center Top Hero Section */}
-        <section className="hero-banner-section" style={{ backgroundImage: 'linear-gradient(rgba(11,16,32,0.4), rgba(11,16,32,0.9)), url(/cityscape_sunset.png)' }}>
+        <section className="hero-banner-section hud-panel hud-corners gold" style={{ backgroundImage: 'linear-gradient(rgba(11,16,32,0.4), rgba(11,16,32,0.9)), url(/cityscape_sunset.png)' }}>
           <div className="hero-banner-left">
-            <h1 className="welcome-heading">WELCOME BACK, {username.toUpperCase()}!</h1>
+            <h1 className="welcome-heading disp">WELCOME BACK, <span className="neon-gold">{username.toUpperCase()}</span>!</h1>
             <p className="welcome-subtext">The market never sleeps. Opportunity is everywhere.</p>
+            {heroStatStrip}
           </div>
-          
+
           {/* Live Market Event Card */}
           <div className="hero-banner-right event-card-live">
             <div className="live-event-sparkline-bg">
@@ -633,11 +659,11 @@ export function DashboardPage() {
             </div>
             <div className="live-event-content">
               <span className="live-event-tag">LIVE MARKET EVENT</span>
-              <h3 className="live-event-title">{eventTitle}</h3>
+              <h3 className="live-event-title disp">{eventTitle}</h3>
               <p className="live-event-desc">{eventDesc}</p>
-              
+
               <div className="live-event-bottom">
-                <button className="view-event-btn" onClick={() => handleNavTab('news')}>
+                <button className="view-event-btn arcade-btn" onClick={() => handleNavTab('news')}>
                   VIEW EVENT
                 </button>
                 <div className="event-countdown-display">
@@ -658,9 +684,9 @@ export function DashboardPage() {
           <div className="grid-col flex-col">
             
             {/* Market Movers Card */}
-            <div className="mmo-card movers-card">
+            <div className="mmo-card movers-card hud-panel glow-hover">
               <div className="movers-header">
-                <h3 className="card-title-mmo">MARKET MOVERS</h3>
+                <h3 className="card-title-mmo disp">MARKET MOVERS</h3>
                 <div className="movers-tab-buttons">
                   <button 
                     className={`mover-tab-btn ${moversTab === 'gainers' ? 'active' : ''}`}
@@ -684,6 +710,7 @@ export function DashboardPage() {
               </div>
 
               <div className="movers-list-body">
+                {activeMovers.length === 0 && moverSkeletonRows(5)}
                 {activeMovers.map(({ a, ast, chg }) => {
                   const isPositive = chg >= 0;
                   return (
@@ -693,7 +720,7 @@ export function DashboardPage() {
                       onClick={() => navigateToTrade(a.id, a.market as Market)}
                     >
                       <div className="mover-asset-info">
-                        <span className="asset-icon-placeholder">{a.market === 'crypto' ? '🪙' : a.market === 'forex' ? '💱' : '📈'}</span>
+                        <span className="asset-icon-placeholder">{a.market === 'crypto' ? <IconCoin size={14} /> : a.market === 'forex' ? <IconGlobe size={14} /> : <IconCandles size={14} />}</span>
                         <div className="mover-name-col">
                           <span className="mover-symbol">{a.id}</span>
                           <span className="mover-fullname">{a.name}</span>
@@ -708,8 +735,8 @@ export function DashboardPage() {
                       </div>
 
                       <div className="mover-price-col">
-                        <span className="mover-price">${fmt(ast.lastPrice)}</span>
-                        <span className={`mover-chg-pct ${isPositive ? 'up-green' : 'dn-red'}`}>
+                        <span className="mover-price">{fmt(ast.lastPrice)}</span>
+                        <span className={`mover-chg-pct ${isPositive ? 'up-green neon-green' : 'dn-red neon-rose'}`}>
                           {isPositive ? '+' : ''}{fmtPct(chg)}
                         </span>
                       </div>
@@ -718,14 +745,14 @@ export function DashboardPage() {
                 })}
               </div>
 
-              <button className="card-footer-action-btn" onClick={() => handleNavTab('movers')}>
+              <button className="card-footer-action-btn arcade-btn ghost" onClick={() => handleNavTab('movers')}>
                 VIEW ALL MARKETS
               </button>
             </div>
 
             {/* Market News Card */}
-            <div className="mmo-card news-card">
-              <h3 className="card-title-mmo">MARKET NEWS</h3>
+            <div className="mmo-card news-card hud-panel glow-hover">
+              <h3 className="card-title-mmo disp">MARKET NEWS</h3>
               
               <div className="news-list-body">
                 {newsList.length > 0 ? (
@@ -733,8 +760,8 @@ export function DashboardPage() {
                     const elapsed = Math.floor((Date.now() - e.t) / 1000);
                     const timeStr = elapsed < 60 ? elapsed + 's ago' : Math.floor(elapsed / 60) + 'm ago';
                     return (
-                      <div key={idx} className="news-article-row">
-                        <span className="news-bullet">▶</span>
+                      <div key={idx} className="news-article-row hud-panel">
+                        <span className="news-bullet"><IconNews size={13} /></span>
                         <div className="news-content-col">
                           <div className="news-headline">{e.title}</div>
                           <div className="news-meta">{timeStr} • #{e.cat || 'general'}</div>
@@ -744,8 +771,8 @@ export function DashboardPage() {
                   })
                 ) : (
                   defaultNews.map((n, idx) => (
-                    <div key={idx} className="news-article-row">
-                      <span className="news-bullet">▶</span>
+                    <div key={idx} className="news-article-row hud-panel">
+                      <span className="news-bullet"><IconNews size={13} /></span>
                       <div className="news-content-col">
                         <div className="news-headline">{n.title}</div>
                         <div className="news-meta">{n.time} • #{n.desc.split(' ')[0].toLowerCase()}</div>
@@ -755,7 +782,7 @@ export function DashboardPage() {
                 )}
               </div>
 
-              <button className="card-footer-action-btn" onClick={() => handleNavTab('news')}>
+              <button className="card-footer-action-btn arcade-btn ghost" onClick={() => handleNavTab('news')}>
                 VIEW ALL NEWS
               </button>
             </div>
@@ -766,8 +793,8 @@ export function DashboardPage() {
           <div className="grid-col flex-col">
             
             {/* Portfolio Overview Card */}
-            <div className="mmo-card portfolio-card">
-              <h3 className="card-title-mmo">PORTFOLIO OVERVIEW</h3>
+            <div className="mmo-card portfolio-card hud-panel glow-hover">
+              <h3 className="card-title-mmo disp">PORTFOLIO OVERVIEW</h3>
               
               <div className="donut-chart-section">
                 {/* SVG Donut Chart */}
@@ -793,35 +820,35 @@ export function DashboardPage() {
                 </div>
                 <div className="p-stat-box">
                   <span className="p-stat-lbl">P&L (UNREALIZED)</span>
-                  <span className={`p-stat-val ${unrealizedPnL >= 0 ? 'up-green' : 'dn-red'}`}>
+                  <span className={`p-stat-val ${unrealizedPnL >= 0 ? 'up-green neon-green' : 'dn-red neon-rose'}`}>
                     {unrealizedPnL >= 0 ? '+' : ''}{fmt(unrealizedPnL)}
                   </span>
                 </div>
                 <div className="p-stat-box">
                   <span className="p-stat-lbl">P&L (REALIZED)</span>
-                  <span className={`p-stat-val ${realizedPnL >= 0 ? 'up-green' : 'dn-red'}`}>
+                  <span className={`p-stat-val ${realizedPnL >= 0 ? 'up-green neon-green' : 'dn-red neon-rose'}`}>
                     {realizedPnL >= 0 ? '+' : ''}{fmt(realizedPnL)}
                   </span>
                 </div>
               </div>
 
-              <button className="card-footer-action-btn" onClick={() => handleNavTab('positions')}>
+              <button className="card-footer-action-btn arcade-btn ghost" onClick={() => handleNavTab('positions')}>
                 VIEW PORTFOLIO
               </button>
             </div>
 
             {/* Leaderboard Card */}
-            <div className="mmo-card leaderboard-card">
+            <div className="mmo-card leaderboard-card hud-panel glow-hover">
               <div className="leaderboard-header-row">
-                <h3 className="card-title-mmo">LEADERBOARD</h3>
-                <span className="weekly-ranking-lbl">WEEKLY TOP TRADERS</span>
+                <h3 className="card-title-mmo disp">LEADERBOARD</h3>
+                <span className="weekly-ranking-lbl hud-pill cyan">WEEKLY TOP TRADERS</span>
               </div>
 
               <div className="leaderboard-lobby-list">
                 {topHumans.map((item, idx) => (
                   <div key={idx} className="lobby-leaderboard-row">
                     <span className="lobby-rank">
-                      {idx === 0 ? '👑' : `#${idx + 1}`}
+                      {idx === 0 ? <IconTrophy size={15} /> : `#${idx + 1}`}
                     </span>
                     <div className="lobby-avatar-wrap">
                       <span className="lobby-avatar-icon">🧑‍💻</span>
@@ -854,7 +881,7 @@ export function DashboardPage() {
                 )}
               </div>
 
-              <button className="card-footer-action-btn" onClick={() => handleNavTab('stats')}>
+              <button className="card-footer-action-btn arcade-btn ghost" onClick={() => handleNavTab('stats')}>
                 VIEW FULL LEADERBOARD
               </button>
             </div>
@@ -865,10 +892,10 @@ export function DashboardPage() {
           <div className="grid-col flex-col">
             
             {/* Daily Missions Card */}
-            <div className="mmo-card missions-card">
+            <div className="mmo-card missions-card hud-panel glow-hover">
               <div className="missions-header-row">
-                <h3 className="card-title-mmo">DAILY MISSIONS</h3>
-                <span className="resets-in-countdown">RESETS IN {midnightTimeLeft}</span>
+                <h3 className="card-title-mmo disp">DAILY MISSIONS</h3>
+                <span className="resets-in-countdown hud-pill gold">RESETS IN {midnightTimeLeft}</span>
               </div>
 
               <div className="missions-lobby-list">
@@ -885,15 +912,15 @@ export function DashboardPage() {
                           <div className="lobby-mission-desc">{m.def.desc}</div>
                           
                           <div className="lobby-mission-progress-row">
-                            <div className="m-bar-outer">
-                              <div className="m-bar-inner" style={{ width: `${pct}%` }} />
+                            <div className="m-bar-outer xp-bar thin">
+                              <div className="m-bar-inner xp-fill purple" style={{ width: `${pct}%` }} />
                             </div>
                             <span className="m-progress-count">{Math.floor(m.progress)} / {m.def.goal.target}</span>
                           </div>
                         </div>
                         <div className="lobby-mission-rewards">
-                          <span className="lobby-reward-xp">XP {m.def.reward * 5}</span>
-                          <span className="lobby-reward-cash">${m.def.reward * 10}</span>
+                          <span className="lobby-reward-xp hud-pill purple">XP {m.def.reward * 5}</span>
+                          <span className="lobby-reward-cash hud-pill gold">${m.def.reward * 10}</span>
                         </div>
                       </div>
                     );
@@ -906,13 +933,13 @@ export function DashboardPage() {
                         <div className="lobby-mission-title">Make 3 Profitable Trades</div>
                         <div className="lobby-mission-desc">Buy low, sell high to lock in signals.</div>
                         <div className="lobby-mission-progress-row">
-                          <div className="m-bar-outer"><div className="m-bar-inner" style={{ width: '66%' }} /></div>
+                          <div className="m-bar-outer xp-bar thin"><div className="m-bar-inner xp-fill purple" style={{ width: '66%' }} /></div>
                           <span className="m-progress-count">2 / 3</span>
                         </div>
                       </div>
                       <div className="lobby-mission-rewards">
-                        <span className="lobby-reward-xp">XP 250</span>
-                        <span className="lobby-reward-cash">$500</span>
+                        <span className="lobby-reward-xp hud-pill purple">XP 250</span>
+                        <span className="lobby-reward-cash hud-pill gold">$500</span>
                       </div>
                     </div>
                     <div className="lobby-mission-row">
@@ -921,13 +948,13 @@ export function DashboardPage() {
                         <div className="lobby-mission-title">Trade in Crypto Market</div>
                         <div className="lobby-mission-desc">Execute an order in any crypto pair.</div>
                         <div className="lobby-mission-progress-row">
-                          <div className="m-bar-outer"><div className="m-bar-inner" style={{ width: '0%' }} /></div>
+                          <div className="m-bar-outer xp-bar thin"><div className="m-bar-inner xp-fill purple" style={{ width: '0%' }} /></div>
                           <span className="m-progress-count">0 / 1</span>
                         </div>
                       </div>
                       <div className="lobby-mission-rewards">
-                        <span className="lobby-reward-xp">XP 200</span>
-                        <span className="lobby-reward-cash">$300</span>
+                        <span className="lobby-reward-xp hud-pill purple">XP 200</span>
+                        <span className="lobby-reward-cash hud-pill gold">$300</span>
                       </div>
                     </div>
                     <div className="lobby-mission-row">
@@ -936,55 +963,55 @@ export function DashboardPage() {
                         <div className="lobby-mission-title">Earn $5,000 Profit</div>
                         <div className="lobby-mission-desc">Amass trading bounty allocations.</div>
                         <div className="lobby-mission-progress-row">
-                          <div className="m-bar-outer"><div className="m-bar-inner" style={{ width: '25%' }} /></div>
+                          <div className="m-bar-outer xp-bar thin"><div className="m-bar-inner xp-fill purple" style={{ width: '25%' }} /></div>
                           <span className="m-progress-count">$1,245 / $5,000</span>
                         </div>
                       </div>
                       <div className="lobby-mission-rewards">
-                        <span className="lobby-reward-xp">XP 500</span>
-                        <span className="lobby-reward-cash">$750</span>
+                        <span className="lobby-reward-xp hud-pill purple">XP 500</span>
+                        <span className="lobby-reward-cash hud-pill gold">$750</span>
                       </div>
                     </div>
                   </>
                 )}
               </div>
 
-              <button className="card-footer-action-btn" onClick={() => handleNavTab('missions')}>
+              <button className="card-footer-action-btn arcade-btn ghost" onClick={() => handleNavTab('missions')}>
                 VIEW ALL MISSIONS
               </button>
             </div>
 
             {/* Achievements Card */}
-            <div className="mmo-card achievements-card">
+            <div className="mmo-card achievements-card hud-panel glow-hover">
               <div className="achievements-header-row">
-                <h3 className="card-title-mmo">ACHIEVEMENTS</h3>
-                <span className="ach-new-badge">NEW</span>
+                <h3 className="card-title-mmo disp">ACHIEVEMENTS</h3>
+                <span className="ach-new-badge hud-pill gold">NEW</span>
               </div>
 
               <div className="achievements-lobby-grid">
                 <div className={`ach-badge-box ${firstTradeUnlocked ? 'unlocked' : 'locked'}`}>
-                  <div className="ach-shield-icon first-trade">⭐</div>
+                  <div className="ach-shield-icon first-trade"><IconStar size={20} /></div>
                   <span className="ach-name">First Trade</span>
                   <span className="ach-status">{firstTradeUnlocked ? 'Complete' : '0/1 Complete'}</span>
                 </div>
                 <div className={`ach-badge-box ${profitMakerUnlocked ? 'unlocked' : 'locked'}`}>
-                  <div className="ach-shield-icon profit-maker">💰</div>
+                  <div className="ach-shield-icon profit-maker"><IconCoin size={20} /></div>
                   <span className="ach-name">Profit Maker</span>
                   <span className="ach-status">{profitMakerUnlocked ? 'Complete' : 'Earn $10k Profit'}</span>
                 </div>
                 <div className={`ach-badge-box ${bigSpenderUnlocked ? 'unlocked' : 'locked'}`}>
-                  <div className="ach-shield-icon big-spender">💎</div>
+                  <div className="ach-shield-icon big-spender"><IconGem size={20} /></div>
                   <span className="ach-name">Big Spender</span>
                   <span className="ach-status">{bigSpenderUnlocked ? 'Complete' : 'Spend $100k'}</span>
                 </div>
                 <div className={`ach-badge-box ${marketMasterUnlocked ? 'unlocked' : 'locked'}`}>
-                  <div className="ach-shield-icon market-master">👑</div>
+                  <div className="ach-shield-icon market-master"><IconTrophy size={20} /></div>
                   <span className="ach-name">Market Master</span>
                   <span className="ach-status">{marketMasterUnlocked ? 'Complete' : 'Reach Level 20'}</span>
                 </div>
               </div>
 
-              <button className="card-footer-action-btn" onClick={() => handleNavTab('help')}>
+              <button className="card-footer-action-btn arcade-btn ghost" onClick={() => handleNavTab('help')}>
                 VIEW ALL ACHIEVEMENTS
               </button>
             </div>
@@ -995,59 +1022,59 @@ export function DashboardPage() {
 
         {/* Bottom Section */}
         <section className="choose-market-footer-section">
-          <h2 className="choose-market-heading">CHOOSE YOUR MARKET</h2>
-          
+          <h2 className="choose-market-heading disp">CHOOSE YOUR MARKET</h2>
+
           <div className="choose-market-cards-row">
             {/* Stocks */}
-            <div className="market-choice-card stocks-card-border" onClick={() => handleChooseMarket('stocks')}>
+            <div className="market-choice-card stocks-card-border hud-panel" onClick={() => handleChooseMarket('stocks')}>
               <div className="choice-icon-circle green-outline">
-                <span>⭐</span>
+                <IconStar size={18} />
               </div>
               <div className="choice-main-info">
-                <span className="choice-title">TRADE STOCKS</span>
+                <span className="choice-title disp">TRADE STOCKS</span>
                 <span className="choice-desc">100+ COMPANIES</span>
               </div>
-              <button className="choice-cta-btn green-btn">ENTER MARKET</button>
+              <button className="choice-cta-btn arcade-btn green-btn">ENTER MARKET</button>
             </div>
 
             {/* Crypto */}
-            <div className={`market-choice-card crypto-card-border ${lvl < 20 ? 'locked-grey' : ''}`} onClick={() => handleChooseMarket('crypto')}>
+            <div className={`market-choice-card crypto-card-border hud-panel ${lvl < 20 ? 'locked-grey' : ''}`} onClick={() => handleChooseMarket('crypto')}>
               <div className="choice-icon-circle purple-outline">
                 <span>₿</span>
               </div>
               <div className="choice-main-info">
-                <span className="choice-title">TRADE CRYPTO</span>
+                <span className="choice-title disp">TRADE CRYPTO</span>
                 <span className="choice-desc">{lvl < 20 ? 'UNLOCKS AT LEVEL 20' : '50+ CRYPTO PAIRS'}</span>
               </div>
-              <button className={`choice-cta-btn ${lvl < 20 ? 'locked-btn' : 'purple-btn'}`}>
+              <button className={`choice-cta-btn arcade-btn ${lvl < 20 ? 'locked-btn' : 'purple-btn'}`}>
                 {lvl < 20 ? 'LOCKED' : 'ENTER MARKET'}
               </button>
             </div>
 
             {/* Forex */}
-            <div className={`market-choice-card forex-card-border ${lvl < 30 ? 'locked-grey' : ''}`} onClick={() => handleChooseMarket('forex')}>
+            <div className={`market-choice-card forex-card-border hud-panel ${lvl < 30 ? 'locked-grey' : ''}`} onClick={() => handleChooseMarket('forex')}>
               <div className="choice-icon-circle blue-outline">
                 <span>$</span>
               </div>
               <div className="choice-main-info">
-                <span className="choice-title">TRADE FOREX</span>
+                <span className="choice-title disp">TRADE FOREX</span>
                 <span className="choice-desc">{lvl < 30 ? 'UNLOCKS AT LEVEL 30' : '30+ CURRENCY PAIRS'}</span>
               </div>
-              <button className={`choice-cta-btn ${lvl < 30 ? 'locked-btn' : 'blue-btn'}`}>
+              <button className={`choice-cta-btn arcade-btn ${lvl < 30 ? 'locked-btn' : 'blue-btn'}`}>
                 {lvl < 30 ? 'LOCKED' : 'ENTER MARKET'}
               </button>
             </div>
 
             {/* Commodities */}
-            <div className="market-choice-card commodities-card-border locked-grey" onClick={() => { Audio.click(); pushToast('Commodities: Coming in the next seasonal expansion!', 'info'); }}>
+            <div className="market-choice-card commodities-card-border locked-grey hud-panel" onClick={() => { Audio.click(); pushToast('Commodities: Coming in the next seasonal expansion!', 'info'); }}>
               <div className="choice-icon-circle locked-outline">
-                <span>🔒</span>
+                <IconShield size={18} />
               </div>
               <div className="choice-main-info">
-                <span className="choice-title">COMMODITIES</span>
+                <span className="choice-title disp">COMMODITIES</span>
                 <span className="choice-desc">COMING SOON</span>
               </div>
-              <button className="choice-cta-btn locked-btn">LOCKED</button>
+              <button className="choice-cta-btn arcade-btn locked-btn">LOCKED</button>
             </div>
           </div>
         </section>
@@ -1110,7 +1137,7 @@ function DonutChart({ allocations, totalValue }: { allocations: { label: string;
         })}
       </svg>
       <div className="donut-chart-center-info">
-        <span className="donut-center-val">${fmt(totalValue)}</span>
+        <span className="donut-center-val">{fmt(totalValue)}</span>
         <span className="donut-center-lbl">TOTAL VALUE</span>
       </div>
     </div>

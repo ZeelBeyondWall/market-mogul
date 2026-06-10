@@ -3,9 +3,36 @@ import { ASSETS, CATEGORY_LABELS, CATEGORY_ORDER, MARKET_LABELS, marketUnlockLev
 import { fmt, fmtPct } from '../../../shared/engine/helpers';
 import { useGame } from '../store/gameStore';
 import { Audio } from '../audio/audio';
+import { IconStar, IconCandles, IconCoin, IconGlobe } from '../ui/icons';
+import '../styles/arcade-trading.css';
 
 // v8: AssetList — Watchlist always-on-top, Browse grouped below.
 // Market switcher moved to top-level MarketBar; this just renders the active market.
+
+// Neon Arcade: market-category emoji → shared SVG icon set.
+const MARKET_ICONS: Record<string, typeof IconCandles> = {
+  stocks: IconCandles,
+  crypto: IconCoin,
+  forex: IconGlobe,
+};
+
+// Strip a leading emoji token ("📈 Stocks" → "Stocks") from shared labels
+// without touching shared/engine constants (other surfaces still use them).
+function deEmoji(s: string): string {
+  const ix = s.indexOf(' ');
+  return ix > 0 && (s.codePointAt(0) || 0) > 0x2100 ? s.slice(ix + 1) : s;
+}
+
+// Tiny local lock glyph (icons.tsx has no lock; that file is shared/frozen).
+function LockGlyph({ size = 12 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  );
+}
 
 export function AssetList() {
   const eng = useGame(s => s.engine);
@@ -35,13 +62,15 @@ export function AssetList() {
   const marketLocked = playerLevel < marketUnlockLevel(activeMarket);
   const watchInMarket = inMarket.filter(a => watchlist.includes(a.id));
 
+  const MarketIcon = MARKET_ICONS[activeMarket] || IconCandles;
+
   if (marketLocked) {
     return (
       <div className="section">
-        <div className="market-locked-v8">
-          <div className="ml-icon">🔒</div>
+        <div className="market-locked-v8 arcade-al-locked">
+          <div className="ml-icon"><LockGlyph size={34} /></div>
           <div className="ml-text">
-            <div className="ml-t">{MARKET_LABELS[activeMarket]} Locked</div>
+            <div className="ml-t">{deEmoji(MARKET_LABELS[activeMarket])} Locked</div>
             <div className="ml-d">Reach Level {marketUnlockLevel(activeMarket)} to unlock</div>
           </div>
         </div>
@@ -50,15 +79,15 @@ export function AssetList() {
   }
 
   return (
-    <div className="al-v8">
+    <div className="al-v8 arcade-al">
       {/* WATCHLIST — always visible at top */}
       <div className="al-section watch">
         <div className="al-section-head">
-          <span>⭐ Watchlist</span>
+          <span className="al-head-label"><IconStar size={13} /> Watchlist</span>
           <span className="al-count">{watchInMarket.length}</span>
         </div>
         {watchInMarket.length === 0 ? (
-          <div className="al-empty">Click ☆ on any asset to pin it here</div>
+          <div className="al-empty">Click <IconStar size={11} /> on any asset to pin it here</div>
         ) : (
           watchInMarket.map(a => (
             <AssetRow key={a.id} a={a} eng={eng} nw={nw} active={active}
@@ -71,7 +100,7 @@ export function AssetList() {
       {/* BROWSE */}
       <div className="al-section">
         <div className="al-section-head">
-          <span>{MARKET_LABELS[activeMarket]}</span>
+          <span className="al-head-label"><MarketIcon size={13} /> {deEmoji(MARKET_LABELS[activeMarket])}</span>
           <span className="al-count">{inMarket.length}</span>
         </div>
         <input
@@ -88,7 +117,7 @@ export function AssetList() {
           return (
             <div key={cat} className="al-cat">
               <button className="al-cat-head" onClick={() => { toggleCat(cat); Audio.click(); }}>
-                <span>{CATEGORY_LABELS[cat] || cat}</span>
+                <span>{deEmoji(CATEGORY_LABELS[cat] || cat)}</span>
                 <span className="al-cat-count">{items.length}</span>
                 <span className="al-chev">{open ? '▾' : '▸'}</span>
               </button>
@@ -116,9 +145,12 @@ function AssetRow({ a, eng, nw, active, playerLevel, setActive, watched, toggleW
   const tickClass = ast.lastPrice > prevHist ? 'up' : ast.lastPrice < prevHist ? 'dn' : 'flat';
   const sh = eng.player().holdings[a.id]?.shares || 0;
   const hpct = sh !== 0 && nw > 0 ? Math.min(100, Math.abs(sh) * ast.lastPrice / nw * 100) : 0;
+  // Neon Arcade: keyed by price so the flash animation restarts on change —
+  // pure render trick, no new state/subscriptions (row already re-renders per tick).
+  const flashClass = tickClass === 'up' ? ' flash-up' : tickClass === 'dn' ? ' flash-down' : '';
   return (
     <div
-      className={'asset-v8' + (active === a.id ? ' active' : '') + (locked ? ' locked' : '')}
+      className={'asset-v8 hud-panel' + (active === a.id ? ' active' : '') + (locked ? ' locked' : '')}
       onClick={() => {
         if (locked) { Audio.click(); return; }
         setActive(a.id);
@@ -132,10 +164,10 @@ function AssetRow({ a, eng, nw, active, playerLevel, setActive, watched, toggleW
           <svg className="av-icon"><use href={`#${a.icon}`}/></svg>
           <div className="av-id">
             {a.id}
-            {locked && <span className="av-lock">🔒L{a.minLevel}</span>}
+            {locked && <span className="av-lock"><LockGlyph size={9} />L{a.minLevel}</span>}
           </div>
         </div>
-        <div className={'av-price ' + tickClass}>{fmt(ast.lastPrice, ast.lastPrice < 10 ? 3 : 2)}</div>
+        <div key={ast.lastPrice} className={'av-price ' + tickClass + flashClass}>{fmt(ast.lastPrice, ast.lastPrice < 10 ? 3 : 2)}</div>
       </div>
       <div className="av-meta">
         <span className="av-name">{a.name}</span>
@@ -146,7 +178,7 @@ function AssetRow({ a, eng, nw, active, playerLevel, setActive, watched, toggleW
         className={'av-star' + (watched ? ' on' : '')}
         onClick={(e) => { e.stopPropagation(); toggleWatch(a.id); Audio.click(); }}
         title={watched ? 'Remove from watchlist' : 'Add to watchlist'}
-      >{watched ? '★' : '☆'}</button>
+      ><IconStar size={15} /></button>
     </div>
   );
 }

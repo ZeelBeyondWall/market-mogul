@@ -4,6 +4,10 @@ import { Audio } from '../audio/audio';
 import { fmt, fmtPct } from '../../../shared/engine/helpers';
 import { ASSETS } from '../../../shared/engine/constants';
 import { NotificationCenter } from './NotificationCenter';
+import { LevelShield } from '../ui/LevelShield';
+import { useCountUp } from '../ui/useCountUp';
+import { IconGem, IconFlame, IconSettings, IconWallet } from '../ui/icons';
+import '../styles/arcade-header.css';
 
 export function Header() {
   const eng = useGame(s => s.engine);
@@ -19,9 +23,19 @@ export function Header() {
   const equippedFrame = useGame(s => s.equippedFrame);
   const equippedNameColor = useGame(s => s.equippedNameColor);
   const equippedBadge = useGame(s => s.equippedBadge);
+  const xp = useGame(s => s.playerXp);
+  const xpAt = useGame(s => s.xpAtCurrent);
+  const xpTo = useGame(s => s.xpToNext);
+  const streak = useGame(s => s.playerStreak);
+  const gems = useGame(s => s.playerBonus);
 
   const p = eng.player();
   const username = session?.user?.user_metadata?.username || session?.user?.email?.split('@')[0] || p.name || 'Trader';
+
+  // HUD display values (pure presentation: same numbers, animated)
+  const cashAnim = useCountUp(eng.displayCash());
+  const gemsAnim = useCountUp(gems);
+  const xpProgress = Math.max(0, Math.min(100, ((xp - xpAt) / Math.max(1, xpTo - xpAt)) * 100));
 
   // Responsive state
   const [isMobile, setIsMobile] = useState(false);
@@ -67,9 +81,27 @@ export function Header() {
     );
   }).filter(Boolean);
 
+  // Wallet chips: cash (count-up, mono), gems (gold), streak (rose)
+  const walletPills = (
+    <>
+      <span className="hud-pill green hdr-cash-pill" title="Cash">
+        <IconWallet size={12} />
+        <span className="hdr-cash-val">{fmt(cashAnim)}</span>
+      </span>
+      <span className="hud-pill gold" title="Gems">
+        <IconGem size={12} />
+        {Math.round(gemsAnim).toLocaleString()}
+      </span>
+      <span className="hud-pill rose" title="Daily streak">
+        <IconFlame size={12} />
+        {streak}
+      </span>
+    </>
+  );
+
   if (isMobile) {
     return (
-      <header className="mmo-mobile-header">
+      <header className="mmo-mobile-header arcade-hud-m">
         <div className="mobile-header-top-row">
           {/* Logo */}
           <div className="mobile-hdr-logo" onClick={() => handleNav('dashboard')}>
@@ -95,7 +127,7 @@ export function Header() {
             </div>
             <div className={`mobile-profile-avatar ${equippedFrame !== 'none' ? equippedFrame : ''}`}>
               {getAvatarEmoji(lvl)}
-              <span className="mobile-active-dot"></span>
+              <span className="mobile-active-dot live-dot"></span>
             </div>
           </div>
 
@@ -103,6 +135,14 @@ export function Header() {
           <div className="mobile-hdr-bell">
             <NotificationCenter />
           </div>
+        </div>
+
+        {/* XP progress + wallet strip */}
+        <div className="m-hud-strip">
+          <div className="xp-bar thin m-hud-xp" title={`Level ${lvl} — ${Math.round(xpProgress)}% to next`}>
+            <div className="xp-fill" style={{ width: xpProgress + '%' }} />
+          </div>
+          {walletPills}
         </div>
 
         {/* Horizontal Market Ticker */}
@@ -118,7 +158,7 @@ export function Header() {
 
   // Desktop Header
   return (
-    <header className="mmo-header">
+    <header className="mmo-header arcade-hud">
       {/* LEFT: Game Logo, Player Name & Online Status */}
       <div className="hdr-left">
         <div className="hdr-logo-area" onClick={() => handleNav('dashboard')}>
@@ -131,10 +171,16 @@ export function Header() {
           </div>
         </div>
         <div className="hdr-player-status">
-          <span className="player-username">{username}</span>
-          <div className="status-indicator">
-            <span className="status-dot"></span>
-            <span className="status-text">ONLINE</span>
+          <LevelShield level={lvl} size={36} />
+          <div className="hdr-player-meta">
+            <span className="player-username disp">{username}</span>
+            <div className="xp-bar thin hdr-xp" title={`Level ${lvl} — ${Math.round(xpProgress)}% to next`}>
+              <div className="xp-fill" style={{ width: xpProgress + '%' }} />
+            </div>
+            <div className="status-indicator">
+              <span className="status-dot live-dot"></span>
+              <span className="status-text">ONLINE</span>
+            </div>
           </div>
         </div>
       </div>
@@ -191,8 +237,9 @@ export function Header() {
         </button>
       </nav>
 
-      {/* RIGHT: Notifications, Messages, Profile Card */}
+      {/* RIGHT: Wallet, Notifications, Messages, Profile Card */}
       <div className="hdr-right">
+        <div className="hdr-wallet">{walletPills}</div>
         <div className="hdr-actions-icons">
           <button
             className="hdr-msg-btn"
@@ -211,7 +258,7 @@ export function Header() {
           <NotificationCenter />
         </div>
 
-        <div className="hdr-profile-card" onClick={() => { Audio.click(); setSettingsOpen(true); }} title="Profile Settings">
+        <div className="hdr-profile-card" role="button" tabIndex={0} onClick={() => { Audio.click(); setSettingsOpen(true); }} title="Profile Settings">
           <div className={`profile-avatar ${equippedFrame !== 'none' ? equippedFrame : ''}`}>
             {getAvatarEmoji(lvl)}
           </div>
@@ -224,6 +271,7 @@ export function Header() {
             </span>
             <span className="profile-level">LEVEL {lvl}</span>
           </div>
+          <IconSettings size={14} className="hdr-gear" />
         </div>
       </div>
     </header>

@@ -1,0 +1,475 @@
+/* ============================================================
+   ARCADE-PORTFOLIO.CSS — Neon Arcade HUD overrides, Portfolio page only.
+   Scoped under .arcade-portfolio (added to .page-container root).
+   Loaded after Pages.css by PortfolioPage.tsx; wins via the
+   .arcade-portfolio prefix (higher specificity), no !important.
+   ============================================================ */
+
+/* ---------- cards: retint mmo-card to HUD panel layers ---------- */
+.arcade-portfolio .mmo-card {
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-border-dim);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.arcade-portfolio .mmo-card:hover {
+  border-color: var(--hud-border);
+  box-shadow: none;
+}
+.arcade-portfolio .mmo-card.glow-hover:hover {
+  border-color: var(--neon-cyan-dim);
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.18), 0 0 18px rgba(34, 211, 238, 0.08);
+}
+
+/* scrollbar tint: purple -> cyan */
+.arcade-portfolio.page-container::-webkit-scrollbar-thumb {
+  background: rgba(34, 211, 238, 0.25);
+}
+.arcade-portfolio.page-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 211, 238, 0.45);
+}
+
+/* ---------- left sidebar: level card ---------- */
+.arcade-portfolio .lvl-card {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.08) 0%, var(--hud-panel) 100%);
+  border-color: rgba(34, 211, 238, 0.25);
+}
+.arcade-portfolio .lvl-badge-wrap {
+  background: radial-gradient(circle at 50% 50%, rgba(34, 211, 238, 0.28) 0%, transparent 70%);
+}
+.arcade-portfolio .lvl-badge-icon {
+  filter: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.arcade-portfolio .lvl-num {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.6px;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.45);
+}
+/* XP bar -> cyan arcade fill (xp-bar/xp-fill classes added in JSX) */
+.arcade-portfolio .lvl-xp-bar-bg {
+  height: 7px;
+  background: var(--hud-inset);
+  border: 1px solid var(--hud-border);
+  border-radius: 4px;
+}
+.arcade-portfolio .lvl-xp-bar-fill {
+  background: var(--neon-cyan);
+  box-shadow: var(--glow-cyan);
+  border-radius: 4px;
+}
+
+/* ---------- stat cards: one accent metric each ---------- */
+.arcade-portfolio .stat-icon-wrap svg { display: block; }
+.arcade-portfolio .pf-ic-gold {
+  background: rgba(223, 166, 55, 0.1);
+  border: 1px solid rgba(223, 166, 55, 0.3);
+  color: var(--neon-gold);
+}
+.arcade-portfolio .pf-ic-green {
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  color: var(--neon-green);
+}
+.arcade-portfolio .pf-ic-cyan {
+  background: rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  color: var(--neon-cyan);
+}
+.arcade-portfolio .pf-ic-rose {
+  background: rgba(244, 63, 94, 0.1);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  color: var(--neon-rose);
+}
+.arcade-portfolio .rank-val {
+  color: var(--neon-gold);
+  text-shadow: 0 0 10px rgba(223, 166, 55, 0.35);
+}
+.arcade-portfolio .stat-subtext-green {
+  color: var(--neon-green);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.arcade-portfolio .stat-subtext-red {
+  color: var(--neon-rose);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* ---------- daily reward card ---------- */
+.arcade-portfolio .daily-reward-card {
+  background: radial-gradient(circle at 50% 0%, rgba(223, 166, 55, 0.08) 0%, var(--hud-panel) 80%);
+  border-color: rgba(223, 166, 55, 0.3);
+}
+.arcade-portfolio .daily-title {
+  color: var(--neon-gold);
+}
+.arcade-portfolio .daily-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.arcade-portfolio .daily-chest-img {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--neon-gold);
+  filter: drop-shadow(0 4px 15px rgba(223, 166, 55, 0.35));
+}
+/* claim button -> chunky gold arcade button (overrides Pages.css .daily-btn) */
+.arcade-portfolio .daily-btn {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.8px;
+  background: var(--neon-gold);
+  color: var(--ink-on-gold);
+  border: none;
+  border-bottom: 3px solid var(--neon-gold-deep);
+  border-radius: 8px;
+  box-shadow: none;
+  transition: filter 0.15s ease, transform 0.08s ease, border-bottom-width 0.08s ease;
+}
+.arcade-portfolio .daily-btn:hover {
+  transform: none;
+  filter: brightness(1.12);
+  box-shadow: var(--glow-gold);
+}
+.arcade-portfolio .daily-btn:active {
+  transform: translateY(2px);
+  border-bottom-width: 1px;
+}
+.arcade-portfolio .daily-btn:focus-visible {
+  outline: 2px solid var(--neon-gold);
+  outline-offset: 2px;
+}
+
+/* ---------- streak card ---------- */
+.arcade-portfolio .streak-dot.active {
+  background: var(--neon-rose);
+  box-shadow: 0 0 8px var(--neon-rose);
+  border-color: var(--neon-rose);
+}
+
+/* ---------- hero: portfolio overview ---------- */
+.arcade-portfolio .portfolio-value-main {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 1px;
+}
+.arcade-portfolio .portfolio-change-sub > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.arcade-portfolio .eye-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.arcade-portfolio .eye-btn:hover { color: var(--neon-cyan); }
+.arcade-portfolio .eye-btn:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* time filters -> segmented arcade ghost group, cyan active */
+.arcade-portfolio .time-filters {
+  background: var(--hud-inset);
+  border: 1px solid var(--hud-border-dim);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+}
+.arcade-portfolio .tf-pill.arcade-btn {
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.6px;
+  color: var(--dim);
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom-width: 1px;
+  border-radius: 7px;
+  padding: 5px 10px;
+}
+.arcade-portfolio .tf-pill.arcade-btn:hover {
+  color: var(--neon-cyan);
+  filter: none;
+}
+.arcade-portfolio .tf-pill.arcade-btn:active {
+  transform: none;
+}
+.arcade-portfolio .tf-pill.arcade-btn.active {
+  background: var(--neon-cyan);
+  color: var(--ink-on-cyan);
+  border-color: var(--neon-cyan);
+  box-shadow: var(--glow-cyan);
+}
+.arcade-portfolio .tf-pill.arcade-btn:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 1px;
+}
+
+/* performance metrics: neon P&L */
+.arcade-portfolio .performance-metrics-grid {
+  border-top-color: var(--hud-border-dim);
+}
+.arcade-portfolio .metric-item:not(:last-child) {
+  border-right-color: var(--hud-border-dim);
+}
+.arcade-portfolio .metric-val.green { color: var(--neon-green); text-shadow: 0 0 8px rgba(52, 211, 153, 0.35); }
+.arcade-portfolio .metric-val.red { color: var(--neon-rose); text-shadow: 0 0 8px rgba(244, 63, 94, 0.35); }
+.arcade-portfolio .add-buying-power-btn {
+  background: rgba(34, 211, 238, 0.12);
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  color: var(--neon-cyan);
+}
+.arcade-portfolio .add-buying-power-btn:hover {
+  background: var(--neon-cyan);
+  color: var(--ink-on-cyan);
+  box-shadow: var(--glow-cyan);
+}
+.arcade-portfolio .add-buying-power-btn:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 2px;
+}
+
+/* ---------- holdings table ---------- */
+.arcade-portfolio .holdings-header-row {
+  border-bottom-color: var(--hud-border-dim);
+}
+.arcade-portfolio .holdings-tabs {
+  flex-wrap: wrap;
+}
+.arcade-portfolio .holdings-tab-btn {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.6px;
+  border: 1px solid transparent;
+}
+.arcade-portfolio .holdings-tab-btn.active {
+  background: rgba(34, 211, 238, 0.12);
+  color: var(--neon-cyan);
+  border: 1px solid rgba(34, 211, 238, 0.3);
+}
+.arcade-portfolio .holdings-tab-btn:hover:not(.active) {
+  color: var(--neon-cyan);
+  background: rgba(34, 211, 238, 0.05);
+}
+.arcade-portfolio .holdings-tab-btn:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 1px;
+}
+
+.arcade-portfolio .mmo-table th {
+  border-bottom-color: var(--hud-border-dim);
+}
+.arcade-portfolio .mmo-table td {
+  border-bottom-color: rgba(35, 48, 82, 0.35);
+}
+/* alternating row backgrounds for readability */
+.arcade-portfolio .mmo-table tbody tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.018);
+}
+/* hover = subtle cyan left edge, no transform (transparent border is always
+   present so nothing shifts) */
+.arcade-portfolio .mmo-table tbody tr td:first-child {
+  border-left: 2px solid transparent;
+}
+.arcade-portfolio .mmo-table tbody tr:not(.pf-static-row):hover td {
+  background: rgba(34, 211, 238, 0.05);
+}
+.arcade-portfolio .mmo-table tbody tr:not(.pf-static-row):hover td:first-child {
+  border-left-color: var(--neon-cyan);
+}
+.arcade-portfolio .price-change-pct {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.arcade-portfolio .price-change-pct.up-green { color: var(--neon-green); }
+.arcade-portfolio .price-change-pct.dn-red { color: var(--neon-rose); }
+
+/* type pills retinted to the neon palette (covers both singular/plural keys) */
+.arcade-portfolio .type-pill.stock,
+.arcade-portfolio .type-pill.stocks {
+  background: rgba(167, 139, 250, 0.12);
+  color: var(--neon-purple);
+  border: 1px solid rgba(167, 139, 250, 0.25);
+}
+.arcade-portfolio .type-pill.crypto {
+  background: rgba(244, 63, 94, 0.1);
+  color: var(--neon-rose);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+}
+.arcade-portfolio .type-pill.forex {
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--neon-cyan);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+}
+.arcade-portfolio .type-pill.commodity,
+.arcade-portfolio .type-pill.commodities {
+  background: rgba(223, 166, 55, 0.1);
+  color: var(--neon-gold);
+  border: 1px solid rgba(223, 166, 55, 0.25);
+}
+
+.arcade-portfolio .actions-btn:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+
+/* skeleton rows while data has not arrived yet */
+.arcade-portfolio .pf-skel-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.arcade-portfolio .pf-skel-line {
+  height: 10px;
+  border-radius: 4px;
+}
+.arcade-portfolio .pf-skel-line + .pf-skel-line { margin-top: 5px; }
+.arcade-portfolio .pf-skel-line.w80 { width: 80px; max-width: 100%; }
+.arcade-portfolio .pf-skel-line.w60 { width: 60px; max-width: 100%; }
+.arcade-portfolio .pf-skel-line.w40 { width: 40px; max-width: 100%; }
+
+/* friendly empty state */
+.arcade-portfolio .pf-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 16px;
+  margin: 8px 0;
+  text-align: center;
+  background: var(--hud-inset);
+}
+.arcade-portfolio .pf-empty-icon {
+  color: var(--neon-cyan);
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.4));
+}
+.arcade-portfolio .pf-empty-title {
+  font-size: 14px;
+  color: var(--text, #e2e8f0);
+}
+.arcade-portfolio .pf-empty-sub {
+  font-size: 11px;
+  color: var(--dim);
+  max-width: 320px;
+}
+.arcade-portfolio .pf-empty-btn { margin-top: 6px; }
+
+/* footer links: purple -> cyan */
+.arcade-portfolio .view-all-link {
+  font-family: var(--font-display);
+  font-weight: 400;
+  color: var(--neon-cyan);
+}
+.arcade-portfolio .view-all-link:hover {
+  color: var(--neon-cyan);
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.45);
+}
+.arcade-portfolio .view-all-link:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---------- right sidebar: allocation donut ---------- */
+.arcade-portfolio .donut-center-val {
+  font-size: 13px;
+}
+.arcade-portfolio .diversity-footer {
+  border-top-color: var(--hud-border-dim);
+}
+.arcade-portfolio .diversity-progress-bg {
+  height: 7px;
+  background: var(--hud-inset);
+  border: 1px solid var(--hud-border);
+  border-radius: 4px;
+}
+.arcade-portfolio .diversity-progress-fill {
+  background: var(--neon-green);
+  box-shadow: var(--glow-green);
+  border-radius: 4px;
+}
+
+/* ---------- recent activity ---------- */
+.arcade-portfolio .activity-header-row {
+  border-bottom-color: var(--hud-border-dim);
+}
+.arcade-portfolio .activity-icon {
+  background: var(--hud-inset);
+  border: 1px solid var(--hud-border-dim);
+}
+.arcade-portfolio .activity-icon svg { display: block; }
+.arcade-portfolio .activity-action-tag.buy {
+  background: rgba(52, 211, 153, 0.12);
+  color: var(--neon-green);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+}
+.arcade-portfolio .activity-action-tag.sell {
+  background: rgba(244, 63, 94, 0.12);
+  color: var(--neon-rose);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+}
+.arcade-portfolio .activity-value-lbl.positive { color: var(--neon-green); }
+.arcade-portfolio .activity-value-lbl.negative { color: var(--neon-rose); }
+
+/* ---------- mobile (820px breakpoint already handled by Pages.css grid) ---------- */
+@media (max-width: 820px) {
+  /* comfortable touch targets */
+  .arcade-portfolio .tf-pill.arcade-btn {
+    min-height: 44px;
+    padding: 5px 12px;
+  }
+  .arcade-portfolio .holdings-tab-btn {
+    min-height: 44px;
+  }
+  .arcade-portfolio .eye-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .arcade-portfolio .add-buying-power-btn {
+    width: 36px;
+    height: 36px;
+  }
+  .arcade-portfolio .actions-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .arcade-portfolio .daily-btn {
+    min-height: 44px;
+  }
+  /* keep the filter row inside 375px viewports */
+  .arcade-portfolio .portfolio-header-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .arcade-portfolio .time-filters {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+}
+
+/* ---------- reduced motion: no new animations added in this file; the
+   skeleton shimmer / xp shimmer guards live in arcade.css. Kill the only
+   transition-glow niceties here for completeness. ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .arcade-portfolio .daily-btn,
+  .arcade-portfolio .tf-pill.arcade-btn,
+  .arcade-portfolio .add-buying-power-btn,
+  .arcade-portfolio .mmo-card {
+    transition: none;
+  }
+}

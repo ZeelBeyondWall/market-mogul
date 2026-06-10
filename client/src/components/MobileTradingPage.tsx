@@ -3,12 +3,13 @@ import { AssetList } from './AssetList';
 import { Chart } from './Chart';
 import { TradePanel } from './TradePanel';
 import { Tabs } from './Tabs';
+import '../styles/arcade-trading.css';
 
 export function MobileTradingPage() {
   const mobileView = useGame(s => s.mobileView);
 
   return (
-    <div className="mobile-trading-page" data-mv={mobileView}>
+    <div className="mobile-trading-page arcade-mtp-page" data-mv={mobileView}>
       {mobileView === 'market' && (
         <div className="mobile-trading-pane market-pane">
           <AssetList />
