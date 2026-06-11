@@ -6,6 +6,7 @@ import { Audio } from '../audio/audio';
 import { AnimatedNumber } from './AnimatedNumber';
 import { useCountUp } from '../ui/useCountUp';
 import { LevelShield } from '../ui/LevelShield';
+import { TradeHistoryTab } from './TradeHistoryTab';
 import {
   IconTrophy,
   IconWallet,
@@ -644,6 +645,12 @@ export function PortfolioPage() {
               VIEW ALL HOLDINGS
             </span>
           </div>
+        </section>
+
+        {/* Trade history moved here from the trade-panel tab grid */}
+        <section className="pf-history-card hud-panel" style={{ marginTop: 16, padding: 14 }}>
+          <h3 className="section-title disp">TRADE HISTORY</h3>
+          <TradeHistoryTab />
         </section>
       </main>
 
