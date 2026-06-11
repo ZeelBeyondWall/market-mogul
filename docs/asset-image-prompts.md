@@ -1,5 +1,19 @@
 # Asset Logo Image Prompts — MarketVerseX (100 assets)
 
+## ⚡ SIZE / RATIO CHEAT-SHEET (har category ka format)
+
+| Category | Folder | Ratio | Size | Prefix |
+|---|---|---|---|---|
+| Asset logos (100 — stocks/crypto/forex) | `asset-logos/` | 1:1 | 512×512 PNG | STYLE PREFIX (Part 1) |
+| Store items (11) | `store-ui/` | 1:1 | 512×512 PNG | STYLE PREFIX (Part 1) |
+| Dashboard hero + event banners (3) | `dash-ui/` | **16:9** | **1536×864 PNG (ya 1792×1024)** | BANNER PREFIX (Part 2) |
+| Achievement badges (4) | `dash-ui/` | 1:1 | 512×512 PNG | STYLE PREFIX (Part 1) |
+| Leaderboard medals + tiers (6) | `lb-ui/` | 1:1 | 512×512 PNG | STYLE PREFIX (Part 1) |
+| Avatars (6) | `avatars/` | 1:1 | 512×512 PNG | AVATAR PREFIX (Part 2) |
+| Mascot (3) | `mascot/` | 1:1 | 512×512 PNG | STYLE PREFIX (Part 1) |
+
+**Rule simple hai:** sirf 3 hero/event banners 16:9 hai — baaki SAB 512×512 square. Har image PNG. Naming exact jaisi table me hai.
+
 ## Kaise use kare
 
 1. Har prompt ke aage ye **STYLE PREFIX** lagao (copy-paste):
@@ -176,7 +190,7 @@
 
 In sab ke liye wahi **STYLE PREFIX** use karo jo upar hai, SIVAY jahan alag prefix likha ho.
 
-## STORE (folder: `store-ui/`)
+## STORE (folder: `store-ui/`) — sab 1:1, 512×512 PNG, Part 1 wala STYLE PREFIX
 
 | File | Prompt subject |
 |---|---|
@@ -194,7 +208,7 @@ In sab ke liye wahi **STYLE PREFIX** use karo jo upar hai, SIVAY jahan alag pref
 
 ## DASHBOARD (folder: `dash-ui/`)
 
-**Hero banner ke liye alag prefix (wide format):**
+**⚠ Pehli 3 images WIDE hai: 16:9, 1536×864 PNG (ya 1792×1024). Inke liye ye BANNER PREFIX:**
 > Cinematic game hero banner, wide 16:9, dark neon-noir city skyline at dusk with glowing stock tickers and holographic candlestick charts floating between skyscrapers, cyan and gold neon accents, deep navy sky, no text, no watermark —
 
 | File | Prompt subject |
@@ -203,7 +217,7 @@ In sab ke liye wahi **STYLE PREFIX** use karo jo upar hai, SIVAY jahan alag pref
 | `event_boom.png` (16:9, optional) | same city skyline exploding with green rising charts, rockets of light, euphoric market boom |
 | `event_crash.png` (16:9, optional) | same city skyline under red glitching falling charts and storm clouds, market crash mood |
 
-**Achievement badges (normal STYLE PREFIX):**
+**Achievement badges — wapas 1:1, 512×512 PNG, Part 1 wala STYLE PREFIX:**
 
 | File | Prompt subject |
 |---|---|
@@ -212,7 +226,7 @@ In sab ke liye wahi **STYLE PREFIX** use karo jo upar hai, SIVAY jahan alag pref
 | `ach_big_spender.png` | gold shield badge with a gem-studded crown and coins, spender achievement |
 | `ach_market_master.png` | platinum shield badge with a laurel wreath around a bull head, master achievement |
 
-## LEADERBOARD (folder: `lb-ui/`)
+## LEADERBOARD (folder: `lb-ui/`) — sab 1:1, 512×512 PNG, Part 1 wala STYLE PREFIX
 
 | File | Prompt subject |
 |---|---|
@@ -225,7 +239,7 @@ In sab ke liye wahi **STYLE PREFIX** use karo jo upar hai, SIVAY jahan alag pref
 
 ## AVATARS — level-based (folder: `avatars/`, Leaderboard + Profile + Header sab me use honge)
 
-**Avatar prefix (character portrait):**
+**Avatars — 1:1, 512×512 PNG. Inke liye ye AVATAR PREFIX (STYLE PREFIX nahi):**
 > Stylized game avatar portrait, head and shoulders, friendly confident character, flat vector art with soft cel shading, dark navy circular badge background with thin neon rim, vibrant colors, no text, 1:1 square, 512x512 —
 
 | File | Replaces | Prompt subject |
@@ -237,7 +251,7 @@ In sab ke liye wahi **STYLE PREFIX** use karo jo upar hai, SIVAY jahan alag pref
 | `avatar_lvl30.png` | 👽 (level <50) | wise alien trader with large eyes and a galaxy-pattern suit |
 | `avatar_lvl50.png` | 👑 (level 50+) | regal market king with a golden crown, fur-lined cape and a smug grin |
 
-## MASCOT (folder: `mascot/` — market mood indicator, abhi emoji 🐂/🐻/😐)
+## MASCOT (folder: `mascot/`) — sab 1:1, 512×512 PNG, Part 1 wala STYLE PREFIX (market mood indicator, abhi emoji 🐂/🐻/😐)
 
 | File | Prompt subject |
 |---|---|
