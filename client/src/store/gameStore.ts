@@ -35,7 +35,7 @@ export interface UIPrefs extends ChartToggles {
   beginnerMode: boolean; // hides advanced UI when true (v7.2)
   priceAlerts: PriceAlert[]; // v9: persisted price alerts
   activeIndicators: IndicatorId[]; // v10: chart indicators
-  activeScreen: 'dashboard' | 'trading' | 'portfolio' | 'leaderboard' | 'store';
+  activeScreen: 'dashboard' | 'trading' | 'portfolio' | 'leaderboard' | 'store' | 'profile';
   equippedFrame: string;
   equippedBadge: string;
   equippedNameColor: string;
@@ -98,7 +98,7 @@ interface GameStore extends UIPrefs {
   addPriceAlert: (aid: string, price: number, dir: 'above' | 'below') => void;
   removePriceAlert: (id: number) => void;
   setMobileView: (v: 'market' | 'trade' | 'panel') => void;
-  setActiveScreen: (s: 'dashboard' | 'trading' | 'portfolio' | 'leaderboard' | 'store') => void;
+  setActiveScreen: (s: 'dashboard' | 'trading' | 'portfolio' | 'leaderboard' | 'store' | 'profile') => void;
   setEquippedFrame: (frame: string) => void;
   setEquippedBadge: (badge: string) => void;
   setEquippedNameColor: (color: string) => void;

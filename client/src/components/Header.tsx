@@ -6,7 +6,7 @@ import { ASSETS } from '../../../shared/engine/constants';
 import { NotificationCenter } from './NotificationCenter';
 import { LevelShield } from '../ui/LevelShield';
 import { useCountUp } from '../ui/useCountUp';
-import { IconGem, IconFlame, IconSettings, IconWallet } from '../ui/icons';
+import { IconGem, IconFlame, IconUser, IconWallet } from '../ui/icons';
 import '../styles/arcade-header.css';
 
 export function Header() {
@@ -19,7 +19,6 @@ export function Header() {
   const activeTab = useGame(s => s.activeTab);
   const setActiveTab = useGame(s => s.setActiveTab);
   const pushToast = useGame(s => s.pushToast);
-  const setSettingsOpen = useGame(s => s.setSettingsOpen);
   const equippedFrame = useGame(s => s.equippedFrame);
   const equippedNameColor = useGame(s => s.equippedNameColor);
   const equippedBadge = useGame(s => s.equippedBadge);
@@ -115,7 +114,7 @@ export function Header() {
           </div>
 
           {/* Profile Card */}
-          <div className="mobile-hdr-profile" onClick={() => { Audio.click(); setSettingsOpen(true); }}>
+          <div className="mobile-hdr-profile" onClick={() => { Audio.click(); setActiveScreen('profile'); }}>
             <div className="mobile-profile-details" style={{ textAlign: 'right' }}>
               <span className="mobile-profile-name" style={{ color: equippedNameColor !== 'none' ? equippedNameColor : undefined }}>
                 {username}
@@ -258,7 +257,7 @@ export function Header() {
           <NotificationCenter />
         </div>
 
-        <div className="hdr-profile-card" role="button" tabIndex={0} onClick={() => { Audio.click(); setSettingsOpen(true); }} title="Profile Settings">
+        <div className="hdr-profile-card" role="button" tabIndex={0} onClick={() => { Audio.click(); setActiveScreen('profile'); }} title="My Profile">
           <div className={`profile-avatar ${equippedFrame !== 'none' ? equippedFrame : ''}`}>
             {getAvatarEmoji(lvl)}
           </div>
@@ -271,7 +270,7 @@ export function Header() {
             </span>
             <span className="profile-level">LEVEL {lvl}</span>
           </div>
-          <IconSettings size={14} className="hdr-gear" />
+          <IconUser size={14} className="hdr-gear" />
         </div>
       </div>
     </header>

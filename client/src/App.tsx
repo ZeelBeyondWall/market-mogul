@@ -26,6 +26,7 @@ import { PortfolioPage } from './components/PortfolioPage';
 import { LeaderboardPage } from './components/LeaderboardPage';
 import { StorePage } from './components/StorePage';
 import { MobileTradingPage } from './components/MobileTradingPage';
+import { ProfilePage } from './components/ProfilePage';
 
 export function App() {
   useGameLoop();
@@ -96,6 +97,8 @@ export function App() {
             <LeaderboardPage />
           ) : activeScreen === 'store' ? (
             <StorePage />
+          ) : activeScreen === 'profile' ? (
+            <ProfilePage />
           ) : isMobile ? (
             <MobileTradingPage />
           ) : (

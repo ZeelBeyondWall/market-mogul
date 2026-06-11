@@ -5420,6 +5420,7 @@ body[data-theme="game"] {
   #app > .mmo-mobile-dash-container,
   #app > .mmo-dash-layout,
   #app > .page-container,
+  #app > .profile-page,
   #app > .store-page-container {
     grid-row: 4;
     min-height: 0;
