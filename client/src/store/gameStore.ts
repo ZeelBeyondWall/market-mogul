@@ -153,7 +153,12 @@ function loadPrefs(): UIPrefs {
       const parsed = JSON.parse(raw);
       const clean: any = {};
       for (const k of UI_KEYS) if (parsed[k] !== undefined) clean[k] = parsed[k];
-      return { ...defaultPrefs(), ...clean };
+      const merged = { ...defaultPrefs(), ...clean };
+      // Tabs removed from the trade panel (book/stats/history/missions/bots)
+      // may still be persisted from older sessions — fall back to positions.
+      const VALID_TABS: TabId[] = ['positions', 'details', 'movers', 'news', 'help'];
+      if (!VALID_TABS.includes(merged.activeTab)) merged.activeTab = 'positions';
+      return merged;
     }
   } catch { /* ignore */ }
   return defaultPrefs();
