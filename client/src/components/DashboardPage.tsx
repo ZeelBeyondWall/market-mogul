@@ -8,6 +8,7 @@ import { Audio } from '../audio/audio';
 import { AnimatedNumber } from './AnimatedNumber';
 import { LevelShield } from '../ui/LevelShield';
 import { useCountUp } from '../ui/useCountUp';
+import { MissionsTab } from './MissionsTab';
 import {
   IconGem, IconFlame, IconTrophy, IconCoin, IconGlobe, IconCandles,
   IconWallet, IconNews, IconStar, IconShield, IconBars,
@@ -62,6 +63,9 @@ export function DashboardPage() {
 
   // State for tabs inside Market Movers
   const [moversTab, setMoversTab] = useState<'gainers' | 'losers' | 'active'>('gainers');
+  // Missions live on Home now (trade-panel tab removed) — summary card expands
+  // into the full claimable MissionsTab inline.
+  const [showAllMissions, setShowAllMissions] = useState(false);
 
   // Dynamic countdown timers
   const [timeLeft, setTimeLeft] = useState({ hours: 12, minutes: 35, seconds: 21 });
@@ -515,9 +519,14 @@ export function DashboardPage() {
             )}
           </div>
 
-          <button className="view-all-missions-btn-mob arcade-btn ghost" onClick={() => handleNavTab('missions')}>
-            VIEW ALL MISSIONS
+          <button className="view-all-missions-btn-mob arcade-btn ghost" onClick={() => { Audio.click(); setShowAllMissions(v => !v); }}>
+            {showAllMissions ? 'HIDE MISSIONS' : 'VIEW ALL MISSIONS'}
           </button>
+          {showAllMissions && (
+            <div className="dash-missions-full">
+              <MissionsTab />
+            </div>
+          )}
         </section>
 
       </div>
@@ -881,7 +890,7 @@ export function DashboardPage() {
                 )}
               </div>
 
-              <button className="card-footer-action-btn arcade-btn ghost" onClick={() => handleNavTab('stats')}>
+              <button className="card-footer-action-btn arcade-btn ghost" onClick={() => { Audio.click(); setActiveScreen('leaderboard'); }}>
                 VIEW FULL LEADERBOARD
               </button>
             </div>
@@ -976,9 +985,14 @@ export function DashboardPage() {
                 )}
               </div>
 
-              <button className="card-footer-action-btn arcade-btn ghost" onClick={() => handleNavTab('missions')}>
-                VIEW ALL MISSIONS
+              <button className="card-footer-action-btn arcade-btn ghost" onClick={() => { Audio.click(); setShowAllMissions(v => !v); }}>
+                {showAllMissions ? 'HIDE MISSIONS' : 'VIEW ALL MISSIONS'}
               </button>
+              {showAllMissions && (
+                <div className="dash-missions-full">
+                  <MissionsTab />
+                </div>
+              )}
             </div>
 
             {/* Achievements Card */}
