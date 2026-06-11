@@ -115,10 +115,22 @@ app.all('/state', proxy);
 app.all('/admin/*', proxy);
 app.all('/reset', proxy); // SnEttings reset uses this
 
-// Dev-only shutdown — kills both gateway + engine windows. Localhost only (binding below).
-app.post('/shutdown', async (_, res) => {
+// Dev-only shutdown — kills both gateway + engine windows. Token-gated in
+// prod (MM_ADMIN_TOKEN set): this port is internet-reachable, so an open
+// shutdown means anyone can kill the whole game.
+app.post('/shutdown', async (req, res) => {
+  const gate = process.env.MM_ADMIN_TOKEN || '';
+  if (gate && req.header('X-Admin-Token') !== gate) {
+    res.status(401).json({ ok: false, reason: 'invalid admin token' });
+    return;
+  }
   console.log('🛑 gateway /shutdown — forwarding + killing windows...');
-  try { await fetch(ENGINE_HTTP + '/shutdown', { method: 'POST' }); } catch {}
+  try {
+    await fetch(ENGINE_HTTP + '/shutdown', {
+      method: 'POST',
+      headers: { 'X-Admin-Token': req.header('X-Admin-Token') || '' },
+    });
+  } catch {}
   res.json({ ok: true });
   // Stop accepting new conns + close existing
   try { httpServer.close(); } catch {}

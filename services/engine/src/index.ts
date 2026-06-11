@@ -156,6 +156,16 @@ app.use('/admin', (req, res, next) => {
   res.status(401).json({ ok: false, reason: 'invalid admin token' });
 });
 
+// Destructive legacy endpoints outside /admin (/reset, /shutdown) share the
+// same gate: open in dev (no token set), token-locked in prod. Without this
+// anyone reaching the port could wipe state or kill the process.
+function requireAdminToken(req: express.Request, res: express.Response): boolean {
+  if (!ADMIN_TOKEN_GATE) return true;
+  if (req.header('X-Admin-Token') === ADMIN_TOKEN_GATE) return true;
+  res.status(401).json({ ok: false, reason: 'invalid admin token' });
+  return false;
+}
+
 app.get('/health', (_, res) => res.json({ ok: true, time: Date.now() }));
 
 // v9: public feedback / bug-report endpoint (no auth — players submit). Appends
@@ -187,7 +197,8 @@ app.post('/feedback', express.json(), (req, res) => {
 // Reset: wipe disk save + kill server so start.bat must be re-run.
 // Wipe state.json + reinitialize engine in-place (no process kill).
 // Existing WS clients get a fresh snapshot on next interval and just re-render.
-app.post('/reset', (_, res) => {
+app.post('/reset', (req, res) => {
+  if (!requireAdminToken(req, res)) return;
   console.log('🔄 /reset — wiping disk + reinitializing engine');
   try {
     const f = path.resolve(process.cwd(), 'state.json');
@@ -325,7 +336,8 @@ app.post('/admin/reset', (_, res) => {
 
 // Dev-only emergency shutdown — kills both server (this process) and the
 // Vite dev window (matched by cmd-window title set in start.bat).
-app.post('/shutdown', (_, res) => {
+app.post('/shutdown', (req, res) => {
+  if (!requireAdminToken(req, res)) return;
   console.log('🛑 /shutdown received — saving + killing windows...');
   diskSave(engine.state);
   res.json({ ok: true });
