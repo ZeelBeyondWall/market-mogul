@@ -7,6 +7,7 @@ import { useGame } from '../store/gameStore';
 import { Audio } from '../audio/audio';
 import { getTickFrac } from '../net/wsClient';
 import { computeIndicators, type IndicatorId } from '../utils/indicators';
+import { OrderBook } from './OrderBook';
 
 const INDICATOR_OPTIONS: { id: IndicatorId; label: string }[] = [
   { id: 'sma', label: 'SMA' },
@@ -46,6 +47,7 @@ export function Chart() {
   const dragStartScale = useRef(1);
   const [hiddenIndicators, setHiddenIndicators] = useState<IndicatorId[]>([]);
   const [showIndModal, setShowIndModal] = useState(false);
+  const [showBookModal, setShowBookModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // ZScript Custom Indicators Setup
@@ -330,6 +332,7 @@ export function Chart() {
     setContextMenu(null);
     setHiddenIndicators([]);
     setShowIndModal(false);
+    setShowBookModal(false);
     setSearchQuery('');
   }, [a.id, activeTF]);
 
@@ -1254,6 +1257,20 @@ export function Chart() {
           </div>
         )}
 
+        {showBookModal && (
+          <div className="chart-modal-overlay" onClick={() => setShowBookModal(false)}>
+            <div className="chart-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 360 }}>
+              <div className="chart-modal-header">
+                <h3>Order Book — {a.id}</h3>
+                <button className="chart-modal-close" onClick={() => setShowBookModal(false)}>×</button>
+              </div>
+              <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '10px 14px' }}>
+                <OrderBook />
+              </div>
+            </div>
+          </div>
+        )}
+
         {showZEditor && (
           <div className="chart-modal-overlay" onClick={() => { setShowZEditor(false); setEditingId(null); }}>
             <div className="chart-modal zscript-modal" onClick={e => e.stopPropagation()}>
@@ -1430,6 +1447,9 @@ export function Chart() {
                 <div className="chart-ctx-menu" style={{ left: contextMenu.x, top: contextMenu.y }} onClick={(e) => e.stopPropagation()}>
                   <div className="chart-ctx-item" onClick={() => { zoomRef.current = 1; panRef.current = 0; yScaleRef.current = 1; setContextMenu(null); Audio.click(); }}>
                     Reset Chart View
+                  </div>
+                  <div className="chart-ctx-item" onClick={() => { setShowBookModal(true); setContextMenu(null); Audio.click(); }}>
+                    Order Book
                   </div>
                   <div className="chart-ctx-divider" />
                   
