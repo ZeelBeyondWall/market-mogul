@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { ASSETS } from '../../../shared/engine/constants';
 import { TF_LIST, TF_MS, type TFKey } from '../../../shared/engine/types';
 import { fmt, fmtNum, fmtPct } from '../../../shared/engine/helpers';
@@ -19,7 +19,9 @@ const INDICATOR_OPTIONS: { id: IndicatorId; label: string }[] = [
 export function Chart() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const eng = useGame(s => s.engine);
-  useGame(s => s.tick);
+  // Re-render only on server data ticks (10Hz) — the canvas itself repaints
+  // from its own RAF loop below, without going through React.
+  const dataTick = useGame(s => s.dataTick);
   const chartLine = useGame(s => s.chartLine);
   const chartCandles = useGame(s => s.chartCandles);
   const chartVol = useGame(s => s.chartVol);
@@ -29,11 +31,13 @@ export function Chart() {
   const activeIndicators = useGame(s => s.activeIndicators);
   const toggleIndicator = useGame(s => s.toggleIndicator);
 
-  // Interactive state
-  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
-  const [zoomLevel, setZoomLevel] = useState(1); // 1 = default, 0.5 = zoomed in, 2 = zoomed out
-  const [panOffset, setPanOffset] = useState(0); // number of candles panned right
-  const [yScale, setYScale] = useState(1); // Y-axis price scaling factor (TradingView style)
+  // Interactive state — refs, not React state: these change at pointer-event
+  // rate and are only consumed by the canvas draw loop, so re-rendering the
+  // whole component for them is wasted work.
+  const mousePosRef = useRef<{ x: number; y: number } | null>(null);
+  const zoomRef = useRef(1); // 1 = default, 0.5 = zoomed in, 2 = zoomed out
+  const panRef = useRef(0); // number of candles panned right
+  const yScaleRef = useRef(1); // Y-axis price scaling factor (TradingView style)
   const isDragging = useRef(false);
   const dragStartX = useRef(0);
   const dragStartPan = useRef(0);
@@ -70,6 +74,54 @@ export function Chart() {
       localStorage.setItem('mm_custom_indicators', JSON.stringify(list));
     } catch (err) {}
   };
+
+  // Compile cache for ZScript indicators. `new Function` on every canvas
+  // frame was a major frame-time cost — recompile only when code/inputs change.
+  const zfnCache = useRef<Map<string, { key: string; fn: Function }>>(new Map());
+
+  // Built-in indicator results cache — hist gets a new array identity on each
+  // server tick, so identity + window bounds are a sufficient invalidation key.
+  const indCacheRef = useRef<{ hist: number[]; s: number; e: number; res: ReturnType<typeof computeIndicators> } | null>(null);
+
+  // Plot values change only when server data changes (dataTick, 10Hz),
+  // not per canvas frame — precompute here instead of inside the draw loop.
+  const customPlots = useMemo(() => {
+    const out: { ind: CustomIndicator; plots: any[] }[] = [];
+    const astNow = eng.state.assets[eng.state.active];
+    if (!astNow) return out;
+    const seriesNow = astNow.series?.[activeTF];
+    const allCandles = (seriesNow?.candles || []).concat(seriesNow?.curCandle ? [seriesNow.curCandle] : []);
+    for (const ind of customIndicators) {
+      if (!ind.active) continue;
+      try {
+        const schema = ind.inputsSchema || [];
+        const userInputs = ind.inputs || {};
+        const key = ind.code + '|' + JSON.stringify(userInputs) + '|' + JSON.stringify(schema);
+        let entry = zfnCache.current.get(ind.id);
+        if (!entry || entry.key !== key) {
+          let preamble = '';
+          schema.forEach(inp => {
+            const userVal = userInputs[inp.name];
+            const val = userVal !== undefined ? userVal : inp.default;
+            preamble += `const ${inp.name} = ${JSON.stringify(val)};\n`;
+          });
+          entry = { key, fn: new Function('candles', 'inputs', preamble + '\n' + ind.code) };
+          zfnCache.current.set(ind.id, entry);
+        }
+        const rawResult = (chartCandles && allCandles.length > 0)
+          ? entry.fn(allCandles, userInputs)
+          : entry.fn(astNow.history.map(p => ({ o: p, h: p, l: p, c: p, v: 0, t: 0 })), userInputs);
+        if (!rawResult) continue;
+        let plots: any[] = [];
+        if (typeof rawResult === 'object' && Array.isArray(rawResult.plots)) plots = rawResult.plots;
+        else if (Array.isArray(rawResult)) plots = [{ name: ind.name, values: rawResult, color: ind.color, width: 1.5, style: 'solid' }];
+        else continue;
+        out.push({ ind, plots });
+      } catch (err) { /* user script runtime bug — skip its plots */ }
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataTick, customIndicators, activeTF, chartCandles, eng]);
 
   const [showZEditor, setShowZEditor] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -271,11 +323,11 @@ export function Chart() {
   const tfMs = TF_MS[activeTF];
 
   // Reset zoom/pan/yScale when active asset or TF changes
-  useEffect(() => { 
-    setZoomLevel(1); 
-    setPanOffset(0); 
-    setYScale(1); 
-    setContextMenu(null); 
+  useEffect(() => {
+    zoomRef.current = 1;
+    panRef.current = 0;
+    yScaleRef.current = 1;
+    setContextMenu(null);
     setHiddenIndicators([]);
     setShowIndModal(false);
     setSearchQuery('');
@@ -326,7 +378,7 @@ export function Chart() {
     if (!canvas) return;
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
-      setZoomLevel(z => Math.max(0.3, Math.min(4, z + (e.deltaY > 0 ? 0.15 : -0.15))));
+      zoomRef.current = Math.max(0.3, Math.min(4, zoomRef.current + (e.deltaY > 0 ? 0.15 : -0.15)));
     };
     canvas.addEventListener('wheel', handleWheel, { passive: false });
     return () => canvas.removeEventListener('wheel', handleWheel);
@@ -338,24 +390,26 @@ export function Chart() {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    setMousePos({ x, y });
+    mousePosRef.current = { x, y };
     if (isDraggingY.current) {
       const dy = e.clientY - dragStartY.current;
       const sensitivity = 0.005;
-      const newScale = Math.max(0.05, Math.min(20, dragStartScale.current + dy * sensitivity));
-      setYScale(newScale);
+      yScaleRef.current = Math.max(0.05, Math.min(20, dragStartScale.current + dy * sensitivity));
     } else if (isDragging.current) {
       const dx = e.clientX - dragStartX.current;
       const canvasW = rect.width;
-      const candlesPerScreen = Math.round(30 * zoomLevel);
+      const candlesPerScreen = Math.round(30 * zoomRef.current);
       const candlePixelW = canvasW / candlesPerScreen;
       const panDelta = Math.round(dx / candlePixelW);
-      setPanOffset(Math.max(0, dragStartPan.current + panDelta));
+      panRef.current = Math.max(0, dragStartPan.current + panDelta);
     }
-  }, [zoomLevel]);
+    canvas.style.cursor = isDraggingY.current ? 'ns-resize'
+      : isDragging.current ? 'grabbing'
+      : x > rect.width - 64 ? 'ns-resize' : 'crosshair';
+  }, []);
 
   const onPointerLeave = useCallback(() => {
-    setMousePos(null);
+    mousePosRef.current = null;
     isDragging.current = false;
     isDraggingY.current = false;
   }, []);
@@ -371,13 +425,13 @@ export function Chart() {
     if (x > w - 64) {
       isDraggingY.current = true;
       dragStartY.current = e.clientY;
-      dragStartScale.current = yScale;
+      dragStartScale.current = yScaleRef.current;
     } else {
       isDragging.current = true;
       dragStartX.current = e.clientX;
-      dragStartPan.current = panOffset;
+      dragStartPan.current = panRef.current;
     }
-  }, [panOffset, yScale]);
+  }, []);
 
   const onPointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current; if (!canvas) return;
@@ -393,15 +447,21 @@ export function Chart() {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     if (x > rect.width - 64) {
-      setYScale(1);
+      yScaleRef.current = 1;
       Audio.click();
     }
   }, []);
 
-  // Main draw loop
-  useEffect(() => {
+  // Main draw routine. Called from a self-driven RAF loop (see effect below)
+  // instead of running as a React effect 30×/s — React renders are now only
+  // triggered by data ticks (10Hz) and user interaction, the canvas repaints
+  // independently. Reads live engine state so it never shows a stale asset.
+  const draw = () => {
     const canvas = canvasRef.current; if (!canvas) return;
     const cctx = canvas.getContext('2d'); if (!cctx) return;
+    const a = ASSETS.find(x => x.id === eng.state.active)!;
+    const ast = eng.state.assets[a.id];
+    const series = ast.series?.[activeTF] || { candles: [], curCandle: null, candleStartT: 0 };
     const w = canvas.width / devicePixelRatio;
     const h = canvas.height / devicePixelRatio;
     cctx.clearRect(0, 0, w, h);
@@ -427,7 +487,8 @@ export function Chart() {
     const cw = w - padL - padR;
     const ch = cyh - padT - padB;
 
-    const VISIBLE = Math.round(30 * zoomLevel);
+    const panOffset = panRef.current;
+    const VISIBLE = Math.round(30 * zoomRef.current);
     const candleW = cw / VISIBLE;
     const now = Date.now();
     const candleProgress = series.curCandle && series.candleStartT
@@ -437,7 +498,7 @@ export function Chart() {
     const visEnd = Math.min(allCandles.length, visStart + VISIBLE + 1);
     const visible = allCandles.slice(visStart, visEnd);
 
-    const LINE_POINTS = Math.round(120 * zoomLevel);
+    const LINE_POINTS = Math.round(120 * zoomRef.current);
     const lineStart = Math.max(0, hist.length - LINE_POINTS - 1 - panOffset);
     const lineEnd = Math.min(hist.length, lineStart + LINE_POINTS + 1);
     const lineHist = hist.slice(lineStart, lineEnd);
@@ -462,7 +523,7 @@ export function Chart() {
 
     // Apply Y-axis scale (TradingView-style drag scale)
     const mid = (pMax + pMin) / 2;
-    const halfRange = ((pMax - pMin) / 2) * yScale;
+    const halfRange = ((pMax - pMin) / 2) * yScaleRef.current;
     pMin = mid - halfRange;
     pMax = mid + halfRange;
     const range = pMax - pMin || 1;
@@ -471,10 +532,18 @@ export function Chart() {
     const endP = ast.lastPrice;
     const up = endP >= startP;
 
-    // Compute indicators for overlay
-    const indicators = (activeIndicators.length > 0 && lineHist.length > 2)
-      ? computeIndicators(lineHist)
-      : null;
+    // Compute indicators for overlay (cached — recompute only when the data
+    // array or visible window changes, not on every canvas frame)
+    let indicators: ReturnType<typeof computeIndicators> | null = null;
+    if (activeIndicators.length > 0 && lineHist.length > 2) {
+      const c = indCacheRef.current;
+      if (c && c.hist === hist && c.s === lineStart && c.e === lineEnd) {
+        indicators = c.res;
+      } else {
+        indicators = computeIndicators(lineHist);
+        indCacheRef.current = { hist, s: lineStart, e: lineEnd, res: indicators };
+      }
+    }
 
     cctx.save();
     cctx.beginPath();
@@ -556,10 +625,8 @@ export function Chart() {
         cctx.strokeStyle = green ? '#2fa874' : '#dd4f60';
         cctx.fillStyle = green ? 'rgba(47, 168, 116, 0.75)' : 'rgba(221, 79, 96, 0.75)';
         cctx.lineWidth = 1;
-        cctx.shadowColor = green ? '#2fa874' : '#dd4f60';
-        cctx.shadowBlur = 2;
+        // (no shadowBlur — canvas shadows force a slow software pass per wick on mobile GPUs)
         cctx.beginPath(); cctx.moveTo(x, yH); cctx.lineTo(x, yL); cctx.stroke();
-        cctx.shadowBlur = 0;
         const top = Math.min(yO, yC); const bot = Math.max(yO, yC);
         cctx.fillRect(x - cbw / 2, top, cbw, Math.max(1, bot - top));
         cctx.strokeRect(x - cbw / 2, top, cbw, Math.max(1, bot - top));
@@ -567,47 +634,9 @@ export function Chart() {
     }
 
     // === Render Custom ZScript Indicators ===
-    customIndicators.forEach(ind => {
-      if (!ind.active) return;
+    // Compiled + computed in the customPlots memo (10Hz) — here we only draw.
+    customPlots.forEach(({ ind, plots }) => {
       try {
-        // Compile with inputs preamble
-        const schema = ind.inputsSchema || [];
-        const userInputs = ind.inputs || {};
-        let preamble = '';
-        schema.forEach(inp => {
-          const userVal = userInputs[inp.name];
-          const val = userVal !== undefined ? userVal : inp.default;
-          preamble += `const ${inp.name} = ${JSON.stringify(val)};\n`;
-        });
-        const func = new Function('candles', 'inputs', preamble + '\n' + ind.code);
-
-        // Get values
-        let rawResult;
-        if (chartCandles && visible.length) {
-          rawResult = func(allCandles, userInputs);
-        } else {
-          const lineCandles = hist.map(p => ({ o: p, h: p, l: p, c: p, v: 0, t: Date.now() }));
-          rawResult = func(lineCandles, userInputs);
-        }
-
-        if (!rawResult) return;
-
-        // Parse result into list of plots
-        let plots: any[] = [];
-        if (rawResult && typeof rawResult === 'object' && Array.isArray(rawResult.plots)) {
-          plots = rawResult.plots;
-        } else if (Array.isArray(rawResult)) {
-          plots = [{
-            name: ind.name,
-            values: rawResult,
-            color: ind.color,
-            width: 1.5,
-            style: 'solid'
-          }];
-        } else {
-          return;
-        }
-
         plots.forEach(plot => {
           if (!plot || !Array.isArray(plot.values)) return;
 
@@ -917,6 +946,7 @@ export function Chart() {
     }
 
     // === CROSSHAIR + TOOLTIP ===
+    const mousePos = mousePosRef.current;
     if (mousePos && mousePos.x >= padL && mousePos.x <= padL + cw && mousePos.y >= padT && mousePos.y <= padT + ch) {
       const mx = mousePos.x;
       const my = mousePos.y;
@@ -966,7 +996,31 @@ export function Chart() {
         }
       }
     }
-  });
+  };
+
+  // Keep the latest draw closure (fresh props/state) reachable from the
+  // stable RAF loop below without re-subscribing it every render.
+  const drawRef = useRef(draw);
+  drawRef.current = draw;
+
+  // Self-driven canvas repaint at ~30fps. This replaces the old pattern of
+  // bumping a zustand `tick` 30×/s, which re-rendered this entire component
+  // for every canvas frame.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas) canvas.style.cursor = 'crosshair';
+    let raf = 0;
+    let last = 0;
+    const loop = (now: number) => {
+      if (now - last >= 33) {
+        drawRef.current();
+        last = now;
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   const chg = ast.lastPrice - ast.open;
   const chgP = chg / (ast.open || 1) * 100;
@@ -1357,15 +1411,8 @@ export function Chart() {
           );
         })()}
         {(() => {
-          let cursorStyle = 'crosshair';
-          const isHoveringY = mousePos ? mousePos.x > (canvasRef.current?.getBoundingClientRect().width ?? 0) - 64 : false;
-          if (isDraggingY.current) {
-            cursorStyle = 'ns-resize';
-          } else if (isDragging.current) {
-            cursorStyle = 'grabbing';
-          } else if (isHoveringY) {
-            cursorStyle = 'ns-resize';
-          }
+          // Cursor is managed imperatively in onPointerMove (canvas.style.cursor)
+          // so renders don't fight with drag feedback.
           return (
             <>
               <canvas
@@ -1377,11 +1424,11 @@ export function Chart() {
                 onPointerUp={onPointerUp}
                 onDoubleClick={onDoubleClick}
                 onContextMenu={onContextMenu}
-                style={{ cursor: cursorStyle, touchAction: 'none' }}
+                style={{ touchAction: 'none' }}
               />
               {contextMenu && (
                 <div className="chart-ctx-menu" style={{ left: contextMenu.x, top: contextMenu.y }} onClick={(e) => e.stopPropagation()}>
-                  <div className="chart-ctx-item" onClick={() => { setZoomLevel(1); setPanOffset(0); setYScale(1); setContextMenu(null); Audio.click(); }}>
+                  <div className="chart-ctx-item" onClick={() => { zoomRef.current = 1; panRef.current = 0; yScaleRef.current = 1; setContextMenu(null); Audio.click(); }}>
                     Reset Chart View
                   </div>
                   <div className="chart-ctx-divider" />
