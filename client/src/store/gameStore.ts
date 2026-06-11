@@ -67,6 +67,8 @@ interface GameStore extends UIPrefs {
   banner: string;
   maintenanceMode: boolean;
   tradingHalted: boolean;
+  // v11: server-pushed flag — store purchases allowed for this user (admin allowlist).
+  storeBuyAllowed: boolean;
   dailyMissions: MissionState[];
   weeklyMissions: MissionState[];
   // v8.1: transient toast for order results (success / failure)
@@ -88,7 +90,7 @@ interface GameStore extends UIPrefs {
   toggleWatchlist: (aid: string) => void;
   setBotFilter: (f: string) => void;
   setPlayerExtras: (s: { stats: PlayerStats; bonus: number; streak: number; daily: MissionState[]; weekly: MissionState[]; level: number; xp: number; xpAtCurrent: number; xpToNext: number }) => void;
-  setServerFlags: (s: { banner: string; maintenanceMode: boolean; tradingHalted: boolean }) => void;
+  setServerFlags: (s: { banner: string; maintenanceMode: boolean; tradingHalted: boolean; storeBuyAllowed: boolean }) => void;
   pushToast: (msg: string, kind?: 'ok' | 'err' | 'info') => void;
   pushNotif: (kind: NotifKind, title: string, body?: string) => void;
   setNotifOpen: (v: boolean) => void;
@@ -205,6 +207,7 @@ export const useGame = create<GameStore>((set, get) => {
     banner: '',
     maintenanceMode: false,
     tradingHalted: false,
+    storeBuyAllowed: false,
     dailyMissions: [],
     weeklyMissions: [],
     toast: null,
@@ -260,7 +263,7 @@ export const useGame = create<GameStore>((set, get) => {
       xpAtCurrent: s.xpAtCurrent,
       xpToNext: s.xpToNext,
     }),
-    setServerFlags: (s) => set({ banner: s.banner, maintenanceMode: s.maintenanceMode, tradingHalted: s.tradingHalted }),
+    setServerFlags: (s) => set({ banner: s.banner, maintenanceMode: s.maintenanceMode, tradingHalted: s.tradingHalted, storeBuyAllowed: s.storeBuyAllowed }),
     pushToast: (msg, kind = 'info') => {
       // Use Date.now() inside callback (safe — not in render).
       const t = { msg, kind, ts: typeof performance !== 'undefined' ? performance.now() : 0 };

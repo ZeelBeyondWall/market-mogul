@@ -34,6 +34,25 @@ export default function Economy() {
   // Debounce timers per key.
   const flagTimers = useRef<Record<string, any>>({});
 
+  // Store purchase allowlist (usernames)
+  const [storeAccessList, setStoreAccessList] = useState<string[]>([]);
+  const [storeAccessInput, setStoreAccessInput] = useState('');
+
+  async function loadStoreAccess() {
+    const r = await safe(() => apiGet<{ ok: boolean; users: string[] }>('/admin/store-access'));
+    if (r) setStoreAccessList(r.users || []);
+  }
+  async function addStoreAccess() {
+    const username = storeAccessInput.trim().toLowerCase();
+    if (!username) { toast('Enter a username', 'err'); return; }
+    const r = await safe(() => apiPost<{ ok: boolean; users: string[] }>('/admin/store-access/add', { username }));
+    if (r) { setStoreAccessList(r.users || []); setStoreAccessInput(''); toast(`${username} can now buy from the store`, 'ok'); }
+  }
+  async function removeStoreAccess(username: string) {
+    const r = await safe(() => apiPost<{ ok: boolean; users: string[] }>('/admin/store-access/remove', { username }));
+    if (r) { setStoreAccessList(r.users || []); toast(`${username} removed from store access`, 'ok'); }
+  }
+
   async function load() {
     const r = await safe(() => apiGet<EconomyResp>('/admin/economy'), m => setErr(m));
     if (r) {
@@ -49,6 +68,7 @@ export default function Economy() {
 
   useEffect(() => {
     load();
+    loadStoreAccess();
     const id = setInterval(load, 3000);
     return () => {
       clearInterval(id);
@@ -266,6 +286,37 @@ export default function Economy() {
             if (r) { toast('Strict bot gate ' + (v ? 'enabled' : 'disabled'), 'ok'); load(); }
           }}
         />
+      </div>
+
+      {/* ===== Store purchase access (allowlist) ===== */}
+      <div className="a-card" style={{ marginTop: 18 }}>
+        <div className="a-card-title">🛒 Store Purchase Access</div>
+        <p className="a-page-sub" style={{ marginBottom: 10 }}>
+          Store buys show "Coming Soon" for everyone except these usernames. Server-enforced.
+        </p>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <input
+            className="a-input"
+            placeholder="username"
+            value={storeAccessInput}
+            onChange={e => setStoreAccessInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') addStoreAccess(); }}
+            style={{ flex: 1 }}
+          />
+          <button className="a-btn" onClick={addStoreAccess}>Allow</button>
+        </div>
+        {storeAccessList.length === 0 ? (
+          <div className="a-empty">No one whitelisted — store buying is "coming soon" for all players.</div>
+        ) : (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {storeAccessList.map(u => (
+              <span key={u} className="a-stat-delta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14 }}>
+                {u}
+                <button className="a-btn ghost" style={{ padding: '0 6px', lineHeight: 1.4 }} onClick={() => removeStoreAccess(u)} title="Remove">×</button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <ConfirmModal

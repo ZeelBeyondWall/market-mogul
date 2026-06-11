@@ -59,6 +59,9 @@ async function doSave(S: GameState): Promise<void> {
       events: S.events.slice(0, 30),
       active: S.active,
       saveTime: Date.now(),
+      // v11: store purchase allowlist (usernames) — extra field on state,
+      // must be explicitly included since this serializer is selective.
+      storeAccess: Array.isArray((S as any).storeAccess) ? (S as any).storeAccess : [],
     };
     ASSETS.forEach(a => {
       const ast = S.assets[a.id];
@@ -212,6 +215,8 @@ function loadFrom(target: GameState, file: string): boolean {
     });
     target.events = d.events || [];
     target.active = (d.active && target.assets[d.active]) ? d.active : (ASSETS[0]?.id || 'NEXA');
+    // v11: store purchase allowlist (older saves: default empty).
+    (target as any).storeAccess = Array.isArray(d.storeAccess) ? d.storeAccess : [];
     console.log(`💾 loaded from ${path.basename(file)}`);
     return true;
   } catch (e) {

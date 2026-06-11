@@ -74,8 +74,20 @@ export function StorePage() {
     }
   };
 
+  // v11: store purchases are allowlist-gated server-side; everyone else sees
+  // a coming-soon modal. The server enforces this too — UI gate is UX only.
+  const storeBuyAllowed = useGame(s => s.storeBuyAllowed);
+  const [comingSoonOpen, setComingSoonOpen] = useState(false);
+  const gateBuy = (): boolean => {
+    if (storeBuyAllowed) return false;
+    Audio.click();
+    setComingSoonOpen(true);
+    return true;
+  };
+
   // Mock checkout trigger
   const triggerUsdCheckout = (name: string, price: number, rewardCash: number, rewardGems: number, rewardXp: number, extraReward?: () => void) => {
+    if (gateBuy()) return;
     Audio.click();
     setCheckoutItem({
       name,
@@ -102,10 +114,11 @@ export function StorePage() {
   const buyWithGems = (item: CosmeticItem) => {
     Audio.click();
     if (ownedCosmetics.includes(item.id)) {
-      // Already owned, just equip it!
+      // Already owned, just equip it! (equip stays open for everyone)
       equipCosmetic(item);
       return;
     }
+    if (gateBuy()) return;
 
     if (gems < item.cost) {
       Audio.error?.();
@@ -141,6 +154,7 @@ export function StorePage() {
 
   // XP Boost Gem Purchase
   const buyXpBoost = (name: string, cost: number, hours: number) => {
+    if (gateBuy()) return;
     Audio.click();
     if (gems < cost) {
       Audio.error?.();
@@ -159,6 +173,7 @@ export function StorePage() {
 
   // Daily Reward Gem Purchase
   const buyDailyBoost = () => {
+    if (gateBuy()) return;
     Audio.click();
     if (gems < 300) {
       Audio.error?.();
@@ -532,6 +547,22 @@ export function StorePage() {
         </div>
 
       </main>
+
+      {/* COMING SOON MODAL — purchases gated behind admin allowlist */}
+      {comingSoonOpen && (
+        <div className="checkout-modal-overlay" onClick={() => setComingSoonOpen(false)}>
+          <div className="checkout-modal-card hud-panel hud-corners gold" onClick={e => e.stopPropagation()}>
+            <div className="checkout-status-box">
+              <div style={{ fontSize: 38, lineHeight: 1 }}>🚧</div>
+              <h4>COMING SOON</h4>
+              <p>Store purchases are not live yet. Keep trading and earning — buying unlocks for everyone soon!</p>
+              <button className="checkout-done-btn arcade-btn buy" onClick={() => { Audio.click(); setComingSoonOpen(false); }}>
+                Back to Store
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CHECKOUT MODAL OVERLAY */}
       {checkoutStep !== 'idle' && checkoutItem && (

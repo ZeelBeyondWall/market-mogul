@@ -10,6 +10,7 @@ import { ensureMissionsCurrent } from '../../../../shared/engine/missions';
 import type { Market } from '../../../../shared/engine/types';
 import type { Engine } from '../../../../shared/engine/engine';
 import { ENGINE_FLAGS } from './flags';
+import { diskSave } from '../persistence';
 import { audit, loadRecent } from './audit';
 import { snapshot as analyticsSnapshot } from './analytics';
 
@@ -277,6 +278,39 @@ export function registerAdminApi(app: Express, deps: AdminDeps): void {
     if (key === 'feeRate') { setFeeRate(+value || 0.001); }
     if (key === 'borrowRate') engine.config.borrowRate = +value || 0.005;
     return { key, value };
+  }));
+
+  // ===== STORE ACCESS (v11: purchase allowlist by username) =====
+  const storeAccess = (): string[] => {
+    const st: any = engine.state;
+    if (!Array.isArray(st.storeAccess)) st.storeAccess = [];
+    return st.storeAccess;
+  };
+  const refreshAllClients = () => {
+    for (const ws of clients) {
+      if (ws.readyState === 1 /* OPEN */) { try { deps.sendSnapshot(ws); } catch {} }
+    }
+  };
+  app.get('/admin/store-access', (_req, res) => {
+    res.json({ ok: true, users: storeAccess() });
+  });
+  app.post('/admin/store-access/add', j, wrap('store.accessAdd', r => r.body?.username, (req) => {
+    const username = String(req.body?.username || '').trim().toLowerCase();
+    if (!username) throw new Error('username required');
+    const list = storeAccess();
+    if (!list.includes(username)) list.push(username);
+    diskSave(engine.state);
+    refreshAllClients(); // push storeBuyAllowed flag live to connected clients
+    return { users: list };
+  }));
+  app.post('/admin/store-access/remove', j, wrap('store.accessRemove', r => r.body?.username, (req) => {
+    const username = String(req.body?.username || '').trim().toLowerCase();
+    const list = storeAccess();
+    const idx = list.indexOf(username);
+    if (idx !== -1) list.splice(idx, 1);
+    diskSave(engine.state);
+    refreshAllClients();
+    return { users: list };
   }));
 
   // ===== GAME MASTER =====

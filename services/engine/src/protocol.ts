@@ -51,6 +51,8 @@ export interface SnapshotPayload {
   // v7.3: admin flags surfaced to client for status display.
   maintenanceMode?: boolean;
   tradingHalted?: boolean;
+  // v11: store purchases gated behind an admin allowlist (by username).
+  storeBuyAllowed?: boolean;
 }
 
 export interface PublicTrader {

@@ -123,6 +123,20 @@ if (loaded) {
 // v7.3: always sync player name from env (overrides stale 'YOU' in old saves).
 engine.player().name = process.env.MM_PLAYER_NAME || 'Trader';
 
+// v11: store purchase allowlist (usernames, lowercase). Persisted inside
+// engine state via diskSave. Default empty → store buys show "coming soon"
+// for everyone until an admin whitelists them. Read engine.state live —
+// /reset replaces the state object, so never capture it.
+function storeAccessList(): string[] {
+  const s: any = engine.state;
+  if (!Array.isArray(s.storeAccess)) s.storeAccess = [];
+  return s.storeAccess;
+}
+function storeBuyAllowedFor(traderId: number): boolean {
+  const name = (engine.player(traderId).name || '').toLowerCase();
+  return storeAccessList().includes(name);
+}
+
 // ---- HTTP + WS ----
 const app = express();
 // v6 fix: scope CORS — admin paths get strict (or no) CORS; non-admin stays open.
@@ -487,6 +501,7 @@ function sendSnapshot(ws: WebSocket) {
   snap.banner = ENGINE_FLAGS.broadcastBanner || '';
   snap.maintenanceMode = !!ENGINE_FLAGS.maintenanceMode;
   snap.tradingHalted = !!ENGINE_FLAGS.tradingHalted;
+  snap.storeBuyAllowed = storeBuyAllowedFor(cs.traderId);
   try { ws.send(JSON.stringify({ type: 'snapshot', payload: snap } satisfies S2C)); }
   catch (e) { console.error('snapshot send failed:', (e as Error).message); }
 }
@@ -749,6 +764,12 @@ function handleClientMessage(ws: WebSocket, msg: C2S) {
       return;
     }
     case 'storePurchase': {
+      // v11: store buys are allowlist-gated (client shows "coming soon" too,
+      // but the server is the authority — this blocks bypassed clients).
+      if (!storeBuyAllowedFor(cs.traderId)) {
+        ws.send(JSON.stringify({ type: 'order_result', payload: { ok: false, reason: 'Store purchases are coming soon!' } } satisfies S2C));
+        return;
+      }
       const p = engine.player(cs.traderId);
       const cashChange = Number(msg.payload?.cashChange) || 0;
       const gemsChange = Number(msg.payload?.gemsChange) || 0;

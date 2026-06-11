@@ -38,6 +38,7 @@ interface SnapshotPayload {
   banner?: string;
   maintenanceMode?: boolean;
   tradingHalted?: boolean;
+  storeBuyAllowed?: boolean;
   recentTrades?: Trade[];
   activeHolders?: number;
 }
@@ -251,6 +252,7 @@ function applySnapshot(engine: Engine, snap: SnapshotPayload): void {
     banner: snap.banner || '',
     maintenanceMode: !!snap.maintenanceMode,
     tradingHalted: !!snap.tradingHalted,
+    storeBuyAllowed: !!snap.storeBuyAllowed,
   });
   useGame.getState().notifyDataTick();
 }
