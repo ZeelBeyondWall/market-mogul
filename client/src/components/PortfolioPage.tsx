@@ -648,7 +648,7 @@ export function PortfolioPage() {
         </section>
 
         {/* Trade history moved here from the trade-panel tab grid */}
-        <section className="pf-history-card hud-panel" style={{ marginTop: 16, padding: 14 }}>
+        <section id="pf-history" className="pf-history-card hud-panel" style={{ marginTop: 16, padding: 14 }}>
           <h3 className="section-title disp">TRADE HISTORY</h3>
           <TradeHistoryTab />
         </section>
@@ -701,7 +701,7 @@ export function PortfolioPage() {
         <section className="mmo-card hud-panel glow-hover">
           <div className="activity-header-row">
             <h2 className="stat-label disp" style={{ fontSize: '11px' }}>RECENT ACTIVITY</h2>
-            <span className="view-all-link" onClick={() => { setActiveScreen('trading'); setActiveTab('history'); Audio.click(); }}>
+            <span className="view-all-link" onClick={() => { Audio.click(); document.getElementById('pf-history')?.scrollIntoView({ behavior: 'smooth' }); }}>
               VIEW ALL
             </span>
           </div>
@@ -747,7 +747,7 @@ export function PortfolioPage() {
           </div>
 
           <div className="table-footer-btn-row" style={{ marginTop: '16px' }}>
-            <span className="view-all-link" onClick={() => { setActiveScreen('trading'); setActiveTab('history'); Audio.click(); }}>
+            <span className="view-all-link" onClick={() => { Audio.click(); document.getElementById('pf-history')?.scrollIntoView({ behavior: 'smooth' }); }}>
               VIEW ALL ACTIVITY
             </span>
           </div>
