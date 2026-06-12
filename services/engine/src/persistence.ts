@@ -5,7 +5,7 @@ import { ASSETS } from '../../../shared/engine/constants';
 import { makeBook } from '../../../shared/engine/orderbook';
 import { makeTrader } from '../../../shared/engine/traders';
 import type { CandleSeries, GameState, Holding, TFKey, Trader } from '../../../shared/engine/types';
-import { TF_LIST } from '../../../shared/engine/types';
+import { TF_LIST, TF_MS } from '../../../shared/engine/types';
 
 const SAVE_FILE = path.resolve(process.cwd(), 'state.json');
 const TMP_FILE = SAVE_FILE + '.tmp';
@@ -66,11 +66,11 @@ async function doSave(S: GameState): Promise<void> {
     ASSETS.forEach(a => {
       const ast = S.assets[a.id];
       const series: Record<string, { candles: any[] }> = {};
-      for (const tf of TF_LIST) series[tf] = { candles: ast.series[tf].candles.slice(-60) };
+      for (const tf of TF_LIST) series[tf] = { candles: ast.series[tf].candles.slice(-200) };
       out.assets[a.id] = {
         lastPrice: ast.lastPrice, open: ast.open, hi: ast.hi, lo: ast.lo,
         volume: ast.volume, fv: ast.fv,
-        history: ast.history.slice(-120),
+        history: ast.history.slice(-400),
         series,
         volumeHist: ast.volumeHist.slice(-120),
       };
@@ -202,13 +202,17 @@ function loadFrom(target: GameState, file: string): boolean {
         if (Array.isArray(sa.history)) target.assets[a.id].history = sa.history;
         if (Array.isArray(sa.volumeHist)) target.assets[a.id].volumeHist = sa.volumeHist;
         const series: Record<TFKey, CandleSeries> = target.assets[a.id].series;
+        const nowMs = Date.now();
         for (const tf of TF_LIST) {
           const old = sa.series?.[tf];
-          series[tf] = {
-            candles: Array.isArray(old?.candles) ? old.candles : [],
-            curCandle: null,
-            candleStartT: 0,
-          };
+          const loaded: any[] = Array.isArray(old?.candles) ? old.candles : [];
+          // Backfill candle start time for pre-t saves so client-side merge
+          // (keyed on t) has unique keys. Synthesize ascending past timestamps.
+          const step = TF_MS[tf];
+          loaded.forEach((c, i) => {
+            if (c && c.t == null) c.t = nowMs - (loaded.length - i) * step;
+          });
+          series[tf] = { candles: loaded, curCandle: null, candleStartT: 0 };
         }
         target.assets[a.id].book = makeBook();
       }

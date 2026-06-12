@@ -70,8 +70,8 @@ export interface PublicAsset {
   lo: number;
   volume: number;
   history: number[];
-  candles: { o: number; h: number; l: number; c: number; v: number }[];
-  curCandle: { o: number; h: number; l: number; c: number; v: number } | null;
+  candles: { o: number; h: number; l: number; c: number; v: number; t?: number }[];
+  curCandle: { o: number; h: number; l: number; c: number; v: number; t?: number } | null;
   candleStartT: number;
   topBids: { px: number; qty: number; ownerName: string }[];
   topAsks: { px: number; qty: number; ownerName: string }[];
@@ -89,8 +89,8 @@ export interface TickPayload {
   playerClosing: Record<string, boolean>;
   activeId: string;
   activeTF: string;
-  activeCandles: { o: number; h: number; l: number; c: number; v: number }[];
-  activeCurCandle: { o: number; h: number; l: number; c: number; v: number } | null;
+  activeCandles: { o: number; h: number; l: number; c: number; v: number; t?: number }[];
+  activeCurCandle: { o: number; h: number; l: number; c: number; v: number; t?: number } | null;
   activeCandleStartT: number;
   activeTFms: number;
   activeHistory: number[];
@@ -125,13 +125,15 @@ export function buildSnapshot(
       lo: a.lo,
       volume: a.volume,
       // Heavy arrays sent ONLY for active asset — trims ~95% of payload for 100+ assets.
-      history: isActive ? a.history.slice(-120) : [],
-      candles: isActive ? s.candles.slice(-60) : [],
+      // Snapshot seeds a LARGE window (infrequent: on connect / asset / TF switch);
+      // ticks then merge small deltas onto it for deep scrollback.
+      history: isActive ? a.history.slice(-400) : [],
+      candles: isActive ? s.candles.slice(-400) : [],
       curCandle: isActive && s.curCandle ? { ...s.curCandle } : null,
       candleStartT: isActive ? s.candleStartT : 0,
       topBids: isActive ? a.book.bids.slice(0, 10).map(o => ({ px: o.px, qty: o.qty, ownerName: S.traders[o.ownerId]?.name || '' })) : [],
       topAsks: isActive ? a.book.asks.slice(0, 10).map(o => ({ px: o.px, qty: o.qty, ownerName: S.traders[o.ownerId]?.name || '' })) : [],
-      volumeHist: isActive ? a.volumeHist.slice(-120) : [],
+      volumeHist: isActive ? a.volumeHist.slice(-400) : [],
     };
   }
   // Leaderboard + stats/missions left empty — caller (sendSnapshot) fills them.

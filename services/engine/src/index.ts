@@ -827,12 +827,15 @@ function buildTickFor(ws: WebSocket): TickPayload {
     playerClosing: p.closing || {},
     activeId: active,
     activeTF: tf,
-    activeCandles: series.candles.slice(-60),
+    // Small live window — client merges these onto the large snapshot seed by
+    // candle start time (t), so scrollback depth comes from accumulation, not
+    // from re-sending the whole history every 100ms.
+    activeCandles: series.candles.slice(-120),
     activeCurCandle: series.curCandle ? { ...series.curCandle } : null,
     activeCandleStartT: series.candleStartT,
     activeTFms: TF_MS[tf],
-    activeHistory: ast.history.slice(-120),
-    activeVolumeHist: ast.volumeHist.slice(-120),
+    activeHistory: ast.history.slice(-360),
+    activeVolumeHist: ast.volumeHist.slice(-360),
     topBidsActive: ast.book.bids.slice(0, 10).map(o => ({ px: o.px, qty: o.qty, ownerName: engine.state.traders[o.ownerId]?.name || '' })),
     topAsksActive: ast.book.asks.slice(0, 10).map(o => ({ px: o.px, qty: o.qty, ownerName: engine.state.traders[o.ownerId]?.name || '' })),
   };

@@ -8,8 +8,8 @@ import { Audio } from '../audio/audio';
 interface PublicAsset {
   lastPrice: number; open: number; hi: number; lo: number; volume: number;
   history: number[];
-  candles: { o: number; h: number; l: number; c: number; v: number }[];
-  curCandle: { o: number; h: number; l: number; c: number; v: number } | null;
+  candles: { o: number; h: number; l: number; c: number; v: number; t?: number }[];
+  curCandle: { o: number; h: number; l: number; c: number; v: number; t?: number } | null;
   candleStartT: number;
   topBids: { px: number; qty: number; ownerName: string }[];
   topAsks: { px: number; qty: number; ownerName: string }[];
@@ -51,8 +51,8 @@ interface TickPayload {
   playerClosing?: Record<string, boolean>;
   activeId: string;
   activeTF: string;
-  activeCandles: { o: number; h: number; l: number; c: number; v: number }[];
-  activeCurCandle: { o: number; h: number; l: number; c: number; v: number } | null;
+  activeCandles: { o: number; h: number; l: number; c: number; v: number; t?: number }[];
+  activeCurCandle: { o: number; h: number; l: number; c: number; v: number; t?: number } | null;
   activeCandleStartT: number;
   activeTFms: number;
   activeHistory: number[];
@@ -64,6 +64,26 @@ interface TickPayload {
 // v9: trackers to fire level-up / mission-complete notifications exactly once.
 let prevLevel = 0;
 const seenCompletedMissions = new Set<string>();
+
+// Chart scrollback: client keeps up to MERGE_CAP candles per active asset/TF,
+// accumulating from small tick windows merged onto the large snapshot seed.
+// Keyed on candle start time `t`; falls back to plain replace if t is absent.
+const MERGE_CAP = 600;
+function mergeCandles(
+  existing: { o: number; h: number; l: number; c: number; v: number; t?: number }[],
+  incoming: { o: number; h: number; l: number; c: number; v: number; t?: number }[],
+): any[] {
+  if (!incoming.length) return existing;
+  // If timestamps are missing on either side, we can't merge safely — replace.
+  if (incoming.some(c => c.t == null) || existing.some(c => c.t == null)) {
+    return incoming.slice(-MERGE_CAP);
+  }
+  const byT = new Map<number, any>();
+  for (const c of existing) byT.set(c.t as number, c);
+  for (const c of incoming) byT.set(c.t as number, c); // upsert: newer wins
+  const merged = [...byT.values()].sort((a, b) => (a.t as number) - (b.t as number));
+  return merged.slice(-MERGE_CAP);
+}
 
 export type C2SMsg =
   | { type: 'auth'; payload: { token: string } }
@@ -202,7 +222,7 @@ function applySnapshot(engine: Engine, snap: SnapshotPayload): void {
     // Server only sends heavy arrays for ACTIVE asset — skip overwrite with empty for others
     if (sa.history.length) ast.history = sa.history.slice();
     if (ast.series && ast.series[tf]) {
-      if (sa.candles.length) ast.series[tf].candles = sa.candles.slice();
+      if (sa.candles.length) ast.series[tf].candles = mergeCandles(ast.series[tf].candles, sa.candles);
       if (sa.curCandle) ast.series[tf].curCandle = { ...sa.curCandle };
       else if (aid === snap.active) ast.series[tf].curCandle = null;
       if (sa.candleStartT) ast.series[tf].candleStartT = sa.candleStartT;
@@ -300,13 +320,15 @@ function applyTick(engine: Engine, tick: TickPayload): void {
       useGame.getState().removePriceAlert(f.id);
     }
   }
-  // Server is authority on the ACTIVE asset's candle series — replace cleanly.
+  // Active asset's candle series: MERGE the small live window onto the client's
+  // accumulated buffer (keyed on candle start time) so scrollback keeps growing
+  // instead of being clipped to the tick window.
   if (tick.activeId && tick.activeId === engine.state.active) {
     const ast = engine.state.assets[tick.activeId];
     if (ast && ast.series) {
       const tf = (tick.activeTF || useGame.getState().activeTF) as keyof typeof ast.series;
       if (ast.series[tf]) {
-        ast.series[tf].candles = tick.activeCandles.slice();
+        ast.series[tf].candles = mergeCandles(ast.series[tf].candles, tick.activeCandles);
         ast.series[tf].curCandle = tick.activeCurCandle ? { ...tick.activeCurCandle } : null;
         ast.series[tf].candleStartT = tick.activeCandleStartT;
       }

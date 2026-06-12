@@ -4,6 +4,12 @@ import { insertOrder } from './orderbook';
 import type { AssetCategory, GameState, NewsEvent, NewsEventDef } from './types';
 import { TF_LIST, TF_MS } from './types';
 
+// Retention caps (per asset). Candles/history kept in memory for chart
+// scrollback. 600 ≈ 10min at 1s … 25 days at 1h. Bounded by 100 assets, so
+// memory is fine; bots don't add to this.
+export const CANDLE_CAP = 600;
+export const HIST_CAP = 600;
+
 // v8.9: House Market Maker — guarantees a tradeable book on EVERY asset by
 // quoting a tight band around fair value, independent of bot level/cash. The
 // house is an infinite counterparty (executeTrade skips its cash/holdings), so
@@ -112,13 +118,13 @@ export function tickMarket(S: GameState, _dt: number, now: number): void {
     ast.lastPrice += (fv - ast.lastPrice) * 0.0008;
 
     ast.history.push(ast.lastPrice);
-    if (ast.history.length > 240) ast.history.shift();
+    if (ast.history.length > HIST_CAP) ast.history.shift();
 
     // Update every TF's current candle. Promote when its window elapsed.
     for (const tf of TF_LIST) {
       const s = ast.series[tf];
       if (!s.curCandle) {
-        s.curCandle = { o: ast.lastPrice, h: ast.lastPrice, l: ast.lastPrice, c: ast.lastPrice, v: 0 };
+        s.curCandle = { o: ast.lastPrice, h: ast.lastPrice, l: ast.lastPrice, c: ast.lastPrice, v: 0, t: now };
         s.candleStartT = now;
       }
       const c = s.curCandle;
@@ -126,14 +132,15 @@ export function tickMarket(S: GameState, _dt: number, now: number): void {
       c.l = Math.min(c.l, ast.lastPrice);
       c.c = ast.lastPrice;
       if (now - s.candleStartT >= TF_MS[tf]) {
+        if (c.t == null) c.t = s.candleStartT;
         s.candles.push(c);
-        if (s.candles.length > 240) s.candles.shift();
+        if (s.candles.length > CANDLE_CAP) s.candles.shift();
         s.curCandle = null;
       }
     }
 
     ast.volumeHist.push(ast.volume - (ast._lastVolSnap || 0));
-    if (ast.volumeHist.length > 240) ast.volumeHist.shift();
+    if (ast.volumeHist.length > HIST_CAP) ast.volumeHist.shift();
     ast._lastVolSnap = ast.volume;
   });
 }
