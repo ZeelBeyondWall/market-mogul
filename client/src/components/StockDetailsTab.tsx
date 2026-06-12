@@ -61,7 +61,7 @@ export function StockDetailsTab() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <AssetIcon id={a.id} icon={a.icon} size={32} />
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>{a.id} <span style={{ opacity: .6, fontWeight: 400 }}>{a.name}</span></div>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>{a.name} <span className="tkr">{a.id}</span></div>
             <div style={{ fontSize: 11, opacity: .7 }}>{CATEGORY_LABELS[a.cat] || a.cat} · {a.desc}</div>
           </div>
         </div>

@@ -61,8 +61,8 @@ function MoverRow({ r, setActive, playerLevel, showVol = false }: any) {
       <div className="mv-sym">
         <AssetIcon id={r.a.id} icon={r.a.icon} size={18} />
         <div>
-          <div className="mv-id">{r.a.id}{locked && <span className="lock-tag"> 🔒L{r.a.minLevel}</span>}</div>
-          <div className="mv-name">{r.a.name}</div>
+          <div className="mv-id">{r.a.name}{locked && <span className="lock-tag"> 🔒L{r.a.minLevel}</span>}</div>
+          <div className="mv-name"><span className="tkr">{r.a.id}</span></div>
         </div>
       </div>
       <div className="mv-px">{fmt(r.ast.lastPrice, dec)}</div>

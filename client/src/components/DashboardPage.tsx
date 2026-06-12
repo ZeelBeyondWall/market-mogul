@@ -427,8 +427,8 @@ export function DashboardPage() {
                     <AssetIcon id={a.id} icon={a.icon} size={18} className="mover-mob-icon-svg" />
                   </div>
                   <div className="mover-mob-asset-info">
-                    <span className="mover-mob-sym">{a.id}</span>
-                    <span className="mover-mob-name">{a.name}</span>
+                    <span className="mover-mob-sym">{a.name}</span>
+                    <span className="mover-mob-name"><span className="tkr">{a.id}</span></span>
                   </div>
                   <div className="mover-mob-price-col">
                     <span className="mover-mob-price">{fmt(ast.lastPrice)}</span>
@@ -730,8 +730,8 @@ export function DashboardPage() {
                       <div className="mover-asset-info">
                         <span className="asset-icon-placeholder"><AssetIcon id={a.id} icon={a.icon} size={28} /></span>
                         <div className="mover-name-col">
-                          <span className="mover-symbol">{a.id}</span>
-                          <span className="mover-fullname">{a.name}</span>
+                          <span className="mover-symbol">{a.name}</span>
+                          <span className="mover-fullname"><span className="tkr">{a.id}</span></span>
                         </div>
                       </div>
                       

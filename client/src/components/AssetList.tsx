@@ -163,15 +163,15 @@ function AssetRow({ a, eng, nw, active, playerLevel, setActive, watched, toggleW
       <div className="av-top">
         <div className="av-left">
           <AssetIcon id={a.id} icon={a.icon} className="av-icon" />
-          <div className="av-id">
-            {a.id}
+          <div className="av-id av-name-primary">
+            {a.name}
             {locked && <span className="av-lock"><LockGlyph size={9} />L{a.minLevel}</span>}
           </div>
         </div>
         <div key={ast.lastPrice} className={'av-price ' + tickClass + flashClass}>{fmt(ast.lastPrice, ast.lastPrice < 10 ? 3 : 2)}</div>
       </div>
       <div className="av-meta">
-        <span className="av-name">{a.name}</span>
+        <span className="tkr">{a.id}</span>
         <span className={'av-chg ' + chgClass}>{tick} {fmtPct(chg)}</span>
       </div>
       {hpct > 0 && <div className="av-hold-bar" style={{ width: hpct + '%' }} />}

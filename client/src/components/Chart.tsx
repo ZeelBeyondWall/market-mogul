@@ -1034,8 +1034,8 @@ export function Chart() {
       <div className="chart-header">
         <AssetIcon id={a.id} icon={a.icon} className="chart-sym-icon" />
         <div className="chart-sym-info">
-          <div className="sym">{a.id}</div>
-          <div className="name">{a.name}</div>
+          <div className="sym">{a.name}</div>
+          <div className="name"><span className="tkr">{a.id}</span></div>
         </div>
         <div className="chart-price-block">
           <div className={'price ' + (chg >= 0 ? 'up' : 'dn')}>{fmt(ast.lastPrice, ast.lastPrice < 10 ? 3 : 2)}</div>

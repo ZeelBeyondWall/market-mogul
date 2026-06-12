@@ -98,7 +98,8 @@ export function PositionsTab() {
                 <AssetIcon id={r.a.id} icon={r.a.icon} size={20} />
                 <div className="info">
                   <div className="sym">
-                    {r.a.id}{' '}
+                    {r.a.name}{' '}
+                    <span className="tkr">{r.a.id}</span>{' '}
                     <span className={'tag ' + (r.isLong ? 'long' : 'short')}>{r.isLong ? 'LONG' : 'SHORT'}</span>
                     {eng.player().closing?.[r.a.id] && (
                       <span className="tag pending" style={{ background: 'var(--accent)', color: '#000' }}>⏳ PENDING</span>
