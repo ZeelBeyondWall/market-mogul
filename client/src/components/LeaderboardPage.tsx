@@ -152,6 +152,16 @@ export function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState<'OVERALL' | 'WEEKLY' | 'MONTHLY' | 'DAILY'>('OVERALL');
   const [seasonTimer, setSeasonTimer] = useState('12D : 14H : 35M : 21S');
 
+  // Mobile: dedicated layout (rank header + Rankings/Rewards tabs) instead of
+  // the desktop 3-column stack.
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 820);
+  const [mobLbTab, setMobLbTab] = useState<'ranks' | 'rewards'>('ranks');
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 820);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   // Countdown timer for Season Ends
   useEffect(() => {
     const timer = setInterval(() => {
@@ -232,6 +242,90 @@ export function LeaderboardPage() {
     if (r === 3) return 'rank-badge-3';
     return '';
   };
+
+  // ==========================================================================
+  // MOBILE LAYOUT — rank header + Rankings/Rewards tabs (no 3-column stack)
+  // ==========================================================================
+  if (isMobile) {
+    const retUp = playerReturnPct >= 0;
+    return (
+      <div className="page-container leaderboard-page arcade-lb lb-mobile">
+        {/* Your rank header */}
+        <section className={`lbm-rank hud-panel hud-corners ${playerTier}`}>
+          <div className="lbm-rank-top">
+            <div className="lbm-rank-num">
+              <span className="lbm-rank-hash">RANK</span>
+              <span className="lbm-rank-val disp">#{rank || 247}</span>
+            </div>
+            <div className="lbm-rank-league">
+              <span className={`lbm-league-name disp ${playerTier}`}>{playerLeague.name}</span>
+              <div className="lbm-league-bar xp-bar">
+                <div className={`xp-fill ${playerTier}`} style={{ width: `${(playerLeague.trophies / playerLeague.maxTrophies) * 100}%` }} />
+              </div>
+              <span className="lbm-league-tr">🏆 {playerLeague.trophies.toLocaleString()} / {playerLeague.maxTrophies.toLocaleString()}</span>
+            </div>
+          </div>
+          <div className="lbm-rank-stats">
+            <div><span className="lbm-s-lbl">NET WORTH</span><span className="lbm-s-val">{fmt(net)}</span></div>
+            <div><span className="lbm-s-lbl">TOTAL RETURN</span><span className={'lbm-s-val ' + (retUp ? 'up' : 'dn')}>{retUp ? '▲' : '▼'} {fmtLeaderboardPct(playerReturnPct)}</span></div>
+          </div>
+        </section>
+
+        {/* Tabs */}
+        <div className="lbm-tabs">
+          <button className={mobLbTab === 'ranks' ? 'on' : ''} onClick={() => { setMobLbTab('ranks'); Audio.click(); }}>Rankings</button>
+          <button className={mobLbTab === 'rewards' ? 'on' : ''} onClick={() => { setMobLbTab('rewards'); Audio.click(); }}>Rewards</button>
+        </div>
+
+        {/* RANKINGS */}
+        {mobLbTab === 'ranks' && (
+          <div className="lbm-pane">
+            {displayList.map((trader, i) => {
+              const top3 = trader.rank <= 3;
+              const up = trader.returnPct >= 0;
+              return (
+                <div key={i} className={'lbm-row hud-panel' + (trader.isPlayer ? ' me' : '')}>
+                  <div className="lbm-row-rank">
+                    {top3 ? (
+                      <img className="lbm-medal" src={`/assets/lb/medal_${trader.rank === 1 ? 'gold' : trader.rank === 2 ? 'silver' : 'bronze'}.webp`} alt={`#${trader.rank}`} />
+                    ) : (
+                      <span className="lbm-rank-n">{trader.rank}</span>
+                    )}
+                  </div>
+                  <div className="lbm-row-avatar"><AvatarImg level={trader.level} /></div>
+                  <div className="lbm-row-info">
+                    <span className="lbm-row-name">{trader.name}{trader.level >= 12 && <span className="trader-tag-pro">PRO</span>}</span>
+                    <span className="lbm-row-sub">{fmt(trader.net)}</span>
+                  </div>
+                  <span className={'lbm-row-ret ' + (up ? 'up' : 'dn')}>{up ? '▲' : '▼'} {fmtLeaderboardPct(trader.returnPct)}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* REWARDS */}
+        {mobLbTab === 'rewards' && (
+          <div className="lbm-pane">
+            <div className="lbm-reward-card hud-panel hud-corners gold">
+              <span className="lbm-season-tag hud-pill gold">SEASON 1 · TRADING CHAMPIONSHIP</span>
+              <div className="lbm-season-timer">{seasonTimer}</div>
+              <span className="lbm-reward-sub">Season ends in</span>
+            </div>
+            <div className="lbm-reward-card hud-panel">
+              <h3 className={`section-title disp ${playerTier}`}>{playerLeague.name} LEAGUE REWARDS</h3>
+              <div className="lbm-reward-rows">
+                <div className="lbm-reward-row"><span>XP</span><b>{playerLeague.xpReward.toLocaleString()}</b></div>
+                <div className="lbm-reward-row"><span>Cash</span><b>{playerLeague.cashReward.toLocaleString()}</b></div>
+                <div className="lbm-reward-row"><span>Gems</span><b>{playerLeague.gemReward.toLocaleString()}</b></div>
+              </div>
+              <p className="lbm-reward-note">Climb the rankings to reach a higher league and bigger rewards.</p>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="page-container leaderboard-page arcade-lb">
