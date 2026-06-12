@@ -52,6 +52,30 @@ body {
   background: transparent;
 }
 
+/* Explicit slot placement so a conditionally-absent MarketBar can't shift the
+   page and ticker up a row (that bug put the scrolling ticker tape into the
+   big 1fr row, covering leaderboard/portfolio content). */
+#app > .admin-banners { grid-row: 1; }
+#app > header { grid-row: 2; }
+#app > .mbar { grid-row: 3; }
+#app > main,
+#app > .page-container,
+#app > .store-page-container,
+#app > .mmo-dash-layout,
+#app > .mmo-mobile-dash-container,
+#app > .mobile-trading-page,
+#app > .profile-page { grid-row: 4; min-height: 0; }
+#app > footer { grid-row: 5; }
+
+/* Non-trading desktop screens have no MarketBar — collapse its empty 48px row
+   so there's no dead gap under the header. (Dashboard keeps its own template.) */
+#app.leaderboard,
+#app.portfolio,
+#app.store,
+#app.profile {
+  grid-template-rows: auto 60px 0px 1fr 28px;
+}
+
 /* v7.3: admin banner stack — sits above header when admin pushes status */
 .admin-banners {
   display: flex;
