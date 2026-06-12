@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useGame } from '../store/gameStore';
 import { fmt, fmtPct } from '../../../shared/engine/helpers';
 import { Audio } from '../audio/audio';
+import { AvatarImg } from '../ui/avatar';
 import {
   IconClock,
   IconTrophy,
@@ -169,24 +170,6 @@ export function LeaderboardPage() {
     return () => clearInterval(timer);
   }, []);
 
-  const getAvatarEmoji = (level: number, name: string) => {
-    if (name.includes('Bull')) return '🐂';
-    if (name.includes('King')) return '👑';
-    if (name.includes('Titan')) return '🤖';
-    if (name.includes('Wizard')) return '🧙‍♂️';
-    if (name.includes('Hunter')) return '🏹';
-    if (name.includes('Surgeon')) return '😷';
-    if (name.includes('Ninja')) return '🥷';
-    if (name.includes('Tony')) return '👨‍🚀';
-    
-    if (level < 5) return '🧑‍🚀';
-    if (level < 10) return '🦾';
-    if (level < 20) return '🤖';
-    if (level < 30) return '⚡';
-    if (level < 50) return '👽';
-    return '👑';
-  };
-
   const getSeededPoints = (seedId: number) => {
     const points = [];
     let cur = 10;
@@ -257,7 +240,7 @@ export function LeaderboardPage() {
       <aside className="page-sidebar">
 
         {/* Season card */}
-        <div className="season-card mmo-card hud-panel hud-corners gold" style={{ backgroundImage: 'linear-gradient(rgba(11,16,32,0.4), rgba(11,16,32,0.95)), url(/cityscape_sunset.png)' }}>
+        <div className="season-card mmo-card hud-panel hud-corners gold" style={{ backgroundImage: 'linear-gradient(rgba(11,16,32,0.4), rgba(11,16,32,0.95)), url(/assets/dash/hero_cityscape.webp)' }}>
           <div>
             <span className="season-tag hud-pill gold">SEASON 1</span>
             <h1 className="season-title disp">TRADING CHAMPIONSHIP</h1>
@@ -357,15 +340,24 @@ export function LeaderboardPage() {
                     <tr key={i} className={trader.isPlayer ? 'highlighted-user-row' : ''}>
                       <td>
                         <div className="rank-badge-wrap">
-                          <span className={`rank-badge-wrap ${getRankBadgeClass(trader.rank)} ${isTop3 ? 'rank-medal disp' : ''}`}>
-                            {trader.rank}
-                          </span>
+                          {isTop3 ? (
+                            <img
+                              className="rank-medal-img"
+                              src={`/assets/lb/medal_${trader.rank === 1 ? 'gold' : trader.rank === 2 ? 'silver' : 'bronze'}.webp`}
+                              alt={`Rank ${trader.rank}`}
+                              title={`Rank ${trader.rank}`}
+                            />
+                          ) : (
+                            <span className={`rank-badge-wrap ${getRankBadgeClass(trader.rank)}`}>
+                              {trader.rank}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td>
                         <div className="trader-cell">
                           <div className="trader-avatar">
-                            {getAvatarEmoji(trader.level, trader.name)}
+                            <AvatarImg level={trader.level} />
                           </div>
                           <div className="trader-info-wrap">
                             <span className="trader-name-lbl">{trader.name}</span>

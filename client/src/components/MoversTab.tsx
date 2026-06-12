@@ -2,6 +2,7 @@ import { ASSETS, MARKET_LABELS } from '../../../shared/engine/constants';
 import { fmt, fmtPct } from '../../../shared/engine/helpers';
 import { useGame } from '../store/gameStore';
 import { Audio } from '../audio/audio';
+import { AssetIcon } from './AssetIcon';
 
 export function MoversTab() {
   const eng = useGame(s => s.engine);
@@ -58,7 +59,7 @@ function MoverRow({ r, setActive, playerLevel, showVol = false }: any) {
       }}
     >
       <div className="mv-sym">
-        <svg><use href={`#${r.a.icon}`}/></svg>
+        <AssetIcon id={r.a.id} icon={r.a.icon} size={18} />
         <div>
           <div className="mv-id">{r.a.id}{locked && <span className="lock-tag"> 🔒L{r.a.minLevel}</span>}</div>
           <div className="mv-name">{r.a.name}</div>

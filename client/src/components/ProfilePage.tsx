@@ -2,20 +2,12 @@ import { useGame } from '../store/gameStore';
 import { Audio } from '../audio/audio';
 import { StatsTab } from './StatsTab';
 import { LevelShield } from '../ui/LevelShield';
+import { AvatarImg } from '../ui/avatar';
 import { IconTrophy, IconFlame, IconCheck, IconGem, IconStore, IconSettings } from '../ui/icons';
 import { COSMETICS_LIST, rarityClass, type CosmeticItem } from '../data/cosmetics';
 import './Pages.css';
 import '../styles/arcade-profile.css';
 
-// Same level→avatar mapping as Header so identity looks consistent.
-function avatarEmoji(level: number): string {
-  if (level < 5) return '🧑‍🚀';
-  if (level < 10) return '🦾';
-  if (level < 20) return '🤖';
-  if (level < 30) return '⚡';
-  if (level < 50) return '👽';
-  return '👑';
-}
 
 export function ProfilePage() {
   const eng = useGame(s => s.engine);
@@ -63,7 +55,7 @@ export function ProfilePage() {
       {/* ===== Identity card ===== */}
       <section className="profile-identity-card hud-panel hud-corners gold">
         <div className={`profile-hero-avatar ${equippedFrame !== 'none' ? equippedFrame : ''}`}>
-          {avatarEmoji(lvl)}
+          <AvatarImg level={lvl} />
         </div>
         <div className="profile-hero-info">
           <div className="profile-hero-name disp" style={{ color: equippedNameColor !== 'none' ? equippedNameColor : undefined }}>

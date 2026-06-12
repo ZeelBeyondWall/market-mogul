@@ -1096,6 +1096,13 @@
   font-weight: 800;
   font-size: 11px;
 }
+.rank-medal-img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  border-radius: 6px;
+  display: block;
+}
 
 .rank-badge-1 { background: radial-gradient(circle, #FBBF24 0%, #B45309 100%); color: #000; border-radius: 50%; box-shadow: 0 0 8px rgba(251, 191, 36, 0.5); }
 .rank-badge-2 { background: radial-gradient(circle, #E2E8F0 0%, #475569 100%); color: #000; border-radius: 50%; box-shadow: 0 0 8px rgba(226, 232, 240, 0.4); }

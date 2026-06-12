@@ -312,7 +312,7 @@ export function StorePage() {
               </button>
             </div>
             <div className="featured-art">
-              <img src="/store/featured_store_banner.png" alt="Featured Chest" />
+              <img src="/assets/store/featured_store_banner.webp" alt="Featured Chest" />
             </div>
           </div>
         </div>
@@ -324,7 +324,7 @@ export function StorePage() {
             {/* XP BOOST 1H */}
             <div className={`store-card boost-card hud-panel glow-hover ${rarityClass(100)}`}>
               <div className="card-glow-wrap">
-                <img className="card-img" src="/store/xp_boost.png" alt="1 Hour Boost" />
+                <img className="card-img" src="/assets/store/xp_boost_1h.webp" alt="1 Hour Boost" />
               </div>
               <div className="card-info">
                 <h4>XP BOOST (1 HOUR)</h4>
@@ -341,7 +341,7 @@ export function StorePage() {
             {/* XP BOOST 24H */}
             <div className={`store-card boost-card hud-panel glow-hover ${rarityClass(500)}`}>
               <div className="card-glow-wrap">
-                <img className="card-img" src="/store/xp_boost.png" alt="24 Hour Boost" />
+                <img className="card-img" src="/assets/store/xp_boost_24h.webp" alt="24 Hour Boost" />
               </div>
               <div className="card-info">
                 <h4>XP BOOST (24 HOURS)</h4>
@@ -358,7 +358,7 @@ export function StorePage() {
             {/* DAILY REWARD BOOST */}
             <div className={`store-card boost-card hud-panel glow-hover ${rarityClass(300)}`}>
               <div className="card-glow-wrap green-glow">
-                <img className="card-img" src="/store/daily_reward_boost.png" alt="Daily Boost" />
+                <img className="card-img" src="/assets/store/daily_reward_boost.webp" alt="Daily Boost" />
               </div>
               <div className="card-info">
                 <h4>DAILY REWARD BOOST</h4>
@@ -507,7 +507,7 @@ export function StorePage() {
             {/* STARTER BUNDLE CARD */}
             <div className="store-card bundle-horizontal-card hud-panel glow-hover">
               <div className="bundle-img-wrap">
-                <img src="/store/featured_store_banner.png" alt="Starter Chest" />
+                <img src="/assets/store/bundle_starter.webp" alt="Starter Chest" />
               </div>
               <div className="bundle-main-info">
                 <h4>STARTER BUNDLE</h4>
@@ -527,7 +527,7 @@ export function StorePage() {
             {/* ADVANCED BUNDLE CARD */}
             <div className="store-card bundle-horizontal-card purple-theme hud-panel glow-hover">
               <div className="bundle-img-wrap">
-                <img src="/store/featured_store_banner.png" alt="Advanced Chest" style={{ filter: 'hue-rotate(60deg) brightness(1.2)' }} />
+                <img src="/assets/store/bundle_advanced.webp" alt="Advanced Chest" />
               </div>
               <div className="bundle-main-info">
                 <h4>ADVANCED BUNDLE</h4>

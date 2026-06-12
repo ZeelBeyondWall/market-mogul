@@ -3,6 +3,7 @@ import { fmt, fmtNum, fmtPct } from '../../../shared/engine/helpers';
 import { useGame } from '../store/gameStore';
 import { Audio } from '../audio/audio';
 import { send } from '../net/wsClient';
+import { AssetIcon } from './AssetIcon';
 
 export function PositionsTab() {
   const eng = useGame(s => s.engine);
@@ -94,7 +95,7 @@ export function PositionsTab() {
                 useGame.getState().setMobileView('trade');
                 Audio.click();
               }}>
-                <svg><use href={`#${r.a.icon}`}/></svg>
+                <AssetIcon id={r.a.id} icon={r.a.icon} size={20} />
                 <div className="info">
                   <div className="sym">
                     {r.a.id}{' '}

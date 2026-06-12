@@ -4,6 +4,7 @@ import { fmt, fmtPct } from '../../../shared/engine/helpers';
 import { useGame } from '../store/gameStore';
 import { Audio } from '../audio/audio';
 import { IconStar, IconCandles, IconCoin, IconGlobe } from '../ui/icons';
+import { AssetIcon } from './AssetIcon';
 import '../styles/arcade-trading.css';
 
 // v8: AssetList — Watchlist always-on-top, Browse grouped below.
@@ -161,7 +162,7 @@ function AssetRow({ a, eng, nw, active, playerLevel, setActive, watched, toggleW
     >
       <div className="av-top">
         <div className="av-left">
-          <svg className="av-icon"><use href={`#${a.icon}`}/></svg>
+          <AssetIcon id={a.id} icon={a.icon} className="av-icon" />
           <div className="av-id">
             {a.id}
             {locked && <span className="av-lock"><LockGlyph size={9} />L{a.minLevel}</span>}

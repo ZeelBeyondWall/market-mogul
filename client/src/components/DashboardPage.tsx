@@ -9,6 +9,7 @@ import { AnimatedNumber } from './AnimatedNumber';
 import { LevelShield } from '../ui/LevelShield';
 import { useCountUp } from '../ui/useCountUp';
 import { MissionsTab } from './MissionsTab';
+import { AssetIcon } from './AssetIcon';
 import {
   IconGem, IconFlame, IconTrophy, IconCoin, IconGlobe, IconCandles,
   IconWallet, IconNews, IconStar, IconShield, IconBars,
@@ -272,7 +273,7 @@ export function DashboardPage() {
       <div className="mmo-mobile-dash-container arcdash">
 
         {/* 1. Hero Card Welcome + Live Event combined */}
-        <section className="mmo-mobile-hero hud-panel hud-corners gold" style={{ backgroundImage: 'linear-gradient(rgba(11,16,32,0.4), rgba(11,16,32,0.9)), url(/cityscape_sunset.png)' }}>
+        <section className="mmo-mobile-hero hud-panel hud-corners gold" style={{ backgroundImage: 'linear-gradient(rgba(11,16,32,0.4), rgba(11,16,32,0.9)), url(/assets/dash/hero_cityscape.webp)' }}>
           <div className="mobile-hero-welcome-area">
             <h1 className="mob-welcome-title disp">WELCOME BACK, <span className="gold-text neon-gold">{username.toUpperCase()}</span>!</h1>
             <p className="mob-welcome-sub">The market never sleeps. Opportunity is everywhere.</p>
@@ -423,9 +424,7 @@ export function DashboardPage() {
               return (
                 <div key={a.id} className="mover-mob-row" onClick={() => navigateToTrade(a.id, a.market as Market)}>
                   <div className="mover-mob-icon-wrap">
-                    <svg className="mover-mob-icon-svg" style={{ width: '18px', height: '18px', fill: isPositive ? '#22C55E' : '#EF4444' }}>
-                      <use href={`#${a.icon}`} />
-                    </svg>
+                    <AssetIcon id={a.id} icon={a.icon} size={18} className="mover-mob-icon-svg" />
                   </div>
                   <div className="mover-mob-asset-info">
                     <span className="mover-mob-sym">{a.id}</span>
@@ -654,7 +653,7 @@ export function DashboardPage() {
       <div className="mmo-main-content">
         
         {/* Center Top Hero Section */}
-        <section className="hero-banner-section hud-panel hud-corners gold" style={{ backgroundImage: 'linear-gradient(rgba(11,16,32,0.4), rgba(11,16,32,0.9)), url(/cityscape_sunset.png)' }}>
+        <section className="hero-banner-section hud-panel hud-corners gold" style={{ backgroundImage: 'linear-gradient(rgba(11,16,32,0.4), rgba(11,16,32,0.9)), url(/assets/dash/hero_cityscape.webp)' }}>
           <div className="hero-banner-left">
             <h1 className="welcome-heading disp">WELCOME BACK, <span className="neon-gold">{username.toUpperCase()}</span>!</h1>
             <p className="welcome-subtext">The market never sleeps. Opportunity is everywhere.</p>
@@ -1004,22 +1003,22 @@ export function DashboardPage() {
 
               <div className="achievements-lobby-grid">
                 <div className={`ach-badge-box ${firstTradeUnlocked ? 'unlocked' : 'locked'}`}>
-                  <div className="ach-shield-icon first-trade"><IconStar size={20} /></div>
+                  <div className="ach-shield-icon first-trade"><img src="/assets/ach/ach_first_trade.webp" alt="First Trade" className="ach-img" /></div>
                   <span className="ach-name">First Trade</span>
                   <span className="ach-status">{firstTradeUnlocked ? 'Complete' : '0/1 Complete'}</span>
                 </div>
                 <div className={`ach-badge-box ${profitMakerUnlocked ? 'unlocked' : 'locked'}`}>
-                  <div className="ach-shield-icon profit-maker"><IconCoin size={20} /></div>
+                  <div className="ach-shield-icon profit-maker"><img src="/assets/ach/ach_profit_maker.webp" alt="Profit Maker" className="ach-img" /></div>
                   <span className="ach-name">Profit Maker</span>
                   <span className="ach-status">{profitMakerUnlocked ? 'Complete' : 'Earn $10k Profit'}</span>
                 </div>
                 <div className={`ach-badge-box ${bigSpenderUnlocked ? 'unlocked' : 'locked'}`}>
-                  <div className="ach-shield-icon big-spender"><IconGem size={20} /></div>
+                  <div className="ach-shield-icon big-spender"><img src="/assets/ach/ach_big_spender.webp" alt="Big Spender" className="ach-img" /></div>
                   <span className="ach-name">Big Spender</span>
                   <span className="ach-status">{bigSpenderUnlocked ? 'Complete' : 'Spend $100k'}</span>
                 </div>
                 <div className={`ach-badge-box ${marketMasterUnlocked ? 'unlocked' : 'locked'}`}>
-                  <div className="ach-shield-icon market-master"><IconTrophy size={20} /></div>
+                  <div className="ach-shield-icon market-master"><img src="/assets/ach/ach_market_master.webp" alt="Market Master" className="ach-img" /></div>
                   <span className="ach-name">Market Master</span>
                   <span className="ach-status">{marketMasterUnlocked ? 'Complete' : 'Reach Level 20'}</span>
                 </div>

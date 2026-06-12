@@ -3,6 +3,7 @@ import { CATEGORY_LABELS } from '../../../shared/engine/constants';
 import { fmt, fmtNum, fmtPct } from '../../../shared/engine/helpers';
 import { useGame, getAssetDef } from '../store/gameStore';
 import { Audio } from '../audio/audio';
+import { AssetIcon } from './AssetIcon';
 
 function fmtBig(n: number): string {
   if (!isFinite(n) || n === 0) return '—';
@@ -58,7 +59,7 @@ export function StockDetailsTab() {
       <h3>Stock Details</h3>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10, padding: '4px 2px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <svg style={{ width: 32, height: 32 }}><use href={`#${a.icon}`}/></svg>
+          <AssetIcon id={a.id} icon={a.icon} size={32} />
           <div>
             <div style={{ fontSize: 16, fontWeight: 700 }}>{a.id} <span style={{ opacity: .6, fontWeight: 400 }}>{a.name}</span></div>
             <div style={{ fontSize: 11, opacity: .7 }}>{CATEGORY_LABELS[a.cat] || a.cat} · {a.desc}</div>

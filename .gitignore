@@ -20,3 +20,7 @@ services/gateway/dist/
 client/dist/
 
 admin-audit.jsonl
+
+# AI-generated source images (processed copies live in client/public/assets)
+asset img/
+scratch/

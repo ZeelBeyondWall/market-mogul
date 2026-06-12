@@ -17,12 +17,14 @@ export function Mascot() {
   }, [eng, eng.netWorth()]);
 
   const color = mood === 'bull' ? '#10b981' : mood === 'bear' ? '#f43f5e' : '#fbbf24';
-  const emoji = mood === 'bull' ? '🐂' : mood === 'bear' ? '🐻' : '😐';
+  const img = mood === 'bull' ? 'mascot_bull' : mood === 'bear' ? 'mascot_bear' : 'mascot_neutral';
   const label = mood === 'bull' ? 'BULLISH' : mood === 'bear' ? 'BEARISH' : 'NEUTRAL';
 
   return (
     <div className={'mascot' + (reduceMotion ? ' no-bounce' : '')} title={label} style={{ '--mood': color } as React.CSSProperties}>
-      <div className="mascot-face">{emoji}</div>
+      <div className="mascot-face">
+        <img src={`/assets/mascot/${img}.webp`} alt={label} draggable={false} style={{ width: '1.4em', height: '1.4em', objectFit: 'contain', display: 'block' }} />
+      </div>
       <div className="mascot-label">{label}</div>
     </div>
   );

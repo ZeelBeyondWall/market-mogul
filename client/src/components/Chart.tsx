@@ -8,6 +8,7 @@ import { Audio } from '../audio/audio';
 import { getTickFrac } from '../net/wsClient';
 import { computeIndicators, type IndicatorId } from '../utils/indicators';
 import { OrderBook } from './OrderBook';
+import { AssetIcon } from './AssetIcon';
 
 const INDICATOR_OPTIONS: { id: IndicatorId; label: string }[] = [
   { id: 'sma', label: 'SMA' },
@@ -1031,7 +1032,7 @@ export function Chart() {
   return (
     <>
       <div className="chart-header">
-        <svg className="chart-sym-icon"><use href={`#${a.icon}`}/></svg>
+        <AssetIcon id={a.id} icon={a.icon} className="chart-sym-icon" />
         <div className="chart-sym-info">
           <div className="sym">{a.id}</div>
           <div className="name">{a.name}</div>

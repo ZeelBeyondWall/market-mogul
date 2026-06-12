@@ -67,10 +67,18 @@ export function BotsTab() {
         padding: '1px 4px',
         marginLeft: '6px',
         letterSpacing: '0.5px',
-        display: 'inline-block',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '3px',
         verticalAlign: 'middle',
         textTransform: 'uppercase'
       }}>
+        <img
+          src={`/assets/lb/tier_${tier}.webp`}
+          alt=""
+          style={{ width: 10, height: 10, objectFit: 'contain', borderRadius: 2 }}
+          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
         {label}
       </span>
     );

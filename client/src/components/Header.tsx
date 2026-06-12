@@ -7,6 +7,7 @@ import { NotificationCenter } from './NotificationCenter';
 import { LevelShield } from '../ui/LevelShield';
 import { useCountUp } from '../ui/useCountUp';
 import { IconGem, IconFlame, IconUser, IconWallet } from '../ui/icons';
+import { AvatarImg } from '../ui/avatar';
 import '../styles/arcade-header.css';
 
 export function Header() {
@@ -45,15 +46,6 @@ export function Header() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  const getAvatarEmoji = (level: number) => {
-    if (level < 5) return '🧑‍🚀';
-    if (level < 10) return '🦾';
-    if (level < 20) return '🤖';
-    if (level < 30) return '⚡';
-    if (level < 50) return '👽';
-    return '👑';
-  };
 
   const handleNav = (screen: 'dashboard' | 'trading' | 'portfolio' | 'leaderboard' | 'store', tab?: any) => {
     Audio.click();
@@ -125,7 +117,7 @@ export function Header() {
               <span className="mobile-profile-lvl">LEVEL {lvl}</span>
             </div>
             <div className={`mobile-profile-avatar ${equippedFrame !== 'none' ? equippedFrame : ''}`}>
-              {getAvatarEmoji(lvl)}
+              <AvatarImg level={lvl} />
               <span className="mobile-active-dot live-dot"></span>
             </div>
           </div>
@@ -259,7 +251,7 @@ export function Header() {
 
         <div className="hdr-profile-card" role="button" tabIndex={0} onClick={() => { Audio.click(); setActiveScreen('profile'); }} title="My Profile">
           <div className={`profile-avatar ${equippedFrame !== 'none' ? equippedFrame : ''}`}>
-            {getAvatarEmoji(lvl)}
+            <AvatarImg level={lvl} />
           </div>
           <div className="profile-info">
             <span className="profile-name" style={{ color: equippedNameColor !== 'none' ? equippedNameColor : undefined }}>

@@ -5154,6 +5154,16 @@ body[data-theme="game"] {
   background-color: rgba(251, 191, 36, 0.02);
 }
 
+.ach-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  display: block;
+}
+.ach-badge-box.locked .ach-img {
+  filter: grayscale(1) brightness(0.6);
+}
 .ach-shield-icon {
   font-size: 20px;
   margin-bottom: 6px;
