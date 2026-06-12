@@ -7,6 +7,7 @@ import { AnimatedNumber } from './AnimatedNumber';
 import { useCountUp } from '../ui/useCountUp';
 import { LevelShield } from '../ui/LevelShield';
 import { TradeHistoryTab } from './TradeHistoryTab';
+import { AssetIcon } from './AssetIcon';
 import {
   IconTrophy,
   IconWallet,
@@ -58,6 +59,16 @@ export function PortfolioPage() {
   const xpProgress = Math.max(0, Math.min(100, ((xp - xpAt) / Math.max(1, xpTo - xpAt)) * 100));
 
   const username = session?.user?.user_metadata?.username || session?.user?.email?.split('@')[0] || p.name || 'Trader';
+
+  // Mobile: dedicated single-pane layout with segmented tabs (no desktop
+  // 3-column stack). Detect viewport + which section is showing.
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 820);
+  const [mobTab, setMobTab] = useState<'holdings' | 'alloc' | 'activity'>('holdings');
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 820);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // Sub-sections State
   const [activeTf, setActiveTf] = useState<'1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL'>('1D');
@@ -260,6 +271,119 @@ export function PortfolioPage() {
     });
     setIsHoveredChart(true);
   };
+
+  const openAsset = (aid: string, market: string) => {
+    Audio.click();
+    setActiveMarket(market as any);
+    setActiveAsset(aid);
+    setActiveScreen('trading');
+  };
+
+  // ==========================================================================
+  // MOBILE LAYOUT — compact summary + segmented tabs (no 3-column stack)
+  // ==========================================================================
+  if (isMobile) {
+    const pnlUp = todayPnL >= 0;
+    return (
+      <div className="page-container arcade-portfolio pf-mobile">
+        {/* Summary header */}
+        <section className="pfm-summary hud-panel hud-corners gold">
+          <span className="pfm-label">NET WORTH</span>
+          <div className="pfm-net disp"><AnimatedNumber value={animNet} format={n => fmt(n)} /></div>
+          <div className={'pfm-chg ' + (pnlUp ? 'up' : 'dn')}>
+            {pnlUp ? '▲' : '▼'} {fmt(Math.abs(todayPnL))} ({fmtPct(todayPnLPct)}) today
+          </div>
+          <div className="pfm-stat-row">
+            <div className="pfm-stat">
+              <span className="pfm-s-lbl">CASH</span>
+              <span className="pfm-s-val">{fmt(cash)}</span>
+            </div>
+            <div className="pfm-stat">
+              <span className="pfm-s-lbl">INVESTED</span>
+              <span className="pfm-s-val">{fmt(port)}</span>
+            </div>
+            <div className="pfm-stat">
+              <span className="pfm-s-lbl">RANK</span>
+              <span className="pfm-s-val">#{rank || '—'}</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Segmented tabs */}
+        <div className="pfm-tabs">
+          <button className={mobTab === 'holdings' ? 'on' : ''} onClick={() => { setMobTab('holdings'); Audio.click(); }}>Holdings</button>
+          <button className={mobTab === 'alloc' ? 'on' : ''} onClick={() => { setMobTab('alloc'); Audio.click(); }}>Allocation</button>
+          <button className={mobTab === 'activity' ? 'on' : ''} onClick={() => { setMobTab('activity'); Audio.click(); }}>Activity</button>
+        </div>
+
+        {/* HOLDINGS */}
+        {mobTab === 'holdings' && (
+          <div className="pfm-pane">
+            {holdingsList.length === 0 && !isLoading && (
+              <div className="pfm-empty">No open positions yet. Make your first trade to see holdings here.</div>
+            )}
+            {holdingsList.map((h, i) => {
+              const up = h.unrealized >= 0;
+              return (
+                <div key={i} className="pfm-hold-card hud-panel" onClick={() => openAsset(h.aid, h.market)}>
+                  <AssetIcon id={h.aid} icon={h.icon} size={34} />
+                  <div className="pfm-hold-main">
+                    <span className="pfm-hold-name">{h.name}</span>
+                    <span className="pfm-hold-sub">
+                      <span className={'tkr ' + (h.shares < 0 ? 'short' : '')}>{h.aid}</span>
+                      {' '}{fmtNum(Math.abs(h.shares))} sh @ {fmt(h.avgCost)}
+                    </span>
+                  </div>
+                  <div className="pfm-hold-right">
+                    <span className="pfm-hold-val">{fmt(h.val)}</span>
+                    <span className={'pfm-hold-pnl ' + (up ? 'up' : 'dn')}>{up ? '+' : ''}{fmt(h.unrealized)} ({fmtPct(h.unrealizedPct)})</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ALLOCATION */}
+        {mobTab === 'alloc' && (
+          <div className="pfm-pane">
+            <div className="pfm-donut-card hud-panel">
+              <div className="donut-chart-wrap" style={{ position: 'relative' }}>
+                <svg viewBox="0 0 140 140" className="donut-chart-svg" style={{ width: 160, height: 160 }}>
+                  {renderDonutChart()}
+                </svg>
+                <div className="donut-center-text">
+                  <span className="donut-center-val disp">{fmt(totalValue)}</span>
+                  <span className="donut-center-lbl">TOTAL VALUE</span>
+                </div>
+              </div>
+              <div className="pfm-alloc-list">
+                {activeAllocations.map((a, i) => (
+                  <div key={i} className="pfm-alloc-row">
+                    <span className="pfm-alloc-dot" style={{ background: a.color }} />
+                    <span className="pfm-alloc-name">{a.label}</span>
+                    <span className="pfm-alloc-pct">{a.pct.toFixed(1)}%</span>
+                    <span className="pfm-alloc-val">{fmt(a.val)}</span>
+                  </div>
+                ))}
+                {activeAllocations.length === 0 && <div className="pfm-empty">Nothing allocated yet.</div>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ACTIVITY */}
+        {mobTab === 'activity' && (
+          <div className="pfm-pane">
+            <div className="pfm-hist-card hud-panel">
+              <h3 className="section-title disp">TRADE HISTORY</h3>
+              <TradeHistoryTab />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="page-container arcade-portfolio">
