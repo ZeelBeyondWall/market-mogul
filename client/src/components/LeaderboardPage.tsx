@@ -397,7 +397,7 @@ export function LeaderboardPage() {
                     </td>
                     <td>
                       <div className="trader-cell">
-                        <div className="trader-avatar">👨‍🚀</div>
+                        <div className="trader-avatar"><AvatarImg level={lvl} /></div>
                         <div className="trader-info-wrap">
                           <span className="trader-name-lbl">{username} (You)</span>
                           <span className={`trader-tag-pro tier-tag ${playerTier}`}>{playerLeague.name}</span>

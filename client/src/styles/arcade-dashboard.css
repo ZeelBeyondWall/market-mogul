@@ -195,8 +195,10 @@
 
 .arcdash .asset-icon-placeholder {
   color: var(--neon-cyan);
-  background-color: var(--hud-raise);
-  border: 1px solid var(--hud-border-dim);
+  /* real logos carry their own dark badge — drop the box bg/border so they
+     don't sit inside a second frame */
+  background-color: transparent;
+  border: none;
 }
 
 /* prices / quantities stay mono per spec */

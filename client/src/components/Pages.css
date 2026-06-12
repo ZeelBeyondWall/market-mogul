@@ -1730,10 +1730,10 @@
 }
 
 .card-img {
-  width: 70px;
-  height: 70px;
+  width: 116px;
+  height: 116px;
   object-fit: contain;
-  filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.4));
+  filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.4));
 }
 
 .card-glow-wrap.green-glow .card-img {
@@ -1972,8 +1972,8 @@
 }
 
 .bundle-img-wrap img {
-  width: 80px;
-  height: 80px;
+  width: 104px;
+  height: 104px;
   object-fit: contain;
   filter: drop-shadow(0 4px 12px rgba(124, 92, 255, 0.3));
 }

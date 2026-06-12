@@ -728,7 +728,7 @@ export function DashboardPage() {
                       onClick={() => navigateToTrade(a.id, a.market as Market)}
                     >
                       <div className="mover-asset-info">
-                        <span className="asset-icon-placeholder">{a.market === 'crypto' ? <IconCoin size={14} /> : a.market === 'forex' ? <IconGlobe size={14} /> : <IconCandles size={14} />}</span>
+                        <span className="asset-icon-placeholder"><AssetIcon id={a.id} icon={a.icon} size={28} /></span>
                         <div className="mover-name-col">
                           <span className="mover-symbol">{a.id}</span>
                           <span className="mover-fullname">{a.name}</span>
