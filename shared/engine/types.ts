@@ -53,11 +53,12 @@ export interface Candle {
   v: number;
 }
 
-export type TFKey = '1s' | '5s' | '30s' | '1m' | '5m';
+export type TFKey = '1s' | '5s' | '15s' | '30s' | '1m' | '5m' | '15m' | '30m' | '1h';
 export const TF_MS: Record<TFKey, number> = {
-  '1s': 1000, '5s': 5000, '30s': 30000, '1m': 60000, '5m': 300000,
+  '1s': 1000, '5s': 5000, '15s': 15000, '30s': 30000,
+  '1m': 60000, '5m': 300000, '15m': 900000, '30m': 1800000, '1h': 3600000,
 };
-export const TF_LIST: TFKey[] = ['1s','5s','30s','1m','5m'];
+export const TF_LIST: TFKey[] = ['1s','5s','15s','30s','1m','5m','15m','30m','1h'];
 
 export interface CandleSeries {
   candles: Candle[];
