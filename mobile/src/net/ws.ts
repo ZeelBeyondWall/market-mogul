@@ -1,6 +1,6 @@
 import { WS_URL } from '../config';
 import { useGame } from '../store/game';
-import type { TFKey } from '../../../shared/engine/types';
+import type { TFKey } from '../engine/types';
 
 // Ported from the web client (client/src/net/wsClient.ts), trimmed to the
 // core trading loop: auth → snapshot → 10Hz ticks → order results.

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Session } from '@supabase/supabase-js';
-import type { TFKey } from '../../../shared/engine/types';
+import type { TFKey } from '../engine/types';
 
 // Hermes exposes performance.now(), but guard in case a runtime doesn't —
 // the Engine constructor calls it. Must run before `new Engine()`.
@@ -8,7 +8,7 @@ if (typeof (globalThis as any).performance === 'undefined') {
   (globalThis as any).performance = { now: () => Date.now() };
 }
 // eslint-disable-next-line import/first
-import { Engine } from '../../../shared/engine/engine';
+import { Engine } from '../engine/engine';
 
 export type Toast = { msg: string; kind: 'ok' | 'err' | 'info' } | null;
 

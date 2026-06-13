@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { View, Text, Pressable, TextInput, StyleSheet, ScrollView } from 'react-native';
-import { ASSETS } from '../../../shared/engine/constants';
-import { fmt, fmtPct } from '../../../shared/engine/helpers';
-import { TF_LIST } from '../../../shared/engine/types';
+import { ASSETS } from '../engine/constants';
+import { fmt, fmtPct } from '../engine/helpers';
+import { TF_LIST } from '../engine/types';
 import { useGame } from '../store/game';
 import { send, setTF } from '../net/ws';
 import { ChartView } from '../components/ChartView';

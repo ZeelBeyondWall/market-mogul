@@ -1,16 +1,8 @@
-// Monorepo Metro config: bundle the shared engine that lives outside mobile/.
+// Standard Expo Metro config. The shared game engine is vendored into
+// src/engine (synced from ../shared via `npm run sync-shared`), so there is no
+// cross-package resolution to configure — everything lives inside mobile/.
 const { getDefaultConfig } = require('expo/metro-config');
-const path = require('path');
 
-const projectRoot = __dirname;
-const repoRoot = path.resolve(projectRoot, '..');
-
-const config = getDefaultConfig(projectRoot);
-
-// Let Metro see ../shared (game engine reused from the web client).
-config.watchFolders = [path.resolve(repoRoot, 'shared')];
-// Resolve node_modules from mobile/ only (avoid picking up the web client's).
-config.resolver.nodeModulesPaths = [path.resolve(projectRoot, 'node_modules')];
-config.resolver.disableHierarchicalLookup = true;
+const config = getDefaultConfig(__dirname);
 
 module.exports = config;

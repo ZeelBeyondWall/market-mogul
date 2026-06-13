@@ -1,6 +1,6 @@
 import { View, Text, FlatList, Pressable, StyleSheet } from 'react-native';
-import { ASSETS } from '../../../shared/engine/constants';
-import { fmt, fmtPct, fmtNum } from '../../../shared/engine/helpers';
+import { ASSETS } from '../engine/constants';
+import { fmt, fmtPct, fmtNum } from '../engine/helpers';
 import { useGame } from '../store/game';
 import { send } from '../net/ws';
 import { COLORS } from '../config';
