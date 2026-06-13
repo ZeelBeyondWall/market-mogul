@@ -19,6 +19,7 @@ export function AccountScreen() {
   const gems = useGame((s) => s.gems);
   const dailyMissions = useGame((s) => s.dailyMissions);
   const events = useGame((s) => s.events);
+  const recentTrades = useGame((s) => s.recentTrades);
   useLiveTick();
 
   const p = engine.player();
@@ -162,6 +163,31 @@ export function AccountScreen() {
         ))
       )}
 
+      {/* trade history */}
+      <Text style={styles.section}>RECENT TRADES</Text>
+      {recentTrades.length === 0 ? (
+        <Text style={styles.muted}>No trades yet.</Text>
+      ) : (
+        recentTrades.slice(0, 12).map((t: any, i: number) => {
+          const pnl = t?.pnl ?? 0;
+          const hasPnl = t?.pnl !== undefined && t?.pnl !== null;
+          const profit = pnl >= 0;
+          return (
+            <View key={i} style={styles.trade}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.tSym} numberOfLines={1}>
+                  {t?.assetId} <Text style={[styles.tSide, { color: t?.side === 'buy' ? COLORS.green : COLORS.red }]}>{(t?.side || '').toUpperCase()}</Text>
+                </Text>
+                <Text style={styles.tMeta}>{fmt(t?.qty || 0)} @ {fmt(t?.price || 0)}</Text>
+              </View>
+              {hasPnl ? (
+                <Text style={[styles.tPnl, { color: profit ? COLORS.green : COLORS.red }]}>{profit ? '+' : ''}{fmt(pnl)}</Text>
+              ) : null}
+            </View>
+          );
+        })
+      )}
+
       <View style={styles.signoutWrap}>
         <Text style={styles.signout} onPress={() => supabase.auth.signOut()}>Sign Out</Text>
       </View>
@@ -223,6 +249,11 @@ const styles = StyleSheet.create({
   news: { backgroundColor: COLORS.panel, borderWidth: 1, borderColor: COLORS.borderDim, borderRadius: 11, padding: 11, marginBottom: 7 },
   newsTitle: { color: '#fff', fontSize: 12.5, fontWeight: '700' },
   newsDesc: { color: COLORS.dim, fontSize: 11, marginTop: 3, lineHeight: 15 },
+  trade: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.panel, borderWidth: 1, borderColor: COLORS.borderDim, borderRadius: 10, padding: 10, marginBottom: 6 },
+  tSym: { color: '#fff', fontSize: 12.5, fontWeight: '700' },
+  tSide: { fontSize: 10, fontWeight: '800' },
+  tMeta: { color: COLORS.dim, fontSize: 10.5, marginTop: 2, fontVariant: ['tabular-nums'] },
+  tPnl: { fontSize: 13, fontWeight: '800', fontVariant: ['tabular-nums'] },
   signoutWrap: { marginTop: 26, alignItems: 'center' },
   signout: { color: COLORS.red, fontSize: 13, fontWeight: '700', padding: 10 },
 });

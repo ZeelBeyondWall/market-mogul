@@ -1,6 +1,13 @@
 import { WS_URL } from '../config';
 import { useGame } from '../store/game';
+import { makeBook } from '../engine/orderbook';
 import type { TFKey } from '../engine/types';
+
+function hydrateBook(ast: any, topBids: any[], topAsks: any[]): void {
+  ast.book = makeBook();
+  (topBids || []).forEach((o, i) => ast.book.bids.push({ id: -1 - i, ownerId: -1, ts: 0, px: o.px, qty: o.qty, ownerName: o.ownerName }));
+  (topAsks || []).forEach((o, i) => ast.book.asks.push({ id: -1000 - i, ownerId: -1, ts: 0, px: o.px, qty: o.qty, ownerName: o.ownerName }));
+}
 
 // Ported from the web client (client/src/net/wsClient.ts), trimmed to the
 // core trading loop: auth → snapshot → 10Hz ticks → order results.
@@ -158,11 +165,13 @@ function applySnapshot(snap: any): void {
       if (sa.candleStartT) ast.series[tf].candleStartT = sa.candleStartT;
     }
     if (sa.volumeHist?.length) ast.volumeHist = sa.volumeHist.slice();
+    if (aid === snap.active) hydrateBook(ast, sa.topBids, sa.topAsks);
   }
 
   // Progression + social meta (level/xp/rank/streak/missions/events/leaderboard).
   const g = useGame.getState();
   if (Array.isArray(snap.leaderboard)) g.setLeaderboard(snap.leaderboard);
+  g.setRecent(Array.isArray(snap.recentTrades) ? snap.recentTrades : [], snap.activeHolders || 0);
   g.setExtras({
     rank: snap.playerRank ?? g.rank,
     totalTraders: snap.totalTraders ?? g.totalTraders,
@@ -212,6 +221,7 @@ function applyTick(tick: any): void {
     }
     if (ast && tick.activeHistory) ast.history = tick.activeHistory.slice();
     if (ast && tick.activeVolumeHist) ast.volumeHist = tick.activeVolumeHist.slice();
+    if (ast && tick.topBidsActive) hydrateBook(ast, tick.topBidsActive, tick.topAsksActive);
   }
   scheduleBump();
 }

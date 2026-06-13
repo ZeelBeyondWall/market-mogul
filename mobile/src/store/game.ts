@@ -87,6 +87,8 @@ interface GameStore extends PlayerExtras {
   activeTF: TFKey;
   toast: Toast;
   leaderboard: LeaderEntry[];
+  recentTrades: any[];
+  activeHolders: number;
   setSession: (s: Session | null) => void;
   setConnected: (v: boolean) => void;
   bumpData: () => void;
@@ -95,6 +97,7 @@ interface GameStore extends PlayerExtras {
   clearToast: () => void;
   setLeaderboard: (lb: LeaderEntry[]) => void;
   setExtras: (e: Partial<PlayerExtras>) => void;
+  setRecent: (trades: any[], holders: number) => void;
 }
 
 export const useGame = create<GameStore>((set) => ({
@@ -105,6 +108,8 @@ export const useGame = create<GameStore>((set) => ({
   activeTF: '5s',
   toast: null,
   leaderboard: [],
+  recentTrades: [],
+  activeHolders: 0,
   rank: 0,
   totalTraders: 0,
   level: 1,
@@ -125,4 +130,5 @@ export const useGame = create<GameStore>((set) => ({
   clearToast: () => set({ toast: null }),
   setLeaderboard: (lb) => set({ leaderboard: lb }),
   setExtras: (e) => set(e),
+  setRecent: (trades, holders) => set({ recentTrades: trades, activeHolders: holders }),
 }));
