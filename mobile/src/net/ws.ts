@@ -72,6 +72,10 @@ export function claimMission(missionId: string): void {
   send({ type: 'claimMission', payload: { missionId } });
 }
 
+export function storePurchase(gemsChange: number, cashChange = 0, xpChange = 0): void {
+  send({ type: 'storePurchase', payload: { gemsChange, cashChange, xpChange } });
+}
+
 // Force a fresh connection — used after changing the username so the server
 // re-reads it (the trader name is set from the token's metadata on auth).
 export function reconnect(): void {
@@ -185,6 +189,7 @@ function applySnapshot(snap: any): void {
     weeklyMissions: Array.isArray(snap.weeklyMissions) ? snap.weeklyMissions : g.weeklyMissions,
     events: Array.isArray(snap.events) ? snap.events : g.events,
     banner: snap.banner || '',
+    storeBuyAllowed: !!snap.storeBuyAllowed,
   });
   scheduleBump();
 }

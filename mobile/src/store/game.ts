@@ -77,6 +77,7 @@ export interface PlayerExtras {
   weeklyMissions: any[];
   events: any[];
   banner: string;
+  storeBuyAllowed: boolean;
 }
 
 interface GameStore extends PlayerExtras {
@@ -86,6 +87,7 @@ interface GameStore extends PlayerExtras {
   dataTick: number;            // bumped on every snapshot/tick → drives re-render
   activeTF: TFKey;
   toast: Toast;
+  activeIndicators: string[];
   leaderboard: LeaderEntry[];
   recentTrades: any[];
   activeHolders: number;
@@ -98,6 +100,7 @@ interface GameStore extends PlayerExtras {
   setLeaderboard: (lb: LeaderEntry[]) => void;
   setExtras: (e: Partial<PlayerExtras>) => void;
   setRecent: (trades: any[], holders: number) => void;
+  toggleIndicator: (id: string) => void;
 }
 
 export const useGame = create<GameStore>((set) => ({
@@ -107,6 +110,7 @@ export const useGame = create<GameStore>((set) => ({
   dataTick: 0,
   activeTF: '5s',
   toast: null,
+  activeIndicators: [],
   leaderboard: [],
   recentTrades: [],
   activeHolders: 0,
@@ -122,6 +126,7 @@ export const useGame = create<GameStore>((set) => ({
   weeklyMissions: [],
   events: [],
   banner: '',
+  storeBuyAllowed: false,
   setSession: (s) => set({ session: s }),
   setConnected: (v) => set({ connected: v }),
   bumpData: () => set((s) => ({ dataTick: s.dataTick + 1 })),
@@ -131,4 +136,7 @@ export const useGame = create<GameStore>((set) => ({
   setLeaderboard: (lb) => set({ leaderboard: lb }),
   setExtras: (e) => set(e),
   setRecent: (trades, holders) => set({ recentTrades: trades, activeHolders: holders }),
+  toggleIndicator: (id) => set((s) => ({
+    activeIndicators: s.activeIndicators.includes(id) ? s.activeIndicators.filter((x) => x !== id) : [...s.activeIndicators, id],
+  })),
 }));

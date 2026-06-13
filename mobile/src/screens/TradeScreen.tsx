@@ -14,6 +14,8 @@ export function TradeScreen() {
   const engine = useGame((s) => s.engine);
   const tf = useGame((s) => s.activeTF);
   const setActiveTF = useGame((s) => s.setActiveTF);
+  const inds = useGame((s) => s.activeIndicators);
+  const toggleIndicator = useGame((s) => s.toggleIndicator);
   useLiveTick();
   const [qty, setQty] = useState('10');
   const [orderType, setOrderType] = useState<'market' | 'limit'>('market');
@@ -71,6 +73,15 @@ export function TradeScreen() {
           </Pressable>
         ))}
       </ScrollView>
+
+      {/* indicators */}
+      <View style={styles.indRow}>
+        {(['sma', 'ema', 'rsi', 'macd', 'bb'] as const).map((id) => (
+          <Pressable key={id} onPress={() => toggleIndicator(id)} style={[styles.indChip, inds.includes(id) && styles.indOn]}>
+            <Text style={[styles.indTxt, inds.includes(id) && styles.indTxtOn]}>{id.toUpperCase()}</Text>
+          </Pressable>
+        ))}
+      </View>
 
       <ChartView />
 
@@ -178,6 +189,11 @@ const styles = StyleSheet.create({
   tfBtnOn: { backgroundColor: COLORS.gold, borderColor: COLORS.gold },
   tfTxt: { color: COLORS.dim, fontSize: 11, fontWeight: '700' },
   tfTxtOn: { color: '#0a0a14' },
+  indRow: { flexDirection: 'row', gap: 6, marginBottom: 8, flexWrap: 'wrap' },
+  indChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 7, backgroundColor: COLORS.panel, borderWidth: 1, borderColor: COLORS.borderDim },
+  indOn: { backgroundColor: COLORS.cyan, borderColor: COLORS.cyan },
+  indTxt: { color: COLORS.dim, fontSize: 10, fontWeight: '800' },
+  indTxtOn: { color: '#0a0a14' },
   details: { marginTop: 12, backgroundColor: COLORS.panel, borderWidth: 1, borderColor: COLORS.borderDim, borderRadius: 12, padding: 12 },
   detDesc: { color: COLORS.text, fontSize: 12.5, marginBottom: 10 },
   detRow: { flexDirection: 'row', justifyContent: 'space-between' },

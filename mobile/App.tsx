@@ -15,6 +15,17 @@ import { TradeScreen } from './src/screens/TradeScreen';
 import { PositionsScreen } from './src/screens/PositionsScreen';
 import { AccountScreen } from './src/screens/AccountScreen';
 import { LeaderboardScreen } from './src/screens/LeaderboardScreen';
+import { StoreScreen } from './src/screens/StoreScreen';
+import { Ionicons } from '@expo/vector-icons';
+
+const TAB_ICON: Record<string, any> = {
+  Markets: 'stats-chart',
+  Trade: 'pulse',
+  Positions: 'briefcase',
+  Ranks: 'trophy',
+  Store: 'cart',
+  Account: 'person',
+};
 import { COLORS } from './src/config';
 
 const Tab = createBottomTabNavigator();
@@ -93,18 +104,23 @@ export default function App() {
       ) : (
         <NavigationContainer theme={navTheme}>
           <Tab.Navigator
-            screenOptions={{
+            screenOptions={({ route }) => ({
               headerStyle: { backgroundColor: COLORS.bg },
               headerTintColor: '#fff',
-              tabBarStyle: { backgroundColor: COLORS.panel, borderTopColor: COLORS.borderDim },
+              tabBarStyle: { backgroundColor: COLORS.panel, borderTopColor: COLORS.borderDim, height: 58, paddingBottom: 6, paddingTop: 4 },
               tabBarActiveTintColor: COLORS.gold,
               tabBarInactiveTintColor: COLORS.dim,
-            }}
+              tabBarLabelStyle: { fontSize: 9.5, fontWeight: '700' },
+              tabBarIcon: ({ color, size }) => (
+                <Ionicons name={TAB_ICON[route.name] || 'ellipse'} size={size ?? 20} color={color} />
+              ),
+            })}
           >
             <Tab.Screen name="Markets" component={MarketsScreen} />
             <Tab.Screen name="Trade" component={TradeScreen} />
             <Tab.Screen name="Positions" component={PositionsScreen} />
             <Tab.Screen name="Ranks" component={LeaderboardScreen} />
+            <Tab.Screen name="Store" component={StoreScreen} />
             <Tab.Screen name="Account" component={AccountScreen} />
           </Tab.Navigator>
         </NavigationContainer>
