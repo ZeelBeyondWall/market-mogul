@@ -42,6 +42,18 @@ export function sellableQty(S: GameState, t: Trader, assetId: string, qty: numbe
   return longPart + allowedShort;
 }
 
+// v11: how many shares a trader can BUY. Covering an existing short returns the
+// margin that was locked at open, so it needs NO spendable cash — only the
+// portion that opens/adds a long is limited by cash. Without this, a short
+// holder whose cash is locked as margin could never buy back to cover.
+export function buyableQty(t: Trader, assetId: string, qty: number, px: number): number {
+  const sh = t.holdings[assetId]?.shares || 0;
+  const covering = sh < 0 ? Math.min(qty, -sh) : 0;
+  const newLong = qty - covering;
+  const affordLong = Math.max(0, roundShares(t.cash / Math.max(0.01, px)));
+  return covering + Math.min(newLong, affordLong);
+}
+
 export function executeTrade(
   S: GameState,
   buyerId: number,
@@ -279,23 +291,15 @@ export function placeOrder(
       const fillPx = top.px;
       if (fillQty <= 0) { opp.shift(); continue; }
       if (side === 'buy') {
-        const cost = fillPx * fillQty;
-        if (t.cash < cost) {
-          const affordQty = roundShares(t.cash / fillPx);
-          if (affordQty <= 0) break;
-          const actual = trigger(traderId, top.ownerId, affordQty, fillPx);
-          top.qty -= actual;
-          totalCost += fillPx * actual;
-          totalQty += actual;
-          if (top.qty <= 0 || actual < affordQty) opp.shift();
-          break;
-        }
-        const actual = trigger(traderId, top.ownerId, fillQty, fillPx);
+        const buyQ = buyableQty(t, assetId, fillQty, fillPx);
+        if (buyQ <= 0) break;
+        const actual = trigger(traderId, top.ownerId, buyQ, fillPx);
         top.qty -= actual;
         totalCost += fillPx * actual;
         totalQty += actual;
         remaining -= actual;
         if (top.qty <= 0 || actual < fillQty) opp.shift();
+        if (buyQ < fillQty) break; // cash-limited on the new-long portion
       } else {
         const allowed = sellableQty(S, t, assetId, fillQty, fillPx);
         if (allowed <= 0) break;
@@ -319,8 +323,7 @@ export function placeOrder(
         const spread = 0.0035; // matches HOUSE_SPREAD
         if (side === 'buy') {
           const fillPx = +(mid * (1 + spread)).toFixed(dec);
-          let q = remaining;
-          if (t.cash < fillPx * q) q = roundShares(t.cash / fillPx);
+          const q = buyableQty(t, assetId, remaining, fillPx);
           if (q > 0) {
             const actual = trigger(traderId, S.houseId, q, fillPx);
             totalCost += fillPx * actual; totalQty += actual; remaining -= actual;
@@ -348,22 +351,15 @@ export function placeOrder(
     const fillQty = Math.min(remaining, top.qty);
     const fillPx = top.px;
     if (side === 'buy') {
-      if (t.cash < fillPx * fillQty) {
-        const aff = roundShares(t.cash / fillPx);
-        if (aff <= 0) break;
-        const actual = trigger(traderId, top.ownerId, aff, fillPx);
-        top.qty -= actual;
-        totalCost += fillPx * actual;
-        totalQty += actual;
-        if (top.qty <= 0 || actual < aff) opp.shift();
-        break;
-      }
-      const actual = trigger(traderId, top.ownerId, fillQty, fillPx);
+      const buyQ = buyableQty(t, assetId, fillQty, fillPx);
+      if (buyQ <= 0) break;
+      const actual = trigger(traderId, top.ownerId, buyQ, fillPx);
       top.qty -= actual;
       totalCost += fillPx * actual;
       totalQty += actual;
       remaining -= actual;
       if (top.qty <= 0 || actual < fillQty) opp.shift();
+      if (buyQ < fillQty) break;
     } else {
       const allowed = sellableQty(S, t, assetId, fillQty, fillPx);
       if (allowed <= 0) break;
