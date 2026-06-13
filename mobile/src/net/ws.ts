@@ -27,12 +27,33 @@ export function send(msg: any): void {
   if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
 }
 
+// Server streams ticks at 10Hz. Triggering a React re-render of every screen
+// 10×/s pegs the phone (100-item list + chart). Engine state is still updated
+// live in place; we just throttle the bumpData() that drives re-renders to
+// ~4Hz so the UI stays smooth.
+let lastBump = 0;
+let bumpTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleBump(): void {
+  const now = Date.now();
+  const since = now - lastBump;
+  if (since >= 250) {
+    lastBump = now;
+    useGame.getState().bumpData();
+  } else if (!bumpTimer) {
+    bumpTimer = setTimeout(() => {
+      bumpTimer = null;
+      lastBump = Date.now();
+      useGame.getState().bumpData();
+    }, 250 - since);
+  }
+}
+
 export function setActiveAsset(aid: string): void {
   activeAsset = aid;
   const { engine } = useGame.getState();
   engine.state.active = aid;
   send({ type: 'setActive', payload: { aid } });
-  useGame.getState().bumpData();
+  useGame.getState().bumpData(); // immediate — user action
 }
 
 export function setTF(tf: string): void {
@@ -41,6 +62,9 @@ export function setTF(tf: string): void {
 }
 
 export function connect(): void {
+  // Already connected/connecting — skip. onAuthStateChange fires repeatedly
+  // (SIGNED_IN, TOKEN_REFRESHED…); without this each call opened a new socket.
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
   if (ws) {
     try {
       ws.onopen = ws.onclose = ws.onerror = ws.onmessage = null;
@@ -121,7 +145,7 @@ function applySnapshot(snap: any): void {
     }
     if (sa.volumeHist?.length) ast.volumeHist = sa.volumeHist.slice();
   }
-  useGame.getState().bumpData();
+  scheduleBump();
 }
 
 function applyTick(tick: any): void {
@@ -157,5 +181,5 @@ function applyTick(tick: any): void {
     if (ast && tick.activeHistory) ast.history = tick.activeHistory.slice();
     if (ast && tick.activeVolumeHist) ast.volumeHist = tick.activeVolumeHist.slice();
   }
-  useGame.getState().bumpData();
+  scheduleBump();
 }
