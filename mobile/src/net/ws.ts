@@ -65,6 +65,16 @@ export function claimMission(missionId: string): void {
   send({ type: 'claimMission', payload: { missionId } });
 }
 
+// Force a fresh connection — used after changing the username so the server
+// re-reads it (the trader name is set from the token's metadata on auth).
+export function reconnect(): void {
+  if (ws) {
+    try { ws.onopen = ws.onclose = ws.onerror = ws.onmessage = null; ws.close(); } catch {}
+    ws = null;
+  }
+  connect();
+}
+
 export function connect(): void {
   // Already connected/connecting — skip. onAuthStateChange fires repeatedly
   // (SIGNED_IN, TOKEN_REFRESHED…); without this each call opened a new socket.

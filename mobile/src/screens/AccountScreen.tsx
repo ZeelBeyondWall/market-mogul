@@ -1,9 +1,10 @@
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, TextInput } from 'react-native';
 import { fmt, fmtPct } from '../engine/helpers';
 import { useGame } from '../store/game';
 import { useLiveTick } from '../hooks/useLiveTick';
 import { supabase } from '../net/supabase';
-import { claimMission } from '../net/ws';
+import { claimMission, reconnect } from '../net/ws';
 import { COLORS } from '../config';
 
 export function AccountScreen() {
@@ -38,6 +39,28 @@ export function AccountScreen() {
   const todayPnL = net - dayStart;
   const todayPct = (todayPnL / dayStart) * 100;
   const username = session?.user?.user_metadata?.username || session?.user?.email?.split('@')[0] || 'Trader';
+  const pushToast = useGame((s) => s.pushToast);
+  const [editing, setEditing] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const saveUsername = async () => {
+    const next = nameInput.trim();
+    if (next.length < 2 || next.length > 20) { pushToast('Username must be 2–20 chars', 'err'); return; }
+    setSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ data: { username: next } });
+      if (error) { pushToast(error.message, 'err'); return; }
+      reconnect(); // server re-reads the name on the fresh auth
+      setEditing(false);
+      pushToast('Username updated', 'ok');
+    } catch (e: any) {
+      pushToast(e?.message || 'Failed to update', 'err');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const upToday = todayPnL >= 0;
   const upUnreal = unrealized >= 0;
   const xpPct = Math.max(0, Math.min(100, ((xp - xpAt) / Math.max(1, xpTo - xpAt)) * 100));
@@ -48,11 +71,34 @@ export function AccountScreen() {
       <View style={styles.identity}>
         <View style={styles.lvlBadge}><Text style={styles.lvlNum}>{level}</Text></View>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.uname} numberOfLines={1}>{username}</Text>
+          <Pressable onPress={() => { setNameInput(username); setEditing(true); }}>
+            <Text style={styles.uname} numberOfLines={1}>{username} <Text style={styles.editHint}>✎</Text></Text>
+          </Pressable>
           <View style={styles.xpBar}><View style={[styles.xpFill, { width: `${xpPct}%` }]} /></View>
           <Text style={styles.xpTxt}>{Math.max(0, xp - xpAt)} / {Math.max(1, xpTo - xpAt)} XP</Text>
         </View>
       </View>
+
+      {editing && (
+        <View style={styles.editRow}>
+          <TextInput
+            value={nameInput}
+            onChangeText={setNameInput}
+            autoFocus
+            autoCapitalize="none"
+            maxLength={20}
+            placeholder="Username"
+            placeholderTextColor={COLORS.dim}
+            style={styles.editInput}
+          />
+          <Pressable style={[styles.editSave, saving && { opacity: 0.6 }]} disabled={saving} onPress={saveUsername}>
+            <Text style={styles.editSaveTxt}>{saving ? '…' : 'Save'}</Text>
+          </Pressable>
+          <Pressable style={styles.editCancel} onPress={() => setEditing(false)}>
+            <Text style={styles.editCancelTxt}>✕</Text>
+          </Pressable>
+        </View>
+      )}
       <View style={styles.pills}>
         <Pill icon="🏆" text={`Rank #${rank || '—'}`} />
         <Pill icon="🔥" text={`${streak} streak`} />
@@ -142,6 +188,13 @@ const styles = StyleSheet.create({
   lvlBadge: { width: 50, height: 50, borderRadius: 14, backgroundColor: COLORS.panelRaise, borderWidth: 1.5, borderColor: COLORS.gold, alignItems: 'center', justifyContent: 'center' },
   lvlNum: { color: COLORS.gold, fontWeight: '800', fontSize: 20 },
   uname: { color: '#fff', fontWeight: '800', fontSize: 17 },
+  editHint: { color: COLORS.dim, fontSize: 13 },
+  editRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  editInput: { flex: 1, color: '#fff', backgroundColor: COLORS.panel, borderWidth: 1, borderColor: COLORS.gold, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14, fontWeight: '700' },
+  editSave: { backgroundColor: COLORS.gold, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 9 },
+  editSaveTxt: { color: '#0a0a14', fontWeight: '800', fontSize: 13 },
+  editCancel: { paddingHorizontal: 8, paddingVertical: 9 },
+  editCancelTxt: { color: COLORS.dim, fontSize: 16, fontWeight: '700' },
   xpBar: { height: 7, borderRadius: 4, backgroundColor: COLORS.panelRaise, overflow: 'hidden', marginTop: 6 },
   xpFill: { height: '100%', backgroundColor: COLORS.gold },
   xpTxt: { color: COLORS.dim, fontSize: 9.5, marginTop: 3, fontFamily: undefined },

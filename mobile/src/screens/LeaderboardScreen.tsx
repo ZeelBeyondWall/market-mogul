@@ -12,11 +12,15 @@ function returnPct(e: { net: number; bornNet?: number }): number {
 }
 
 export function LeaderboardScreen() {
+  const engine = useGame((s) => s.engine);
   const leaderboard = useGame((s) => s.leaderboard);
   const rank = useGame((s) => s.rank);
   const total = useGame((s) => s.totalTraders);
   useLiveTick();
 
+  // Server marks isPlayer=true for ANY human (not just me) — match my own
+  // entry by the server-authoritative player name instead.
+  const myName = engine.player().name;
   const top = leaderboard.slice(0, 50);
 
   return (
@@ -37,15 +41,16 @@ export function LeaderboardScreen() {
           const pct = returnPct(item);
           const up = pct >= 0;
           const r = index + 1;
+          const isMe = item.name === myName;
           return (
-            <View style={[styles.row, item.isPlayer && styles.rowMe]}>
+            <View style={[styles.row, isMe && styles.rowMe]}>
               <View style={styles.rankCol}>
                 <Text style={styles.rankTxt}>{r <= 3 ? MEDAL[r - 1] : r}</Text>
               </View>
               <View style={styles.avatar}><Text style={styles.avatarTxt}>{(item.name || '?')[0].toUpperCase()}</Text></View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.name} numberOfLines={1}>
-                  {item.name}{item.isPlayer ? ' (You)' : ''}
+                  {item.name}{isMe ? ' (You)' : ''}
                 </Text>
                 <Text style={styles.sub}>Lvl {item.level}{item.rekt ? ' · REKT' : ''}</Text>
               </View>
