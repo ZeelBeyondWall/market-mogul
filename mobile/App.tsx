@@ -16,15 +16,15 @@ import { PositionsScreen } from './src/screens/PositionsScreen';
 import { AccountScreen } from './src/screens/AccountScreen';
 import { LeaderboardScreen } from './src/screens/LeaderboardScreen';
 import { StoreScreen } from './src/screens/StoreScreen';
-import { Ionicons } from '@expo/vector-icons';
 
-const TAB_ICON: Record<string, any> = {
-  Markets: 'stats-chart',
-  Trade: 'pulse',
-  Positions: 'briefcase',
-  Ranks: 'trophy',
-  Store: 'cart',
-  Account: 'person',
+// Emoji tab icons — bulletproof (system font, no native icon module to break).
+const TAB_ICON: Record<string, string> = {
+  Markets: '📊',
+  Trade: '📈',
+  Positions: '💼',
+  Ranks: '🏆',
+  Store: '🛒',
+  Account: '👤',
 };
 import { COLORS } from './src/config';
 
@@ -111,8 +111,8 @@ export default function App() {
               tabBarActiveTintColor: COLORS.gold,
               tabBarInactiveTintColor: COLORS.dim,
               tabBarLabelStyle: { fontSize: 9.5, fontWeight: '700' },
-              tabBarIcon: ({ color, size }) => (
-                <Ionicons name={TAB_ICON[route.name] || 'ellipse'} size={size ?? 20} color={color} />
+              tabBarIcon: ({ focused }) => (
+                <Text style={{ fontSize: 18, opacity: focused ? 1 : 0.55 }}>{TAB_ICON[route.name] || '•'}</Text>
               ),
             })}
           >
