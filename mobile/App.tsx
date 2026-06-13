@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { supabase } from './src/net/supabase';
 import { useGame } from './src/store/game';
@@ -82,6 +83,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
       <StatusBar style="light" />
       {!session ? (
@@ -105,6 +107,7 @@ export default function App() {
       )}
       <Toast />
     </SafeAreaProvider>
+    </GestureHandlerRootView>
     </ErrorBoundary>
   );
 }

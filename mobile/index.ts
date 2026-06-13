@@ -1,3 +1,6 @@
+// MUST be the very first import — gesture-handler / react-navigation require it
+// loaded before anything else or the app can crash natively on launch.
+import 'react-native-gesture-handler';
 import { registerRootComponent } from 'expo';
 
 import App from './App';
