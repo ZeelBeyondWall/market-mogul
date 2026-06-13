@@ -73,13 +73,14 @@ export function executeTrade(
   const sellerHouse = !!seller.isHouse;
 
   const sh0 = seller.holdings[assetId];
-  // v7.3: margin check applies to everyone (except the House).
+  // v11: 100% margin model — opening a short LOCKS the full notional as
+  // collateral (cash goes down), so a trader can short only up to their cash.
   if (!sellerHouse) {
     const uncovered = Math.max(0, qty - Math.max(0, sh0.shares));
     if (uncovered > 0) {
-      const needed = uncovered * px * 0.5;
+      const needed = uncovered * px; // full notional must be available
       if (seller.cash < needed) {
-        const maxUncovered = roundShares((seller.cash * 2) / px);
+        const maxUncovered = roundShares(seller.cash / px);
         const allowed = Math.max(0, sh0.shares) + maxUncovered;
         qty = Math.min(qty, allowed);
       }
@@ -93,9 +94,28 @@ export function executeTrade(
   if (qty <= 0) return 0;
 
   const cash = px * qty;
+  // v11: margin model — cash impact depends on whether the leg opens/closes a
+  // long or a short, so net worth is conserved at trade time:
+  //   • sell owned long  → receive proceeds (+)
+  //   • open/add short   → LOCK margin = notional (−)
+  //   • buy new long     → pay notional (−)
+  //   • cover short      → return locked margin + P&L = qty·(2·avgCost − px) (+)
+  const shBefore0 = seller.holdings[assetId].shares;
+  const bhBefore0 = buyer.holdings[assetId].shares;
+  const bhAvg0 = buyer.holdings[assetId].avgCost;
   // House cash is never mutated (it accumulates nothing → no pollution).
-  if (!buyerHouse) buyer.cash -= cash;
-  if (!sellerHouse) seller.cash += cash;
+  if (!sellerHouse) {
+    const closingLong = Math.min(qty, Math.max(0, shBefore0));
+    const openingShort = qty - closingLong;
+    seller.cash += closingLong * px;   // sold shares we owned
+    seller.cash -= openingShort * px;  // opened short → lock collateral
+  }
+  if (!buyerHouse) {
+    const coveringShort = Math.min(qty, Math.max(0, -bhBefore0));
+    const openingLong = qty - coveringShort;
+    buyer.cash -= openingLong * px;                    // bought a long
+    buyer.cash += coveringShort * (2 * bhAvg0 - px);   // covered → margin + P&L back
+  }
 
   // v10: deduct trading fees (0.1% per side). House is exempt.
   const fee = cash * TRADE_FEE_RATE;

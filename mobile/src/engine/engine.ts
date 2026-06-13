@@ -385,8 +385,17 @@ export class Engine {
 
   portfolioValue(traderId: number = 0): number {
     let v = 0;
+    const p = this.player(traderId);
     ASSETS.forEach(a => {
-      v += (this.player(traderId).holdings[a.id]?.shares || 0) * this.state.assets[a.id].lastPrice;
+      const h = p.holdings[a.id];
+      const sh = h?.shares || 0;
+      if (sh === 0) return;
+      const px = this.state.assets[a.id].lastPrice;
+      // v11: long = market value; short = locked margin + unrealized P&L
+      // (|sh|·avgCost collateral + (avgCost − px)·|sh|), so net worth is
+      // conserved the moment a short opens and tracks P&L as price moves.
+      if (sh > 0) v += sh * px;
+      else v += (-sh) * (2 * (h!.avgCost || 0) - px);
     });
     return v;
   }
