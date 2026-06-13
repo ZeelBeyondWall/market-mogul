@@ -2,12 +2,13 @@ import { View, Text, FlatList, Pressable, StyleSheet } from 'react-native';
 import { ASSETS } from '../engine/constants';
 import { fmt, fmtPct, fmtNum } from '../engine/helpers';
 import { useGame } from '../store/game';
+import { useLiveTick } from '../hooks/useLiveTick';
 import { send } from '../net/ws';
 import { COLORS } from '../config';
 
 export function PositionsScreen() {
   const engine = useGame((s) => s.engine);
-  useGame((s) => s.dataTick);
+  useLiveTick();
 
   const p = engine.player();
   const cash = p.cash;

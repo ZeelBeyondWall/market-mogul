@@ -1,5 +1,6 @@
 import { View, StyleSheet } from 'react-native';
 import { useGame } from '../store/game';
+import { useLiveTick } from '../hooks/useLiveTick';
 import { COLORS } from '../config';
 
 const GREEN = '#2fa874';
@@ -13,7 +14,7 @@ const VISIBLE = 40;
 export function ChartView() {
   const engine = useGame((s) => s.engine);
   const tf = useGame((s) => s.activeTF);
-  useGame((s) => s.dataTick);
+  useLiveTick();
 
   const ast = engine.state.assets[engine.state.active];
   const series = ast?.series?.[tf];

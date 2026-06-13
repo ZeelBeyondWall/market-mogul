@@ -2,12 +2,13 @@ import { View, Text, FlatList, Pressable, StyleSheet, Image } from 'react-native
 import { ASSETS } from '../engine/constants';
 import { fmt, fmtPct } from '../engine/helpers';
 import { useGame } from '../store/game';
+import { useLiveTick } from '../hooks/useLiveTick';
 import { setActiveAsset } from '../net/ws';
 import { COLORS } from '../config';
 
 export function MarketsScreen({ navigation }: any) {
   const engine = useGame((s) => s.engine);
-  useGame((s) => s.dataTick); // re-render on data updates (10Hz)
+  useLiveTick(); // re-render on data updates, only while this tab is focused
 
   const rows = ASSETS.map((a) => {
     const ast = engine.state.assets[a.id];
@@ -22,6 +23,10 @@ export function MarketsScreen({ navigation }: any) {
         data={rows}
         keyExtractor={(r) => r.a.id}
         contentContainerStyle={{ paddingBottom: 24 }}
+        removeClippedSubviews
+        initialNumToRender={12}
+        maxToRenderPerBatch={10}
+        windowSize={5}
         renderItem={({ item }) => {
           const up = item.chg >= 0;
           return (

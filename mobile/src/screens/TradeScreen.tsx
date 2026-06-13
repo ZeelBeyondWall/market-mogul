@@ -4,6 +4,7 @@ import { ASSETS } from '../engine/constants';
 import { fmt, fmtPct } from '../engine/helpers';
 import { TF_LIST } from '../engine/types';
 import { useGame } from '../store/game';
+import { useLiveTick } from '../hooks/useLiveTick';
 import { send, setTF } from '../net/ws';
 import { ChartView } from '../components/ChartView';
 import { COLORS } from '../config';
@@ -12,7 +13,7 @@ export function TradeScreen() {
   const engine = useGame((s) => s.engine);
   const tf = useGame((s) => s.activeTF);
   const setActiveTF = useGame((s) => s.setActiveTF);
-  useGame((s) => s.dataTick);
+  useLiveTick();
   const [qty, setQty] = useState('10');
 
   const aid = engine.state.active;
