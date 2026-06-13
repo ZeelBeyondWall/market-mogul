@@ -17,7 +17,11 @@ export function AuthScreen() {
       const fn = mode === 'login'
         ? supabase.auth.signInWithPassword({ email: email.trim(), password: pw })
         : supabase.auth.signUp({ email: email.trim(), password: pw });
-      const { error } = await fn;
+      // Never hang forever on "..." — surface a timeout if the request stalls.
+      const timeout = new Promise<never>((_, rej) =>
+        setTimeout(() => rej(new Error('Request timed out — check the connection.')), 20000),
+      );
+      const { error } = (await Promise.race([fn, timeout])) as Awaited<typeof fn>;
       if (error) setErr(error.message);
     } catch (e: any) {
       setErr(e?.message || 'Something went wrong');
