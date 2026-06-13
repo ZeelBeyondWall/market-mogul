@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { useEffect, Component, type ReactNode } from 'react';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -15,6 +15,24 @@ import { PositionsScreen } from './src/screens/PositionsScreen';
 import { COLORS } from './src/config';
 
 const Tab = createBottomTabNavigator();
+
+// Shows the error on screen instead of a blank crash, so issues are reportable.
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <ScrollView style={{ flex: 1, backgroundColor: COLORS.bg }} contentContainerStyle={{ padding: 24, paddingTop: 80 }}>
+          <Text style={{ color: COLORS.red, fontSize: 18, fontWeight: '800', marginBottom: 12 }}>App Error</Text>
+          <Text style={{ color: COLORS.text, fontSize: 13 }}>{String(this.state.error?.message || this.state.error)}</Text>
+          <Text selectable style={{ color: COLORS.dim, fontSize: 11, marginTop: 16 }}>{this.state.error?.stack}</Text>
+        </ScrollView>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const navTheme = {
   ...DefaultTheme,
@@ -63,6 +81,7 @@ export default function App() {
   }, [setSession]);
 
   return (
+    <ErrorBoundary>
     <SafeAreaProvider>
       <StatusBar style="light" />
       {!session ? (
@@ -86,6 +105,7 @@ export default function App() {
       )}
       <Toast />
     </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 
