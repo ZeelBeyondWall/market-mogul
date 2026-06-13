@@ -58,19 +58,43 @@ function makeClientState(): EngineState {
 
 export type Toast = { msg: string; kind: 'ok' | 'err' | 'info' } | null;
 
-interface GameStore {
+export interface LeaderEntry {
+  id: number; name: string; net: number; strat: string; rekt: boolean;
+  level: number; isPlayer: boolean; tier?: string; trades?: number; bornNet?: number;
+}
+
+// Player progression + meta pushed via server snapshots.
+export interface PlayerExtras {
+  rank: number;
+  totalTraders: number;
+  level: number;
+  xp: number;
+  xpAtCurrent: number;
+  xpToNext: number;
+  streak: number;
+  gems: number;
+  dailyMissions: any[];
+  weeklyMissions: any[];
+  events: any[];
+  banner: string;
+}
+
+interface GameStore extends PlayerExtras {
   engine: Engine;
   session: Session | null;
   connected: boolean;
   dataTick: number;            // bumped on every snapshot/tick → drives re-render
   activeTF: TFKey;
   toast: Toast;
+  leaderboard: LeaderEntry[];
   setSession: (s: Session | null) => void;
   setConnected: (v: boolean) => void;
   bumpData: () => void;
   setActiveTF: (tf: TFKey) => void;
   pushToast: (msg: string, kind?: 'ok' | 'err' | 'info') => void;
   clearToast: () => void;
+  setLeaderboard: (lb: LeaderEntry[]) => void;
+  setExtras: (e: Partial<PlayerExtras>) => void;
 }
 
 export const useGame = create<GameStore>((set) => ({
@@ -80,10 +104,25 @@ export const useGame = create<GameStore>((set) => ({
   dataTick: 0,
   activeTF: '5s',
   toast: null,
+  leaderboard: [],
+  rank: 0,
+  totalTraders: 0,
+  level: 1,
+  xp: 0,
+  xpAtCurrent: 0,
+  xpToNext: 100,
+  streak: 0,
+  gems: 0,
+  dailyMissions: [],
+  weeklyMissions: [],
+  events: [],
+  banner: '',
   setSession: (s) => set({ session: s }),
   setConnected: (v) => set({ connected: v }),
   bumpData: () => set((s) => ({ dataTick: s.dataTick + 1 })),
   setActiveTF: (tf) => set({ activeTF: tf }),
   pushToast: (msg, kind = 'info') => set({ toast: { msg, kind } }),
   clearToast: () => set({ toast: null }),
+  setLeaderboard: (lb) => set({ leaderboard: lb }),
+  setExtras: (e) => set(e),
 }));

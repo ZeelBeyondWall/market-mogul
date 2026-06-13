@@ -61,6 +61,10 @@ export function setTF(tf: string): void {
   send({ type: 'setTF', payload: { tf } });
 }
 
+export function claimMission(missionId: string): void {
+  send({ type: 'claimMission', payload: { missionId } });
+}
+
 export function connect(): void {
   // Already connected/connecting — skip. onAuthStateChange fires repeatedly
   // (SIGNED_IN, TOKEN_REFRESHED…); without this each call opened a new socket.
@@ -145,6 +149,24 @@ function applySnapshot(snap: any): void {
     }
     if (sa.volumeHist?.length) ast.volumeHist = sa.volumeHist.slice();
   }
+
+  // Progression + social meta (level/xp/rank/streak/missions/events/leaderboard).
+  const g = useGame.getState();
+  if (Array.isArray(snap.leaderboard)) g.setLeaderboard(snap.leaderboard);
+  g.setExtras({
+    rank: snap.playerRank ?? g.rank,
+    totalTraders: snap.totalTraders ?? g.totalTraders,
+    level: snap.playerLevel ?? g.level,
+    xp: snap.playerXp ?? g.xp,
+    xpAtCurrent: snap.xpAtCurrent ?? g.xpAtCurrent,
+    xpToNext: snap.xpToNext ?? g.xpToNext,
+    streak: snap.playerStreak ?? g.streak,
+    gems: snap.playerBonus ?? g.gems,
+    dailyMissions: Array.isArray(snap.dailyMissions) ? snap.dailyMissions : g.dailyMissions,
+    weeklyMissions: Array.isArray(snap.weeklyMissions) ? snap.weeklyMissions : g.weeklyMissions,
+    events: Array.isArray(snap.events) ? snap.events : g.events,
+    banner: snap.banner || '',
+  });
   scheduleBump();
 }
 

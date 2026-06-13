@@ -14,6 +14,7 @@ import { MarketsScreen } from './src/screens/MarketsScreen';
 import { TradeScreen } from './src/screens/TradeScreen';
 import { PositionsScreen } from './src/screens/PositionsScreen';
 import { AccountScreen } from './src/screens/AccountScreen';
+import { LeaderboardScreen } from './src/screens/LeaderboardScreen';
 import { COLORS } from './src/config';
 
 const Tab = createBottomTabNavigator();
@@ -103,6 +104,7 @@ export default function App() {
             <Tab.Screen name="Markets" component={MarketsScreen} />
             <Tab.Screen name="Trade" component={TradeScreen} />
             <Tab.Screen name="Positions" component={PositionsScreen} />
+            <Tab.Screen name="Ranks" component={LeaderboardScreen} />
             <Tab.Screen name="Account" component={AccountScreen} />
           </Tab.Navigator>
         </NavigationContainer>
