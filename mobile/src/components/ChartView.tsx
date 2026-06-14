@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, LayoutChangeEvent } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import Svg, { Rect, Line, Polyline } from 'react-native-svg';
 import { computeIndicators } from '../utils/indicators';
 import { useGame } from '../store/game';
@@ -11,14 +11,15 @@ const RED = '#dd4f60';
 const HEIGHT = 230;
 const PAD = 6;
 const VISIBLE = 40;
+// Trade screen has 12px horizontal padding each side; chart fills the rest.
+const W = Dimensions.get('window').width - 24;
 
 export function ChartView() {
   const engine = useGame((s) => s.engine);
   const tf = useGame((s) => s.activeTF);
   const inds = useGame((s) => s.activeIndicators);
   useLiveTick();
-  const [w, setW] = useState(0);
-  const onLayout = (e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width);
+  const w = W;
 
   const ast = engine.state.assets[engine.state.active];
   const series = ast?.series?.[tf];
@@ -29,8 +30,12 @@ export function ChartView() {
   const subH = hasRsi ? 52 : 0;
   const mainH = HEIGHT - subH;
 
-  if (w < 4 || visible.length < 2) {
-    return <View style={styles.wrap} onLayout={onLayout} />;
+  if (visible.length < 2) {
+    return (
+      <View style={[styles.wrap, { alignItems: 'center', justifyContent: 'center' }]}>
+        <Text style={{ color: COLORS.dim, fontSize: 12 }}>Building candles… ({all.length})</Text>
+      </View>
+    );
   }
 
   const closes = visible.map((c) => c.c);
@@ -66,7 +71,7 @@ export function ChartView() {
   };
 
   return (
-    <View style={styles.wrap} onLayout={onLayout}>
+    <View style={styles.wrap}>
       <Svg width={w} height={HEIGHT}>
         {/* candles */}
         {visible.map((c, i) => {
